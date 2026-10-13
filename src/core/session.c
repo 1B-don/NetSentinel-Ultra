@@ -13,19 +13,12 @@ static NsResult write_log(NsSession* s, const char* text) {
     if(r != NS_OK) { s->io->file_close(s->io->ctx); s->logging = false; s->error = r; }
     return r;
 }
-/* Use quoted bounded raw text so BLE formats can be logged without inventing
- * device fields. Unknown BLE lines remain raw observations, never device counts. */
+/* Arbitrary serial text can contain device/network identifiers or secrets.
+ * Persist only fixed telemetry; never echo UART bytes into any log. */
 static NsResult raw_log(NsSession* s, uint32_t now) {
-    char record[2 * NS_LINE_LIMIT + 80];
-    int len = snprintf(record, sizeof(record), "%lu,%lu,%s,\"", (unsigned long)s->id,
-                       (unsigned long)now, s->ble ? "ble_raw" : "uart_raw");
-    size_t pos = (size_t)len;
-    for(size_t i = 0; i < s->line_len; i++) {
-        char c = s->line[i];
-        if(c == '"') record[pos++] = '"';
-        record[pos++] = c;
-    }
-    memcpy(record + pos, "\",,,\n", 6);
+    char record[80];
+    snprintf(record, sizeof(record), "%lu,%lu,uart_redacted,,,1,line\n",
+        (unsigned long)s->id, (unsigned long)now);
     return write_log(s, record);
 }
 void ns_session_init(NsSession* s, const NsPlatform* io, const NsEspProfile* p) {

@@ -2,11 +2,13 @@
 
 NetSentinel now compiles and packages a real GUI/storage-only FAP using the permitted **Momentum mntm-dev-d3f89dfe SDK**, matching the running firmware’s independently confirmed **API 87.1 / hardware target 7**. Clean compilation, linking, packaging and all 49 import checks pass. The owner physically verified launch, dashboard, Back exit, settings persistence and disabled-radio status on the first build. Radio operation and remaining navigation/error paths are unverified; no v1.0 release occurred.
 
-Current rebuilt artifact: `dist/netsentinel.fap` (34,148 bytes; not physically tested). See [Momentum build evidence and reproducible commands](docs/MOMENTUM_BUILD.md). The earlier official SDK artifact/evidence are preserved separately.
+Current rebuilt artifact: `dist/netsentinel.fap` (34,888 bytes; not physically tested). See [Momentum build evidence and reproducible commands](docs/MOMENTUM_BUILD.md). The earlier official SDK artifact/evidence are preserved separately.
 
 [ESP32 preparation](docs/ESP32_PREPARATION.md) records UART topology/protocol blockers, deadline fixes and meaningful status UI. [The bridge connection procedure](docs/ESP32_CONNECTION_TEST.md) incorporates owner-confirmed photographs and remains blocked on exact board nets/circuitry and explicit hardware approval.
 
 The earlier API 89.1 report is superseded by the owner’s direct USB CLI result. All radio adapters remain disabled. [First on-device test](docs/FIRST_DEVICE_TEST.md) requires explicit approval before installation or execution.
+
+UART logs now contain fixed redacted telemetry rather than raw serial bytes; owner MACs and other identifiers are excluded. USB-C communication does not verify Flipper GPIO routing.
 
 ## Build and tests
 
@@ -28,7 +30,7 @@ In this traced sandbox use `ASAN_OPTIONS=detect_leaks=0 make sanitize`. Address/
 - CC1101 read-only SPI diagnostic helper, receive/RSSI contract, 64-sample plot, mean/extrema/threshold summaries, receive-only presets/retuning, rate-limited sampling and CSV metadata. Concrete external-radio SDK callbacks are still missing. [CC1101 evidence and integration](docs/CC1101.md) separates simulated tests, user-reported operation and pending hardware tests.
 - Imported portable Wi-Fi AP parsing, channel counts, comparisons and CSV escaping. Raw BLE handling remains in the core for future firmware-specific integration.
 
-**ESP32 scans remain disabled by the installed-command verification gate.** The owner confirmed Marauder v1.11.0 and standalone Wi-Fi Recon operation; raw UART command/output capture is still needed. Added a source UART driver, provisional info parser, gated passive beacon protocol, Wi-Fi Explorer AP/RSSI/baseline integration and channel-summary logging. See [Marauder integration](docs/MARAUDER.md) for precise evidence and limitations. The default hardware port also disables NRF/CC acquisition; an authorized board port must implement and verify their callbacks before enabling capabilities. Menus and mocked measurements do not establish hardware functionality.
+**ESP32 scans remain disabled by the installed-command verification gate.** The owner confirmed Marauder v1.11.0 and standalone Wi-Fi Recon operation; owner USB-C/CH340 status now confirms installed identity/SD/battery labels, while header wiring, framing/help and passive scan behavior remain pending. Added a source UART driver, strict bounded info parser, gated passive beacon protocol, Wi-Fi Explorer AP/RSSI/baseline integration and channel-summary logging. See [Marauder integration](docs/MARAUDER.md) for precise evidence and limitations. The default hardware port also disables NRF/CC acquisition; an authorized board port must implement and verify their callbacks before enabling capabilities. Menus and mocked measurements do not establish hardware functionality.
 
 The candidate `application.fam` includes only root parser/analysis, portable core and Flipper shell sources. Archived `legacy` code, tests and host SDK shims are excluded. Its v1.0 target metadata is not a release declaration.
 

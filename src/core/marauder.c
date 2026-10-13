@@ -12,12 +12,58 @@ static bool token(const char* line, const char* text) {
     }
     return false;
 }
-static void field(char* out, size_t cap, const char* line, const char* label) {
-    size_t n = strlen(label); if(strncmp(line, label, n)) return;
+enum { INFO_VERSION=1u, INFO_HW=2u, INFO_IDF=4u, INFO_FW=8u,
+    INFO_WSL=16u, INFO_SD=32u, INFO_SIZE=64u, INFO_BATTERY=128u, INFO_ALL=255u };
+static NsResult field(NsMarauder* m, char* out, size_t cap, const char* line,
+                      const char* label, unsigned bit) {
+    size_t n = strlen(label); if(strncmp(line, label, n)) return NS_OK;
     const char* p = line+n; while(*p == ' ') p++;
     size_t len = strlen(p); while(len && p[len-1] == ' ') len--;
-    if(len >= cap) return; /* truncated identity must not pass verification */
-    memcpy(out, p, len); out[len] = 0;
+    if(!len || len >= cap || (m->info_fields & bit)) return NS_INVALID;
+    for(size_t i = 0; i < len; i++)
+        if(!isalnum((unsigned char)p[i]) && p[i] != ' ' && p[i] != '.' && p[i] != '-' && p[i] != '_') return NS_INVALID;
+    memcpy(out, p, len); out[len] = 0; m->info_fields |= bit;
+    return NS_OK;
+}
+static NsResult info_line(NsMarauder* m, const char* line) {
+    NsResult r = field(m, m->firmware, sizeof(m->firmware), line, "Firmware:", INFO_FW);
+    if(r == NS_OK) r = field(m, m->version, sizeof(m->version), line, "Version:", INFO_VERSION);
+    if(r == NS_OK) r = field(m, m->hardware, sizeof(m->hardware), line, "Hardware:", INFO_HW);
+    if(r == NS_OK) r = field(m, m->idf, sizeof(m->idf), line, "ESP-IDF:", INFO_IDF);
+    if(r == NS_OK) r = field(m, m->idf, sizeof(m->idf), line, "ESP-IDF Version:", INFO_IDF);
+    if(r != NS_OK) return r;
+    char value[24] = {0};
+    unsigned bit = 0;
+    if(!strncmp(line, "WSL Bypass:", 11)) bit = INFO_WSL;
+    else if(!strncmp(line, "SD Card:", 8)) bit = INFO_SD;
+    else if(!strncmp(line, "SD Card Size:", 13)) bit = INFO_SIZE;
+    else if(!strncmp(line, "Battery Monitor:", 16)) bit = INFO_BATTERY;
+    if(!bit) return NS_OK; /* unknown fields are never retained or logged */
+    const char* label = bit == INFO_WSL ? "WSL Bypass:" : bit == INFO_SD ? "SD Card:" :
+        bit == INFO_SIZE ? "SD Card Size:" : "Battery Monitor:";
+    r = field(m, value, sizeof(value), line, label, bit);
+    if(r != NS_OK) return r;
+    if(bit == INFO_WSL) {
+        if(strcmp(value, "enabled")) return NS_INVALID;
+        m->wsl_bypass = true;
+    } else if(bit == INFO_SD) {
+        if(strcmp(value, "Connected")) return NS_INVALID;
+        m->sd_connected = true;
+    } else if(bit == INFO_BATTERY) {
+        if(strcmp(value, "not supported")) return NS_INVALID;
+        m->battery_unsupported = true;
+    } else {
+        uint32_t size = 0; const char* p = value;
+        if(!isdigit((unsigned char)*p)) return NS_INVALID;
+        while(isdigit((unsigned char)*p)) {
+            unsigned digit = (unsigned)(*p++ - '0');
+            if(size > (UINT32_MAX-digit)/10) return NS_INVALID;
+            size = size*10 + digit;
+        }
+        if(!size || strcmp(p, "MB")) return NS_INVALID;
+        m->sd_size_mb = size;
+    }
+    return NS_OK;
 }
 NsResult ns_marauder_begin(NsMarauder* m, const NsPlatform* io, bool wifi, bool verified, uint32_t timeout, uint32_t now) {
     if(!m || !io || !io->uart_write || timeout < 1000 || timeout > 60000) return NS_INVALID;
@@ -36,10 +82,8 @@ NsResult ns_marauder_line(NsMarauder* m, const char* line, uint32_t now) {
     if(echo && !strcmp(line, echo)) { m->command_echo = true; return NS_OK; }
     if(echo && !m->command_echo) return NS_OK; /* ignore stale/startup chatter */
     if(m->stage == NS_M_INFO) {
-        field(m->version, sizeof(m->version), line, "Version:");
-        field(m->hardware, sizeof(m->hardware), line, "Hardware:");
-        field(m->idf, sizeof(m->idf), line, "ESP-IDF:");
-        field(m->idf, sizeof(m->idf), line, "ESP-IDF Version:");
+        NsResult r = info_line(m, line);
+        if(r != NS_OK) return fail(m, r);
     } else if(m->stage == NS_M_HELP) {
         m->has_beacon |= token(line, "sniffbeacon"); m->has_stop |= token(line, "stopscan");
     } else if(m->stage == NS_M_START) {
@@ -59,9 +103,12 @@ NsResult ns_marauder_prompt(NsMarauder* m, uint32_t now) {
     m->command_echo = false;
     if(m->stage == NS_M_INFO) {
         if(!m->version[0] || !m->hardware[0] || !m->idf[0]) return fail(m, NS_INVALID);
+        m->info_complete = m->info_fields == INFO_ALL && !strcmp(m->firmware, "Marauder");
+        m->identity_matches = m->info_complete && !strcmp(m->version, "v1.11.0") &&
+            !strcmp(m->hardware, "Marauder v4") && !strcmp(m->idf, "v5.5.1-710-g8410210c9a");
         if(!m->wifi) { m->stage = NS_M_DONE; return NS_OK; }
         if(strcmp(m->version, "v1.11.0") || strcmp(m->hardware, "Marauder v4") ||
-           strcmp(m->idf, "v5.5.1-710-g840210c9a")) return fail(m, NS_UNSUPPORTED);
+           strcmp(m->idf, "v5.5.1-710-g8410210c9a")) return fail(m, NS_UNSUPPORTED);
         m->stage = NS_M_HELP; r = send(m, "help\n");
     } else if(m->stage == NS_M_HELP) {
         if(!m->has_beacon || !m->has_stop || !m->installed_verified) return fail(m, NS_UNSUPPORTED);

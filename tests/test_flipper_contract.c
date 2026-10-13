@@ -84,10 +84,10 @@ static void test_uart(void) {
     assert(ns_app_key(&app, NS_KEY_RIGHT, 0) == NS_OK && f.serial);
     NsFrame frame; ns_app_frame(&app, &frame);
     assert(!strcmp(frame.rows[5], "Waiting for info reply"));
-    const char* info = "#info\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g840210c9a\n> ";
+    const char* info = "#info\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g8410210c9a\n> ";
     mock_serial_feed((const uint8_t*)info, strlen(info));
     assert(ns_app_step(&app, 10) == NS_OK && !f.serial && !app.history_dirty);
-    ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "Info reply received"));
+    ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "Incomplete info status"));
     app.status = NS_TIMEOUT; ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "No reply: check UART"));
     app.status = NS_BUSY; ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "Port/session busy"));
     app.status = NS_FULL; ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "UART buffer/log full"));

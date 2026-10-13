@@ -316,7 +316,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 else if(a->status == NS_IO) state = "UART or SD I/O error";
                 else if(a->status == NS_BUSY) state = "Port/session busy";
                 else if(a->status == NS_UNSUPPORTED) state = "Scan not yet verified";
-                else if(a->session.marauder.stage == NS_M_DONE && a->status == NS_OK) state = "Info reply received";
+                else if(a->session.marauder.stage == NS_M_DONE && a->status == NS_OK) state = a->session.marauder.info_complete ? "Info reply received" : "Incomplete info status";
                 else if(a->status == NS_OK) state = "Right queries device info";
                 if(state) snprintf(f->rows[5], sizeof(f->rows[5]), "%s", state);
             }

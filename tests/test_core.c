@@ -64,7 +64,7 @@ static void test_session(void) {
     const char* line = "RSSI: -55 Ch: 6 BSSID: 00:11:22:33:44:55 ESSID: a,\"b\"\r\n";
     for(size_t i = 0; i < strlen(line); i++) assert(ns_session_feed(&s, (const uint8_t*)line+i, 1, 50) == NS_OK);
     assert(s.ap_count == 1 && s.aps[0].rssi == -55);
-    assert(strstr(m.file, "a,\"\"b\"\""));
+    assert(strstr(m.file, "uart_redacted") && !strstr(m.file, "a,\"\"b"));
     line = "RSSI: -60 Ch: 11 BSSID: 00:11:22:33:44:55 ESSID: renamed\n";
     assert(ns_session_feed(&s, (const uint8_t*)line, strlen(line), 100) == NS_OK);
     assert(s.ap_count == 1 && s.aps[0].channel == 11 && !strcmp(s.aps[0].ssid, "renamed"));

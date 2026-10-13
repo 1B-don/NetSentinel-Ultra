@@ -3,7 +3,7 @@
 #include "ns_analysis.h"
 #include <stdio.h>
 /* Identity labels match tagged upstream; values are synthetic, not a device capture. */
-static const char* identity = "#info\r\nVersion: v1.11.0\r\nHardware: Marauder v4\r\nESP-IDF: v5.5.1-710-g840210c9a\r\n> ";
+static const char* identity = "#info\r\nVersion: v1.11.0\r\nHardware: Marauder v4\r\nESP-IDF: v5.5.1-710-g8410210c9a\r\n> ";
 static void feed(NsSession* s, const char* text, uint32_t now) {
     for(size_t i=0; text[i]; i++) assert(ns_session_feed(s, (const uint8_t*)text+i, 1, now) == NS_OK);
 }
@@ -34,7 +34,7 @@ static void protocol(void) {
     assert(s.ap_count == 3 && s.observations == 4 && s.aps[0].rssi == -44 && s.aps[0].channel == 6);
     assert(s.ap_min[0] == -59 && s.ap_max[0] == -44 && s.ap_seen_ms[0] == 40);
     assert(!strcmp(s.aps[2].ssid, "<hidden>") && !s.aps[0].security[0]);
-    assert(strstr(m.file, "Guest,\"\"net\"\""));
+    assert(strstr(m.file, "uart_redacted") && !strstr(m.file, "Guest"));
     uint8_t counts[14]; ns_channel_counts(s.aps, s.ap_count, counts); assert(counts[0] == 1 && counts[5] == 1 && counts[10] == 1);
     assert(ns_session_cancel(&s, 50) == NS_BUSY && s.active == NS_RADIO_ESP);
     assert(ns_session_cancel(&s, 51) == NS_BUSY);
@@ -74,7 +74,7 @@ static void rejection(void) {
     assert(ns_marauder_line(&p, "#info", 1) == NS_OK);
     assert(ns_marauder_line(&p, "Version: v1.10.0", 1) == NS_OK);
     assert(ns_marauder_line(&p, "Hardware: Marauder v4", 1) == NS_OK);
-    assert(ns_marauder_line(&p, "ESP-IDF: v5.5.1-710-g840210c9a", 1) == NS_OK);
+    assert(ns_marauder_line(&p, "ESP-IDF: v5.5.1-710-g8410210c9a", 1) == NS_OK);
     assert(ns_marauder_prompt(&p, 1) == NS_UNSUPPORTED && !strstr(m.commands, "sniffbeacon"));
     NsSession s; memset(&m, 0, sizeof(m)); ns_session_init(&s, &io, NULL);
     s.use_marauder = s.wifi_request = s.installed_wifi_verified = true;
@@ -96,7 +96,7 @@ static void information_deadlines(void) {
     assert(ns_marauder_line(&p, "#info", UINT32_MAX-98) == NS_OK);
     assert(ns_marauder_line(&p, "Version: v1.11.0", 0) == NS_OK);
     assert(ns_marauder_line(&p, "Hardware: Marauder v4", 0) == NS_OK);
-    assert(ns_marauder_line(&p, "ESP-IDF: v5.5.1-710-g840210c9a", 0) == NS_OK);
+    assert(ns_marauder_line(&p, "ESP-IDF: v5.5.1-710-g8410210c9a", 0) == NS_OK);
     assert(ns_marauder_prompt(&p, 900) == NS_TIMEOUT); /* exact wrapped deadline */
     assert(!strcmp(m.commands, "info\n"));
     memset(&m, 0, sizeof(m));
@@ -170,4 +170,100 @@ static void info_disconnect_and_cancel(void) {
     assert(ns_session_feed(&s, (const uint8_t*)identity, strlen(identity), 506) == NS_INVALID);
     assert(!strcmp(m.commands, "info\ninfo\n"));
 }
-int main(void) { protocol(); failures(); rejection(); information_deadlines(); info_fragment_boundaries(); info_malformed_and_retry(); info_disconnect_and_cancel(); puts("PASS: gated Marauder protocol, byte fragments, fixture observations, cancellation, logging and timeout recovery"); }
+static void observed_info_fixture(char* out, size_t capacity) {
+    FILE* f = fopen("tests/fixtures/marauder_info_sanitized.txt", "r"); assert(f);
+    out[0] = 0; char line[256];
+    while(fgets(line, sizeof(line), f)) {
+        if(line[0] == '#') continue;
+        assert(strlen(out)+strlen(line) < capacity); strcat(out, line);
+    }
+    assert(!ferror(f)); fclose(f);
+}
+static void observed_info_status(void) {
+    char body[1024]; observed_info_fixture(body, sizeof(body));
+    for(unsigned crlf = 0; crlf < 2; crlf++) {
+        char reply[2048]; size_t n = 0;
+        const char* echo = "#info\n";
+        for(unsigned pass = 0; pass < 2; pass++) {
+            const char* p = pass ? body : echo;
+            for(; *p; p++) { if(crlf && *p == '\n') reply[n++] = '\r'; reply[n++] = *p; }
+        }
+        reply[n++] = '>'; reply[n++] = ' '; reply[n] = 0; /* synthetic transport framing */
+        for(size_t split = 0; split <= n; split++) {
+            Mock m = {0}; NsPlatform io = platform(&m); NsSession s;
+            ns_session_init(&s, &io, NULL); s.use_marauder = true;
+            assert(ns_session_start(&s, NS_RADIO_ESP, false, false, 0) == NS_OK);
+            assert(ns_session_feed(&s, (const uint8_t*)reply, split, 1) == NS_OK);
+            if(split < n) {
+                assert(!s.marauder.info_complete && !s.marauder.identity_matches);
+                assert(ns_session_feed(&s, (const uint8_t*)reply+split, n-split, 2) == NS_OK);
+            }
+            assert(s.marauder.info_complete && s.marauder.identity_matches && !s.active);
+            assert(s.marauder.sd_connected && s.marauder.sd_size_mb == 30436);
+            assert(s.marauder.battery_unsupported && s.marauder.wsl_bypass);
+            assert(!strcmp(s.marauder.idf, "v5.5.1-710-g8410210c9a"));
+            assert(!strcmp(m.commands, "info\n") && m.released == 1);
+            NsApplication app = {0}; app.page = NS_PAGE_RADIO; app.selected = NS_RADIO_ESP;
+            app.capabilities.esp_uart = true; app.session.marauder = s.marauder;
+            NsFrame frame; ns_app_frame(&app, &frame);
+            assert(!strcmp(frame.rows[5], "Info reply received"));
+        }
+    }
+    const char* required[] = {"Firmware:","Version:","Hardware:","ESP-IDF:",
+        "WSL Bypass:","SD Card:","SD Card Size:","Battery Monitor:"};
+    for(size_t missing = 0; missing < sizeof(required)/sizeof(required[0]); missing++) {
+        char incomplete[1024]; strcpy(incomplete, body);
+        char* line = strstr(incomplete, required[missing]); assert(line);
+        char* end = strchr(line, '\n'); assert(end); memmove(line, end+1, strlen(end+1)+1);
+        Mock m = {0}; NsPlatform io = platform(&m); NsSession s;
+        ns_session_init(&s, &io, NULL); s.use_marauder = true;
+        assert(ns_session_start(&s, NS_RADIO_ESP, false, false, 0) == NS_OK);
+        feed(&s, "#info\n", 1); feed(&s, incomplete, 2);
+        NsResult r = ns_session_feed(&s, (const uint8_t*)"> ", 2, 3);
+        assert(r == NS_OK || r == NS_INVALID);
+        assert(!s.marauder.info_complete && !s.marauder.identity_matches && !s.active);
+        NsApplication app = {0}; app.page = NS_PAGE_RADIO; app.selected = NS_RADIO_ESP;
+        app.capabilities.esp_uart = true; app.session.marauder = s.marauder; app.status = r;
+        NsFrame frame; ns_app_frame(&app, &frame);
+        assert(strcmp(frame.rows[5], "Info reply received"));
+    }
+    Mock m = {0}; NsPlatform io = platform(&m); NsSession s;
+    ns_session_init(&s, &io, NULL); s.use_marauder = true;
+    assert(ns_session_start(&s, NS_RADIO_ESP, false, false, 0) == NS_OK);
+    assert(ns_session_log_open(&s, "/ext/apps_data/netsentinel/session_0000000001.csv") == NS_OK);
+    feed(&s, "#info\n", 1);
+    feed(&s, "Station MAC: PRIVATE_TEST_STATION\nAP MAC: PRIVATE_TEST_AP\nSerial Number: PRIVATE_TEST_SERIAL\nFuture Field: new\n", 2);
+    feed(&s, body, 3); feed(&s, "> ", 4);
+    assert(s.marauder.info_complete && !strstr(m.file, "PRIVATE_TEST") && !strstr(m.file, "Station MAC"));
+    assert(!strstr(m.file, "30436") && !strstr(m.file, "v1.11.0") && strstr(m.file, "uart_redacted"));
+    assert(m.closes == 1 && m.released == 1);
+    memset(&m, 0, sizeof(m)); ns_session_init(&s, &io, NULL); s.use_marauder = true;
+    assert(ns_session_start(&s, NS_RADIO_ESP, false, false, 0) == NS_OK);
+    feed(&s, "#info\n", 1); feed(&s, body, 2);
+    assert(!s.marauder.info_complete);
+    assert(ns_session_tick(&s, 5000) == NS_TIMEOUT && !s.marauder.identity_matches);
+    memset(&m, 0, sizeof(m)); ns_session_init(&s, &io, NULL); s.use_marauder = true;
+    assert(ns_session_start(&s, NS_RADIO_ESP, false, false, 0) == NS_OK);
+    feed(&s, body, 1); feed(&s, "> ", 2); /* uncorrelated echo-free body is not verification */
+    assert(!s.marauder.info_complete && !s.marauder.identity_matches);
+    assert(ns_session_tick(&s, 5000) == NS_TIMEOUT && !m.owner);
+}
+static void observed_info_malformed(void) {
+    const char* bad[] = {"SD Card Size: 4294967296MB", "SD Card Size: -1MB",
+        "SD Card Size: 0MB", "SD Card Size: 30436MBjunk", "Battery Monitor: mystery",
+        "WSL Bypass: mystery", "SD Card: mystery", "Version: v1.11.0?"};
+    for(size_t i = 0; i < sizeof(bad)/sizeof(bad[0]); i++) {
+        Mock m = {0}; NsPlatform io = platform(&m); NsMarauder p;
+        assert(ns_marauder_begin(&p, &io, false, false, 5000, 0) == NS_OK);
+        assert(ns_marauder_line(&p, "#info", 1) == NS_OK);
+        assert(ns_marauder_line(&p, bad[i], 2) == NS_INVALID);
+        assert(!p.info_complete && !p.identity_matches && p.stage == NS_M_FAILED);
+    }
+    Mock m = {0}; NsPlatform io = platform(&m); NsMarauder p;
+    assert(ns_marauder_begin(&p, &io, false, false, 5000, 0) == NS_OK);
+    assert(ns_marauder_line(&p, "#info", 1) == NS_OK);
+    assert(ns_marauder_line(&p, "Version: v1.11.0", 2) == NS_OK);
+    assert(ns_marauder_line(&p, "Version: v1.11.0", 3) == NS_INVALID); /* duplicate fails closed */
+    assert(!p.info_complete);
+}
+int main(void) { protocol(); failures(); rejection(); information_deadlines(); info_fragment_boundaries(); info_malformed_and_retry(); info_disconnect_and_cancel(); observed_info_status(); observed_info_malformed(); puts("PASS: gated Marauder protocol, byte fragments, fixture observations, cancellation, logging and timeout recovery"); }

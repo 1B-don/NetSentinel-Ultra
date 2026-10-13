@@ -1,5 +1,7 @@
 # ESP32 information-only connection test — not authorized to execute
 
+**Owner update:** USB-C/CH340 communication at115200 succeeds with Marauder v1.11.0/v4 and IDF v5.5.1-710-g8410210c9a; see ESP32_PREPARATION.md. This satisfies direct USB status evidence only. Exact header wiring and bridge test approval remain unresolved. The agent did not perform this connection. Raw identity-address fields must not be retained in future logs or fixtures; use sanitized field/framing observations only.
+
 ## Evidence and unresolved wiring
 
 Owner front/back photographs visually confirm the Ultra V3 identity, ESP32-WROOM-32UE, NRF24, CC1101, USB-C, microSD, RST/BOOT buttons, selector and18-pin header. This is owner-confirmed component/layout evidence; photographs were not supplied as files in this workspace and the agent does not claim personal trace inspection. Components/layout do not prove hidden copper connectivity, level shifting or the exact board revision netlist.
@@ -29,11 +31,11 @@ Synthetic expected identity, not a hardware capture:
 #info
 Version: v1.11.0
 Hardware: Marauder v4
-ESP-IDF: v5.5.1-710-g840210c9a
+ESP-IDF: v5.5.1-710-g8410210c9a
 >[space]
 ```
 
-`[space]` denotes the literal trailing space in the unterminated prompt. Actual info may include headings, memory, MAC and card/battery fields between these lines. Installed labels/values/order still need capture. Bare `info` reads identity but changes Marauder's internal display/scan-mode state; it is not side-effect-free. Do not run it while another operation is active. No arguments, no `info -a`, Wi-Fi/BLE scan, stopscan, settings, reset/update or attack command is part of this test. Minimal first exchange is exactly5 UART bytes `info` + LF. Only after its complete response may an optional second5-byte `help` + LF be sent under the same approval. These are serial control bytes, not RF transmission commands. Existing NetSentinel info mode does not implement an independent help transaction; this optional manual bridge test is distinct.
+`[space]` denotes the literal trailing space in the unterminated prompt. Actual info may include headings, memory, MAC and card/battery fields between these lines. Installed status fields are now owner-confirmed; exact echo/prompt framing/help still need confirmation. MAC/identifier lines must be omitted entirely from retained captures. Bare `info` reads identity but changes Marauder's internal display/scan-mode state; it is not side-effect-free. Do not run it while another operation is active. No arguments, no `info -a`, Wi-Fi/BLE scan, stopscan, settings, reset/update or attack command is part of this test. Minimal first exchange is exactly5 UART bytes `info` + LF. Only after its complete response may an optional second5-byte `help` + LF be sent under the same approval. These are serial control bytes, not RF transmission commands. Existing NetSentinel info mode does not implement an independent help transaction; this optional manual bridge test is distinct.
 
 ## Bridge suitability — conditional, not established safe for this board
 

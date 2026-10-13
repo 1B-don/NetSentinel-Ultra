@@ -1,0 +1,10 @@
+# Synthetic sanitized reconstruction of owner-observed USB-C status.
+# Echo/prompt are supplied by tests, not asserted as observed here.
+Firmware: Marauder
+Version: v1.11.0
+Hardware: Marauder v4
+ESP-IDF: v5.5.1-710-g8410210c9a
+WSL Bypass: enabled
+SD Card: Connected
+SD Card Size: 30436MB
+Battery Monitor: not supported

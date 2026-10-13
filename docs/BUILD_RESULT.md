@@ -1,5 +1,7 @@
 # Genuine FAP build results
 
+**Latest status milestone:** owner USB-C/CH340 info exchange at115200 confirms Marauder v1.11.0/v4, corrected IDF g8410210c9a, connected SD and unsupported battery monitor. Strict parser, sanitized fixture and UART-log redaction pass all regressions; clean Momentum API87.1/target7 build and all49 imports pass. Current FAP34888 bytes, SHA25627a73a79f5e3959d3d367a2cd2f12030f3fe048e6277ce8689f51893e2d38bf6, physically untested. All hardware adapters disabled and first-device artifact preserved. [Full evidence/remaining GPIO requirements](ESP32_PREPARATION.md).
+
 **Current update:** USB CLI independently confirms installed API **87.1**, target 7, d3f89dfe; earlier 89.1/mismatch blockers below are superseded. Matching permitted Momentum SDK clean build, metadata and all 49 imports pass. Current FAP is 33,480 bytes, SHA256 `de38c1c7e08336a1ab5a3ebe6dcf2865ac8aa5ce9dedb97c8f8c17c024b859b5`. See [Momentum build result](MOMENTUM_BUILD.md). All radios remain disabled; physical installation/execution are pending explicit approval. For the device procedure use this artifact/hash; former fingerprint and metadata requests are historical.
 
 ## Latest enum-validation rebuild
