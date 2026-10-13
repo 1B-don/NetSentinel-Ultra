@@ -39,6 +39,8 @@ Target: permitted Momentum Dev d3f89dfe SDK, API 87.1, hardware target 7. No new
 
 ## Exact remaining inputs
 
+The [CC1101 registry readiness report](CC1101_REGISTRY_READINESS.md) confirms named discovery need not import the disabled external entrypoint, while installed provider availability, shared registry lifetime and finite passive callbacks remain unverified. No live adapter was enabled. New finite mocks distinguish absent/wrong-name/initialized/connected/tuned/sampled states and test cleanup; they are not physical evidence.
+
 The [hardware architecture decision](HARDWARE_ARCHITECTURE.md) evaluates registry/plugin services, direct diagnostics, RPC brokers and bridges. No existing exported interface establishes finite shared ownership for NRF24 or a bounded external CC provider lifecycle. The physical gates remain open; new typed-board contention/cancellation tests verify software cleanup only.
 
 [Dependency review](DEPENDENCY_REVIEW.md) and [Hardware Integration M1](HARDWARE_INTEGRATION_M1.md) contain sources and the milestone inventory. Obtain an independently permitted manufacturer signal/net table for the actual Ultra V3 revision (SPI, NRF CE/CSN/IRQ, CC CS/GDO, selector and voltage circuitry). A separately approved owner power-off continuity check is an alternative; none performed here. For CC, obtain a permitted installed external plugin/provider implementation and reviewed receive-only preset with recoverable bounded init/calibration/ownership behavior; generic SDK exports or official-driver pin expectations are insufficient. For Wi-Fi, obtain installed-build/source correspondence and a verified passive-only lifecycle with peer-side raw capture prevented; do not provide credentials, complete settings dumps or packets.

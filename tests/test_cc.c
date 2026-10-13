@@ -163,4 +163,89 @@ static void lifecycle_and_deadline_cases(void) {
     m.timeout_cc_idle=true;
     assert(ns_cc_close(&c)==NS_TIMEOUT && !m.owner && !c.owned && m.acquired==m.released);
 }
-int main(void) { policy_cases(); bus_cases(); driver_cases(); session_cases(); lifecycle_and_deadline_cases(); puts("PASS: SIMULATED CC1101 status SPI, deadline/error cleanup, contention, repeated sessions, cancellation and RSSI trace"); }
+/* Invented registry/provider model for the future adapter contract. This does
+ * not call SDK registry functions or establish installed provider semantics. */
+typedef struct {
+    Mock io;
+    const char* device_name;
+    bool registry_valid, connected, begun, fail_begin;
+    unsigned lookups, begins, ends, rx_calls, idle_calls;
+} RegistryMock;
+static NsResult registry_probe(void* ctx, uint32_t timeout_ms) {
+    RegistryMock* m = ctx;
+    assert(m->io.owner == NS_RADIO_CC && timeout_ms == NS_CC_PROBE_TIMEOUT_MS);
+    if(!m->registry_valid) return NS_IO;
+    if(m->io.timeout_cc_probe) return NS_TIMEOUT;
+    m->lookups++; /* Only cc1101_ext is requested; no internal lookup. */
+    if(!m->device_name) return NS_ABSENT;
+    if(strcmp(m->device_name, "cc1101_ext")) return NS_UNSUPPORTED;
+    m->begins++;
+    if(m->fail_begin) return NS_IO;
+    m->begun = true;
+    return m->connected ? NS_OK : NS_ABSENT;
+}
+static NsResult registry_receive(void* ctx, uint32_t frequency, uint32_t timeout_ms) {
+    RegistryMock* m = ctx;
+    assert(m->begun && m->connected && !strcmp(m->device_name, "cc1101_ext"));
+    m->rx_calls++;
+    return receive(&m->io, frequency, timeout_ms);
+}
+static NsResult registry_idle(void* ctx, uint32_t timeout_ms) {
+    RegistryMock* m = ctx;
+    assert(m->io.owner == NS_RADIO_CC);
+    if(!m->begun) return NS_OK; /* Failed discovery must not touch a radio. */
+    m->idle_calls++;
+    return idle(&m->io, timeout_ms);
+}
+static void registry_release(void* ctx, NsRadio radio) {
+    RegistryMock* m = ctx;
+    if(m->begun) { m->ends++; m->begun = false; }
+    release(&m->io, radio);
+}
+static void registry_contract_cases(void) {
+    RegistryMock m = {.registry_valid=true, .connected=true, .io={.rssi=-94}};
+    NsPlatform io = platform(&m.io);
+    io.cc_probe = registry_probe; io.cc_receive = registry_receive;
+    io.cc_idle = registry_idle; io.release = registry_release;
+    NsCc c = {0};
+    assert(ns_cc_open(&c, &io, true) == NS_ABSENT); /* Missing external. */
+    assert(!c.owned && !m.io.owner && !m.begins && !m.rx_calls && !m.idle_calls);
+    m.device_name = "cc1101_int"; /* Wrong provider must never reach begin/RX. */
+    assert(ns_cc_open(&c, &io, true) == NS_UNSUPPORTED);
+    assert(!m.begins && !m.rx_calls && !m.idle_calls && !m.ends);
+    m.device_name = "cc1101_ext"; m.registry_valid = false;
+    unsigned lookups = m.lookups;
+    assert(ns_cc_open(&c, &io, true) == NS_IO && m.lookups == lookups);
+    m.registry_valid = true; m.fail_begin = true;
+    assert(ns_cc_open(&c, &io, true) == NS_IO && !m.begun && !m.ends && !m.rx_calls);
+    m.fail_begin = false; m.connected = false;
+    assert(ns_cc_open(&c, &io, true) == NS_ABSENT && !m.begun && m.ends == 1);
+    m.connected = true; m.io.timeout_cc_probe = true;
+    assert(ns_cc_open(&c, &io, true) == NS_TIMEOUT && !m.begun && !m.rx_calls);
+    m.io.timeout_cc_probe = false;
+    for(unsigned i = 0; i < 12; i++) {
+        NsSession s; ns_session_init(&s, &io, NULL);
+        assert(ns_session_start(&s, NS_RADIO_CC, false, true, i * 1000) == NS_OK);
+        assert(m.begun && !s.cc.frequency); /* Begun is not tuned or sampled. */
+        assert(ns_session_cc_tune(&s, 433920000, i * 1000) == NS_OK);
+        for(unsigned j = 0; j < 3; j++) {
+            m.io.rssi = (int16_t)(-96 + (int)j);
+            assert(ns_session_tick(&s, i * 1000 + j * 100) == NS_OK);
+            assert(s.cc.last == m.io.rssi);
+        }
+        ns_session_stop(&s, i * 1000 + 301);
+        assert(!m.begun && !m.io.owner && !m.io.frequency);
+        unsigned ends = m.ends;
+        ns_session_stop(&s, i * 1000 + 302);
+        assert(m.ends == ends && m.io.acquired == m.io.released);
+    }
+    assert(ns_cc_open(&c, &io, true) == NS_OK);
+    m.io.timeout_cc_receive = true;
+    assert(ns_cc_tune(&c, 433920000) == NS_TIMEOUT && !m.begun && !m.io.owner);
+    m.io.timeout_cc_receive = false;
+    assert(ns_cc_open(&c, &io, true) == NS_OK && ns_cc_tune(&c, 433920000) == NS_OK);
+    m.io.timeout_cc_idle = true;
+    assert(ns_cc_close(&c) == NS_TIMEOUT && !m.begun && !m.io.owner);
+    assert(m.io.acquired == m.io.released);
+}
+int main(void) { policy_cases(); bus_cases(); driver_cases(); session_cases(); lifecycle_and_deadline_cases(); registry_contract_cases(); puts("PASS: SIMULATED CC1101 status SPI, external selection, deadline/error cleanup, contention, repeated sessions, cancellation and RSSI trace"); }

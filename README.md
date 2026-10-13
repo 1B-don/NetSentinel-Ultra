@@ -24,6 +24,8 @@ The supplied seven-FAP static-analysis report is now cross-checked against Momen
 
 ## Implemented boundaries
 
+The [CC1101 registry readiness report](docs/CC1101_REGISTRY_READINESS.md) confirms an exported named-discovery path independent of the disabled external entrypoint import. Registered, initialized, connected, RX and received-data states remain distinct. Registry lifetime and provider deadlines/passivity are unverified, so physical access stays disabled; deterministic future-provider mocks exercise missing/wrong-name devices and cleanup.
+
 The [hardware architecture decision](docs/HARDWARE_ARCHITECTURE.md) ranks existing external CC registry integration, a separate synchronized read-only diagnostic, firmware services and a coprocessor bridge. None currently closes the bounded-ownership and board-routing gates. Typed board regression tests now cover 24 alternating NRF/CC contention, cancellation and cleanup cycles; no new physical provider is enabled.
 
 The [API 87.1 acquisition review](docs/NRF24_SPI_ACQUISITION.md) found no exported bounded SPI ownership mechanism: timed mutex calls lack access to the shared SPI lock, and bus event callbacks have no timeout/result contract. Physical NRF24 stays disabled. Expanded probe mocks cover acquisition failure/cancellation and recovery without releasing another client's ownership.
