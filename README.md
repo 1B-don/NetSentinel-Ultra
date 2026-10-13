@@ -59,3 +59,5 @@ For first-build steps see [FIRST_BUILD.md](docs/FIRST_BUILD.md). Remaining targe
 Latest enum-validation rebuild passes with `-Werror` unchanged. Result-name indexing is bounded by its table and checked for enum completeness; serialized history radio/result words are validated before enum conversion. CRC-valid malformed-record tests verify rejection, older-slot recovery and no invalid-record writes under normal and short-enum compilers.
 
 ESP32 Diagnostics v0.2 is a separate, information-only experimental build with validated identity/SD details, query timing and an idle-only retry action. The preceding ESP Info hardware checklist has 7/8 owner-reported passes; active-request Back cancellation is pending. See [hardware checklist](docs/USART_HARDWARE_CHECKLIST.md) for artifact evidence and remaining tests. This build has not been deployed.
+
+Current v1.0 work follows the [readiness audit and sequential plan](docs/V1_READINESS.md). Stable artifacts are preserved; no intermediate deployment is authorized.
