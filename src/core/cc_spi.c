@@ -35,3 +35,20 @@ int16_t ns_cc_rssi_half_dbm(uint8_t raw, uint8_t offset) {
     int16_t signed_raw = raw < 128 ? raw : (int16_t)raw-256;
     return signed_raw - 2*(int16_t)offset;
 }
+
+NsResult ns_cc_spi_check_rx_policy(const NsCcBus* bus, uint8_t* out) {
+    if(!bus || !bus->transfer || !out) return NS_INVALID;
+    uint8_t values[2];
+    for(unsigned i = 0; i < 2; i++) {
+        const uint8_t tx[2] = {0x97, 0}; /* single-read MCSM1 configuration register */
+        uint8_t rx[2] = {0};
+        NsResult r = bus->transfer(bus->ctx, tx, rx, sizeof(tx));
+        if(r != NS_OK) return r;
+        if(rx[0] & 0x80) return NS_TIMEOUT;
+        values[i] = rx[1];
+    }
+    if(values[0] != values[1]) return NS_IO;
+    unsigned rxoff = (values[0] >> 2) & 3;
+    if(rxoff != 0 && rxoff != 3) return NS_UNSUPPORTED;
+    *out = values[0]; return NS_OK;
+}

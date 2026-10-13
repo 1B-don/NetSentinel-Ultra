@@ -1,4 +1,33 @@
-# NetSentinel Ultra v1.0 readiness and implementation plan
+# NetSentinel Ultra v1.0 readiness
+
+Current target: Momentum Dev d3f89dfe, API 87.1, hardware target 7. No deployment authorized. Historical milestone audits follow the current matrix; they must not override this status. Source/build validation and owner physical reports remain distinct.
+
+## Current completion matrix
+
+| Feature | Implemented | Simulated / tests | SDK validation | Physical validation / blocker |
+|---|---|---|---|---|
+| Dashboard/navigation/Back/GUI width | Yes | Allocation, queue, exit and navigation stress | Pass | Prior dashboard/exit; full new navigation pending |
+| ESP USART info | Yes, fixed verified mapping/framing | Fragment/error/timeout/cancel/repeat | Pass | Prior three Connected queries/exit/interop/privacy; cancellation pending |
+| Identity/IDF/SD diagnostics | Yes, strict complete/matched snapshots; no-SD consistency | Positive/negative variants, unsafe-field exclusion | Pass | New fields/no-SD variant pending |
+| Timing/retry/error diagnostics | Yes, typed bounded metadata, query-closed semantics | Busy/timeout/malformed/overlap tests | Pass | Full new UI pending |
+| Wi-Fi AP/channel/RSSI/baseline | Yes, strict numeric observation processing | Reviewed synthetic formats and seeded mutations | Core compile; hardware gate off | Installed lifecycle/provenance and SavePCAP state blocked |
+| Wi-Fi security | Explicit unknown | No guessed format | Field compiled | Reviewed beacon output lacks security; unavailable |
+| BLE discovery | No, deliberately excluded | Denial tests | Disabled | Upstream active scan; no permitted passive protocol |
+| NRF RPD driver/graph/summaries/CSV | Yes, primary RX/ACK off | SPI/readback/error/counter tests | Core compile; no SPI imports | Exact Ultra SPI/CE/CSN routes and bounded port blocked |
+| CC status and RXOFF guard | Yes, reads only | All statuses/faults; all 256 policy values | Core compile; no SPI imports | External provider/routes unverified; single guard is not full passive proof |
+| CC frequency/RSSI/trace/CSV | Yes through RX contract | Tune/cadence/calibration arithmetic/error tests | Core compile; registry gate off | Actual plugin/preset/bounded waits/RSSI calibration and RF reception blocked |
+| Observation/history filters | Yes, volatile, worker-clock expiry | Age wrap/empty/invalid/capacity/private UI | Pass | New physical UI pending |
+| Settings/state/history | Yes, NSP1 unchanged, CRC/readback/monotonic IDs | Torn writes, recovery, enum rejection | Pass | Prior settings pass; broader power-loss tests pending |
+| CSV exports/privacy | Yes, numeric/redacted, exclusive create | Write/sync/close/failure/ID reservation | Pass | Prior info record privacy; new exports pending |
+| Session lifecycle/resources | Yes, single owner, teardown, capacity stop | Interrupted transactions, overflow, exit and repeat | Pass | Exhaustive ISR/pin/heap restoration pending; HAL TX has no deadline return |
+| Fuzz/stress/build/imports | Yes, seeded valid/mutated/random paths | 12 C suites, 17 Python checks, short enums, ASan/UBSan | Complete ARM metadata/entry/63 imports pass | Development artifact undeployed |
+
+## Remaining authorized inputs
+
+[Dependency review](DEPENDENCY_REVIEW.md) gives exact source references and the smallest next actions. Obtain the manufacturer board-revision netlist, a permitted installed external CC plugin/bounded provider and preset, and Marauder build correspondence plus sanitized capture/connection-state facts. No generic pin table, successful unrelated app, UI label or SDK export name substitutes for that evidence. No firmware replacement, settings dump, credentials, captures or new physical test is requested. Full hardware-dependent functionality cannot responsibly be claimed until these gates close.
+
+## Historical audits and milestones
+
 
 This is a development audit, not a release declaration. Target: supplied Momentum Dev d3f89dfe SDK, API 87.1, target 7. No deployment is authorized. Preserved stable GUI/storage, ESP Info and diagnostics artifacts and checksums are under ignored builds/preserved-v1-start; prior physical evidence remains unchanged. Application SD data was not accessed.
 

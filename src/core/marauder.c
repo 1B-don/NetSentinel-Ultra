@@ -44,11 +44,11 @@ static NsResult info_line(NsMarauder* m, const char* line) {
     r = field(m, value, sizeof(value), line, label, bit);
     if(r != NS_OK) return r;
     if(bit == INFO_WSL) {
-        if(strcmp(value, "enabled")) return NS_INVALID;
-        m->wsl_bypass = true;
+        if(strcmp(value, "enabled") && strcmp(value, "disabled")) return NS_INVALID;
+        m->wsl_bypass = !strcmp(value, "enabled");
     } else if(bit == INFO_SD) {
-        if(strcmp(value, "Connected")) return NS_INVALID;
-        m->sd_connected = true;
+        if(strcmp(value, "Connected") && strcmp(value, "Not Connected")) return NS_INVALID;
+        m->sd_connected = !strcmp(value, "Connected");
     } else if(bit == INFO_BATTERY) {
         if(strcmp(value, "not supported")) return NS_INVALID;
         m->battery_unsupported = true;
@@ -60,7 +60,7 @@ static NsResult info_line(NsMarauder* m, const char* line) {
             if(size > (UINT32_MAX-digit)/10) return NS_INVALID;
             size = size*10 + digit;
         }
-        if(!size || strcmp(p, "MB")) return NS_INVALID;
+        if(size ? strcmp(p, "MB") != 0 : *p != 0) return NS_INVALID;
         m->sd_size_mb = size;
     }
     return NS_OK;
@@ -93,6 +93,7 @@ NsResult ns_marauder_line(NsMarauder* m, const char* line, uint32_t now) {
         /* v1.11.0 startScanFromCLI concatenates Starting without a space. */
         m->ack |= !strcmp(line, "StartingBeacon sniff. Stop with stopscan");
     }
+    if(m->stage == NS_M_STOP && !strcmp(line, "Stopping WiFi tran/recv")) m->ack = true;
     if((m->stage == NS_M_HELP || m->stage == NS_M_START) &&
        (!strncmp(line, "Unknown command", 15) || !strncmp(line, "Command not found", 17))) return fail(m, NS_UNSUPPORTED);
     return NS_OK;
@@ -106,12 +107,15 @@ NsResult ns_marauder_prompt(NsMarauder* m, uint32_t now) {
     m->command_echo = false;
     if(m->stage == NS_M_INFO) {
         if(!m->version[0] || !m->hardware[0] || !m->idf[0]) return fail(m, NS_INVALID);
+        if((m->info_fields & (INFO_SD | INFO_SIZE)) == (INFO_SD | INFO_SIZE) &&
+           m->sd_connected != (m->sd_size_mb > 0)) return fail(m, NS_INVALID);
         m->info_complete = m->info_fields == INFO_ALL && !strcmp(m->firmware, "Marauder");
         m->identity_matches = m->info_complete && !strcmp(m->version, "v1.11.0") &&
             !strcmp(m->hardware, "Marauder v4") && !strcmp(m->idf, "v5.5.1-710-g8410210c9a");
         if(!m->wifi) { m->stage = NS_M_DONE; return NS_OK; }
         if(strcmp(m->version, "v1.11.0") || strcmp(m->hardware, "Marauder v4") ||
            strcmp(m->idf, "v5.5.1-710-g8410210c9a")) return fail(m, NS_UNSUPPORTED);
+        if(!m->info_complete) return fail(m, NS_INVALID);
         m->stage = NS_M_HELP; r = send(m, "help\n");
     } else if(m->stage == NS_M_HELP) {
         if(!m->has_beacon || !m->has_stop || !m->installed_verified) return fail(m, NS_UNSUPPORTED);
@@ -119,7 +123,10 @@ NsResult ns_marauder_prompt(NsMarauder* m, uint32_t now) {
     } else if(m->stage == NS_M_START) {
         if(!m->ack) return fail(m, NS_INVALID);
         m->stage = NS_M_SCAN; m->last_ap_ms = now;
-    } else if(m->stage == NS_M_STOP) m->stage = NS_M_DONE;
+    } else if(m->stage == NS_M_STOP) {
+        if(!m->ack) return fail(m, NS_INVALID);
+        m->stop_confirmed = true; m->stage = NS_M_DONE;
+    }
     m->stage_ms = now;
     return r == NS_OK ? r : fail(m, r);
 }
@@ -136,7 +143,7 @@ NsResult ns_marauder_cancel(NsMarauder* m, uint32_t now) {
     if(m->stage == NS_M_DONE) return NS_OK;
     if(m->stage == NS_M_STOP) return NS_BUSY;
     if(!m->scan_sent) { m->stage = NS_M_DONE; return NS_OK; }
-    m->stop_sent = true; m->stage = NS_M_STOP; m->stage_ms = now; m->command_echo = false;
+    m->stop_sent = true; m->stage = NS_M_STOP; m->stage_ms = now; m->command_echo = false; m->ack = false;
     NsResult r = send(m, "stopscan\n");
     return r == NS_OK ? NS_BUSY : fail(m, r);
 }

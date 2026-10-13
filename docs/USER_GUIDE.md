@@ -31,3 +31,5 @@ Records share the existing seven-column CSV schema. UART lines contribute only f
 Unified Diagnostics Up/Down selects storage, USART and radio-readiness views. Text wider than the screen ends with a visible `~`; detail screens keep long version fields separate. Pixel bounds are tested with mocks and checked by the actual SDK renderer API; visual presentation awaits final approved hardware validation.
 
 Age filters continue expiring while the worker is idle. A full AP table or exhausted observation counter closes the session and reports Full rather than silently wrapping or retaining ownership. Numeric Wi-Fi observation CSV uses session-local AP labels, channel and RSSI. History result codes use the `enum` unit; earlier files keep their original unit labels and are not rewritten.
+
+Source-verified diagnostics accept SD Not Connected with size zero and WSL disabled. These are software-tested variants, not new hardware results. Receive-only status helpers check RXOFF policy but do not establish complete passivity. Marauder-side SavePCAP defaults true upstream; live observation remains disabled while that capture behavior and installed state are unresolved.

@@ -99,7 +99,8 @@ static void test_uart(void) {
     /* Explicit test-only verification: production initialization stays false. */
     f.capabilities.esp_wifi_verified = app.capabilities.esp_wifi_verified = app.session.installed_wifi_verified = true;
     assert(ns_app_key(&app, NS_KEY_OK, 20) == NS_OK);
-    mock_serial_feed((const uint8_t*)info, strlen(info)); assert(ns_app_step(&app, 30) == NS_OK);
+    const char* full="#info\nFirmware: Marauder\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g8410210c9a\nWSL Bypass: enabled\nSD Card: Connected\nSD Card Size: 4096MB\nBattery Monitor: not supported\n> ";
+    mock_serial_feed((const uint8_t*)full, strlen(full)); assert(ns_app_step(&app, 30) == NS_OK);
     const char* help = "#help\nsniffbeacon\nstopscan\n> ";
     mock_serial_feed((const uint8_t*)help, strlen(help)); assert(ns_app_step(&app, 40) == NS_OK);
     const char* start = "#sniffbeacon\nStartingBeacon sniff. Stop with stopscan\n> ";
@@ -112,7 +113,7 @@ static void test_uart(void) {
     assert(strstr(frame.rows[3], "hidden") && strstr(frame.rows[4], "not reported"));
     assert(ns_app_key(&app, NS_KEY_BACK, 80) == NS_BUSY && f.serial);
     assert(ns_app_key(&app, NS_KEY_BACK, 90) == NS_BUSY && app.running);
-    const char* stop = "#stopscan\n> "; mock_serial_feed((const uint8_t*)stop, strlen(stop));
+    const char* stop = "#stopscan\nStopping WiFi tran/recv\n> "; mock_serial_feed((const uint8_t*)stop, strlen(stop));
     assert(ns_app_step(&app, 100) == NS_OK && !app.running && !f.serial && app.saved.history_count == 2);
     ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
 }

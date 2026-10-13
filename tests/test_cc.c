@@ -22,6 +22,26 @@ static NsResult transfer(void* ctx, const uint8_t* tx, uint8_t* rx, size_t count
     }
     return NS_OK;
 }
+typedef struct { uint8_t config,status; unsigned calls,fail_at; bool unstable; } PolicyMock;
+static NsResult policy_transfer(void* ctx,const uint8_t* tx,uint8_t* rx,size_t n) {
+    PolicyMock* p=ctx; assert(n==2 && tx[0]==0x97 && !tx[1]);
+    p->calls++; if(p->calls==p->fail_at) return NS_IO;
+    rx[0]=p->status;rx[1]=p->config^(p->unstable && p->calls==2 ? 1 : 0);return NS_OK;
+}
+static void policy_cases(void) {
+    PolicyMock p={0};NsCcBus bus={&p,policy_transfer};uint8_t out;
+    for(unsigned v=0;v<256;v++) {
+        p.config=(uint8_t)v;p.calls=0;out=0xa5;unsigned mode=(v>>2)&3;
+        NsResult r=ns_cc_spi_check_rx_policy(&bus,&out);
+        assert(r==(mode==0||mode==3 ? NS_OK : NS_UNSUPPORTED) && p.calls==2);
+        assert(out==(r==NS_OK ? v : 0xa5));
+    }
+    p.config=0;p.fail_at=1;p.calls=0;out=0xa5;assert(ns_cc_spi_check_rx_policy(&bus,&out)==NS_IO && out==0xa5);
+    p.fail_at=2;p.calls=0;assert(ns_cc_spi_check_rx_policy(&bus,&out)==NS_IO && out==0xa5);
+    p.fail_at=0;p.calls=0;p.status=0x80;assert(ns_cc_spi_check_rx_policy(&bus,&out)==NS_TIMEOUT && out==0xa5);
+    p.status=0;p.calls=0;p.unstable=true;assert(ns_cc_spi_check_rx_policy(&bus,&out)==NS_IO && out==0xa5);
+    assert(ns_cc_spi_check_rx_policy(NULL,&out)==NS_INVALID);
+}
 static void bus_cases(void) {
     BusMock b = {.version=0x14, .state=0x0d, .raw=0xd8};
     NsCcBus bus = {&b, transfer}; NsCcDiagnostics d = {0};
@@ -104,4 +124,4 @@ static void session_cases(void) {
     assert(ns_cc_tune(&s.cc, 433920000) == NS_OK);
     m.bus.unstable = true; assert(ns_session_cc_diagnose(&s, 201) == NS_TIMEOUT && !m.io.owner);
 }
-int main(void) { bus_cases(); driver_cases(); session_cases(); puts("PASS: SIMULATED CC1101 status SPI, bounded faults, RX-state checks, RSSI trace/retune/cadence and CSV cleanup"); }
+int main(void) { policy_cases(); bus_cases(); driver_cases(); session_cases(); puts("PASS: SIMULATED CC1101 status SPI, bounded faults, RX-state checks, RSSI trace/retune/cadence and CSV cleanup"); }

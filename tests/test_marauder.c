@@ -3,7 +3,7 @@
 #include "ns_analysis.h"
 #include <stdio.h>
 /* Identity labels match tagged upstream; values are synthetic, not a device capture. */
-static const char* identity = "#info\r\nVersion: v1.11.0\r\nHardware: Marauder v4\r\nESP-IDF: v5.5.1-710-g8410210c9a\r\n> ";
+static const char* identity = "#info\r\nFirmware: Marauder\r\nVersion: v1.11.0\r\nHardware: Marauder v4\r\nESP-IDF: v5.5.1-710-g8410210c9a\r\nWSL Bypass: enabled\r\nSD Card: Connected\r\nSD Card Size: 4096MB\r\nBattery Monitor: not supported\r\n> ";
 static void feed(NsSession* s, const char* text, uint32_t now) {
     for(size_t i=0; text[i]; i++) assert(ns_session_feed(s, (const uint8_t*)text+i, 1, now) == NS_OK);
 }
@@ -38,7 +38,7 @@ static void protocol(void) {
     uint8_t counts[14]; ns_channel_counts(s.aps, s.ap_count, counts); assert(counts[0] == 1 && counts[5] == 1 && counts[10] == 1);
     assert(ns_session_cancel(&s, 50) == NS_BUSY && s.active == NS_RADIO_ESP);
     assert(ns_session_cancel(&s, 51) == NS_BUSY);
-    feed(&s, "#stopscan\n> ", 60);
+    feed(&s, "#stopscan\nStopping WiFi tran/recv\n> ", 60);
     assert(s.active == NS_RADIO_NONE && m.released == 1 && m.closes == 1 && s.history_count == 1);
     assert(!strcmp(m.commands, "info\nhelp\nsniffbeacon\nstopscan\n"));
     assert(strstr(m.file, "wifi_channel,,6,1,APs"));
@@ -59,6 +59,28 @@ static void observation_limits(void) {
     for(unsigned j=0;j<NS_AP_LIMIT;j++) { strcpy(s.aps[j].ssid,"other");s.aps[j].channel=1; }
     assert(ns_session_feed(&s,(const uint8_t*)ap,strlen(ap),40)==NS_FULL && !s.active && !m.owner);
     assert(s.history_count==1 && s.history[0].result==NS_FULL && m.acquired==m.released);
+}
+static void source_verified_states(void) {
+    const char* no_sd="#info\nFirmware: Marauder\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g8410210c9a\nWSL Bypass: disabled\nSD Card: Not Connected\nSD Card Size: 0\nBattery Monitor: not supported\n> ";
+    Mock m={0};NsPlatform io=platform(&m);NsSession s;ns_session_init(&s,&io,NULL);s.use_marauder=true;
+    assert(ns_session_start(&s,NS_RADIO_ESP,false,false,0)==NS_OK);feed(&s,no_sd,1);
+    assert(s.marauder.info_complete && s.marauder.identity_matches && !s.marauder.sd_connected && !s.marauder.wsl_bypass && !m.owner);
+    memset(&m,0,sizeof(m));ns_session_init(&s,&io,NULL);s.use_marauder=true;
+    assert(ns_session_start(&s,NS_RADIO_ESP,false,false,0)==NS_OK);
+    feed(&s,"#info\nFirmware: Marauder\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g8410210c9a\nSD Card: Connected\nSD Card Size: 0\n",1);
+    assert(ns_session_feed(&s,(const uint8_t*)"> ",2,2)==NS_INVALID && !m.owner);
+    memset(&m,0,sizeof(m));open_scan(&s,&io);
+    assert(ns_session_cancel(&s,40)==NS_BUSY);
+    const char* echo_only="#stopscan\n> ";
+    assert(ns_session_feed(&s,(const uint8_t*)echo_only,strlen(echo_only),41)==NS_INVALID && !m.owner && !s.marauder.stop_confirmed);
+    memset(&m,0,sizeof(m));open_scan(&s,&io);
+    assert(ns_session_cancel(&s,40)==NS_BUSY);
+    feed(&s,"#stopscan\nStopping WiFi tran/recv\n> ",41);
+    assert(s.marauder.stop_confirmed && !m.owner);
+    memset(&m,0,sizeof(m));ns_session_init(&s,&io,NULL);s.use_marauder=s.wifi_request=s.installed_wifi_verified=true;
+    assert(ns_session_start(&s,NS_RADIO_ESP,false,false,0)==NS_OK);
+    feed(&s,"#info\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g8410210c9a\n",1);
+    assert(ns_session_feed(&s,(const uint8_t*)"> ",2,2)==NS_INVALID && !m.owner && !strstr(m.commands,"help"));
 }
 static void failures(void) {
     Mock m = {0}; NsPlatform io = platform(&m); NsSession s;
@@ -283,4 +305,4 @@ static void observed_info_malformed(void) {
     assert(ns_marauder_line(&p, "Version: v1.11.0", 3) == NS_INVALID); /* duplicate fails closed */
     assert(!p.info_complete);
 }
-int main(void) { observation_limits(); protocol(); failures(); rejection(); information_deadlines(); info_fragment_boundaries(); info_malformed_and_retry(); info_disconnect_and_cancel(); observed_info_status(); observed_info_malformed(); puts("PASS: gated Marauder protocol, byte fragments, fixture observations, cancellation, logging and timeout recovery"); }
+int main(void) { source_verified_states(); observation_limits(); protocol(); failures(); rejection(); information_deadlines(); info_fragment_boundaries(); info_malformed_and_retry(); info_disconnect_and_cancel(); observed_info_status(); observed_info_malformed(); puts("PASS: gated Marauder protocol, byte fragments, fixture observations, cancellation, logging and timeout recovery"); }

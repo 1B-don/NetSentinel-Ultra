@@ -146,6 +146,13 @@ int main(void) {
     assert(ns_app_step(&a, 5015) == NS_FULL && !f.serial);
     assert(ns_app_start(&a, NS_RADIO_NRF, false, true, 5016) == NS_UNSUPPORTED);
     assert(ns_app_start(&a, NS_RADIO_CC, false, true, 5016) == NS_UNSUPPORTED);
+    assert(ns_app_device_info(&a,5020)==NS_OK);
+    const char* disconnected="#info\nFirmware: Marauder\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g8410210c9a\nWSL Bypass: disabled\nSD Card: Not Connected\nSD Card Size: 0\nBattery Monitor: not supported\n> ";
+    mock_serial_feed((const uint8_t*)disconnected,strlen(disconnected));
+    assert(ns_app_step(&a,5021)==NS_OK && !f.serial && a.info_validated && !a.info_sd_connected);
+    a.page=NS_PAGE_RADIO;a.info_view=1;NsFrame no_sd;ns_app_frame(&a,&no_sd);
+    assert(strstr(no_sd.rows[3],"Disconnected") && !strstr(no_sd.rows[3],"PRIVATE"));
+    check_frame(&a,"Connected: query passed");
     ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
     repeated();
     puts("PASS: info-only USART mapping/framing, command exclusion, state UI, response budget and cleanup (MOCK)");

@@ -54,9 +54,13 @@ static void test_observation_counter_limits(void) {
     assert(ns_session_start(&s,NS_RADIO_NRF,false,true,0)==NS_OK);s.observations=UINT32_MAX;
     assert(ns_session_tick(&s,1)==NS_FULL && !m.owner && !m.ce && s.observations==UINT32_MAX);
     assert(s.history[0].result==NS_FULL);
+    NsNrf n={0};assert(ns_nrf_open(&n,&io,true)==NS_OK);n.samples[0]=UINT32_MAX;
+    assert(ns_nrf_sample(&n,0,200)==NS_FULL && !m.owner && !m.ce && !n.ready);
     assert(ns_session_start(&s,NS_RADIO_CC,false,true,2)==NS_OK);
     assert(ns_cc_tune(&s.cc,433920000)==NS_OK);s.observations=UINT32_MAX;
     assert(ns_session_tick(&s,3)==NS_FULL && !m.owner && !s.active && s.observations==UINT32_MAX);
+    NsCc c={0};assert(ns_cc_open(&c,&io,true)==NS_OK);assert(ns_cc_tune(&c,433920000)==NS_OK);c.samples=UINT32_MAX;
+    assert(ns_cc_sample(&c)==NS_FULL && !m.owner && !c.ready);
 }
 static void test_session(void) {
     Mock m = {0}; NsPlatform io = platform(&m); NsSession s;

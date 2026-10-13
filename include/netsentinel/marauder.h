@@ -12,6 +12,7 @@ typedef struct {
     unsigned info_fields;
     uint32_t sd_size_mb;
     bool sd_connected, battery_unsupported, wsl_bypass;
+    bool stop_confirmed; /* only correlated stop acknowledgment plus prompt */
     bool info_complete, identity_matches; /* only set after a complete framed reply */
     NsResult result;
 } NsMarauder;

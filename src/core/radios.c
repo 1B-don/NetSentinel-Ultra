@@ -46,6 +46,7 @@ NsResult ns_nrf_open(NsNrf* n, const NsPlatform* io, bool confirmed) {
 }
 NsResult ns_nrf_sample(NsNrf* n, uint8_t channel, uint32_t dwell) {
     if(!n || !n->ready || channel >= NS_NRF_CHANNELS || dwell < 170 || dwell > 100000) return NS_INVALID;
+    if(n->samples[channel] == UINT32_MAX) { ns_nrf_close(n); return NS_FULL; }
     n->io->ce(n->io->ctx, false);
     NsResult r = nrf_set(n, 5, channel);
     uint8_t rpd = 0;
@@ -56,7 +57,6 @@ NsResult ns_nrf_sample(NsNrf* n, uint8_t channel, uint32_t dwell) {
         r = nrf_reg(n, false, 9, &rpd);
     }
     if(r != NS_OK) { ns_nrf_close(n); return r; }
-    if(n->samples[channel] == UINT32_MAX) return NS_FULL;
     n->samples[channel]++; n->hits[channel] += rpd & 1;
     return NS_OK;
 }
@@ -120,6 +120,7 @@ NsResult ns_cc_tune(NsCc* c, uint32_t f) {
 }
 NsResult ns_cc_sample(NsCc* c) {
     if(!c || !c->ready || !c->frequency) return NS_INVALID;
+    if(c->samples == UINT32_MAX) { ns_cc_close(c); return NS_FULL; }
     int16_t value = 0;
     NsResult r = NS_OK;
     if(c->io->cc_diagnose) {
@@ -129,7 +130,6 @@ NsResult ns_cc_sample(NsCc* c) {
     if(r == NS_OK) r = c->io->cc_rssi(c->io->ctx, &value);
     if(r != NS_OK) { ns_cc_close(c); return r; }
     if(value < -150 || value > 20) { ns_cc_close(c); return NS_IO; }
-    if(c->samples == UINT32_MAX) return NS_FULL;
     c->last = value;
     if(!c->samples || value < c->minimum) c->minimum = value;
     if(!c->samples || value > c->maximum) c->maximum = value;
