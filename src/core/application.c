@@ -4,6 +4,7 @@
 #include <string.h>
 static const char* const menu[] = {"Wi-Fi", "BLE (blocked)", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics", "Filters", "CSV exports", "Wi-Fi readiness", "Operating modes"};
 static const char* const mode_name[] = {"Monitor", "Lab/offline", "Simulation", "HW diagnostics"};
+static const char* const hub[] = {"ESP32 Diagnostics","Wi-Fi Discovery","Network Results","Session History","Settings","Hardware Readiness","More tools"};
 _Static_assert(sizeof(menu)/sizeof(*menu) == NS_MENU_COUNT, "menu count must match navigation");
 static const char* radio_name(NsRadio r) {
     switch(r) {
@@ -37,6 +38,10 @@ static NsRadioCapability capability(NsCapabilityState state, NsCapabilityInterfa
 NsResult ns_app_init(NsApplication* a, const NsPlatform* io, const NsStore* store, NsCapabilities caps) {
     if(!a || !io || !store) return NS_INVALID;
     memset(a, 0, sizeof(*a)); a->observation_filter = ns_observation_filter_default(); a->capabilities = caps; a->running = true;
+#ifdef NS_UNIFIED_UI
+    a->unified_ui=true; a->page=NS_PAGE_HUB;
+#endif
+    ns_wifi_discovery_init(&a->wifi_discovery);
     a->mode = NS_MODE_MONITOR; /* never restored from persistent user settings */
     a->esp_info_capability = capability(caps.esp_info_only && caps.esp_uart ? NS_CAP_SUPPORTED : NS_CAP_UNAVAILABLE,
         NS_IF_UART, caps.esp_uart, caps.esp_uart, false, false, caps.esp_info_only && caps.esp_uart, 0);
@@ -290,19 +295,51 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
     if(!a || !a->running || (unsigned)key > NS_KEY_BACK) return NS_INVALID;
     a->now_ms = now;
     if(key == NS_KEY_BACK) {
+        if(a->page==NS_PAGE_WIFI_DISCOVERY) (void)ns_wifi_discovery_cancel(&a->wifi_discovery,now);
         if(a->page == NS_PAGE_SIMULATION && a->simulation.replay_active) {
             ns_simulation_replay_cancel(&a->simulation);
             a->status = NS_OK;
         }
         NsResult r = ns_app_stop(a, now);
-        if(a->page == NS_PAGE_HOME) {
+        if(a->page == NS_PAGE_HUB || (a->page == NS_PAGE_HOME && !a->unified_ui)) {
             if(a->session.active != NS_RADIO_NONE) a->exit_requested = true;
             else a->running = false;
         }
-        else a->page = NS_PAGE_HOME;
+        else a->page = a->unified_ui ? NS_PAGE_HUB : NS_PAGE_HOME;
         return r;
     }
-    if(a->page == NS_PAGE_HOME) {
+    if(a->page==NS_PAGE_HUB) {
+        if(key==NS_KEY_UP && a->hub_index) a->hub_index--;
+        if(key==NS_KEY_DOWN && a->hub_index<6) a->hub_index++;
+        if(key==NS_KEY_OK) {
+            const NsPage pages[]={NS_PAGE_RADIO,NS_PAGE_WIFI_DISCOVERY,NS_PAGE_NETWORK_RESULTS,
+                NS_PAGE_HISTORY,NS_PAGE_SETTINGS,NS_PAGE_HARDWARE_READINESS,NS_PAGE_HOME};
+            a->page=pages[a->hub_index<7 ? a->hub_index : 0];
+            if(a->hub_index==0) { a->selected=NS_RADIO_ESP; a->ble=false; }
+        }
+    } else if(a->page==NS_PAGE_WIFI_DISCOVERY) {
+        if(key==NS_KEY_OK) {
+            if(a->session.active!=NS_RADIO_NONE || a->info_pending) return a->status=NS_BUSY;
+            /* Production begin has no UART binding and always fails closed. */
+            return a->status=ns_wifi_discovery_begin(&a->wifi_discovery,now,5000,5000);
+        }
+        if(key==NS_KEY_RIGHT) a->page=NS_PAGE_NETWORK_RESULTS;
+    } else if(a->page==NS_PAGE_NETWORK_RESULTS) {
+#ifdef NS_WIFI_DEVELOPMENT
+        if(key==NS_KEY_OK) {
+            /* Explicit offline self-check, not an observation or acquisition.
+             * Invented data are never inserted into the network result table. */
+            NsWifiRecord record;
+            const char* detail="ESSID: Synthetic parser check\nBSSID: 02:00:00:00:00:01\nChannel: 6\nRSSI: -66\nSecurity: WPA2\n";
+            NsResult r=ns_wifi_parse_list("[0][CH:6] Synthetic parser check -66",&record);
+            if(r==NS_OK) r=ns_wifi_parse_detail(detail,strlen(detail),&record);
+            a->wifi_parser_checked=r==NS_OK;
+            return a->status=r;
+        }
+#endif
+        if(key==NS_KEY_UP && a->network_index) a->network_index--;
+        if(key==NS_KEY_DOWN && a->network_index+1<a->wifi_discovery.count) a->network_index++;
+    } else if(a->page == NS_PAGE_HOME) {
         if(key == NS_KEY_UP && a->menu) a->menu--;
         if(key == NS_KEY_DOWN && a->menu+1 < NS_MENU_COUNT) a->menu++;
         if(key == NS_KEY_OK) {
@@ -452,7 +489,48 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
     memset(f, 0, sizeof(*f));
     snprintf(f->rows[0], sizeof(f->rows[0]), "NetSentinel Ultra");
     snprintf(f->rows[5], sizeof(f->rows[5]), "%s", ns_result_name(a->status));
-    if(a->page == NS_PAGE_HOME) {
+    if(a->page==NS_PAGE_HUB) {
+        unsigned first=a->hub_index<4 ? 0 : a->hub_index-3;
+        for(unsigned i=0;i<4;i++) snprintf(f->rows[i+1],sizeof(f->rows[i+1]),"%c %s",first+i==a->hub_index ? '>' : ' ',hub[first+i]);
+        snprintf(f->rows[5],sizeof(f->rows[5]),"Info-only; Back exits");
+        if(a->storage_status!=NS_OK) snprintf(f->rows[5],sizeof(f->rows[5]),"Storage: %s; More tools",ns_result_name(a->storage_status));
+    } else if(a->page==NS_PAGE_WIFI_DISCOVERY) {
+        snprintf(f->rows[0],sizeof(f->rows[0]),"Wi-Fi Discovery");
+        snprintf(f->rows[1],sizeof(f->rows[1]),"Unavailable: physical gate off");
+#ifdef NS_WIFI_DEVELOPMENT
+        snprintf(f->rows[2],sizeof(f->rows[2]),"Parser/state model: tested");
+#else
+        snprintf(f->rows[2],sizeof(f->rows[2]),"Stable info-only candidate");
+#endif
+        snprintf(f->rows[3],sizeof(f->rows[3]),"Not Tested: passive lifecycle");
+        snprintf(f->rows[4],sizeof(f->rows[4]),"Peer PCAP/privacy unresolved");
+        snprintf(f->rows[5],sizeof(f->rows[5]),"Right: results; Back: dashboard");
+    } else if(a->page==NS_PAGE_NETWORK_RESULTS) {
+        snprintf(f->rows[0],sizeof(f->rows[0]),"Network Results (RAM only)");
+        if(!a->wifi_discovery.results_valid || !a->wifi_discovery.count) {
+            snprintf(f->rows[1],sizeof(f->rows[1]),"Not Tested: no live scan");
+            snprintf(f->rows[2],sizeof(f->rows[2]),"No validated network results");
+        } else {
+            size_t i=a->network_index<a->wifi_discovery.count ? a->network_index : 0;
+            const NsWifiRecord* record=&a->wifi_discovery.records[i];
+            snprintf(f->rows[1],sizeof(f->rows[1]),"AP %u (identifiers hidden)",(unsigned)i+1);
+            snprintf(f->rows[2],sizeof(f->rows[2]),"Ch%u RSSI %d dBm",record->ap.channel,record->ap.rssi);
+            snprintf(f->rows[3],sizeof(f->rows[3]),"Security: %s",ns_wifi_security_name(record->security));
+            snprintf(f->rows[4],sizeof(f->rows[4]),"Offline model; not live");
+        }
+        snprintf(f->rows[5],sizeof(f->rows[5]),"Up/Down results; Back: dashboard");
+#ifdef NS_WIFI_DEVELOPMENT
+        if(a->wifi_parser_checked && (!a->wifi_discovery.results_valid || !a->wifi_discovery.count)) snprintf(f->rows[4],sizeof(f->rows[4]),"Offline parser check: passed");
+        snprintf(f->rows[5],sizeof(f->rows[5]),"OK: offline parser check; no RF");
+#endif
+    } else if(a->page==NS_PAGE_HARDWARE_READINESS) {
+        snprintf(f->rows[0],sizeof(f->rows[0]),"Hardware Readiness");
+        snprintf(f->rows[1],sizeof(f->rows[1]),"ESP info: prior owner pass");
+        snprintf(f->rows[2],sizeof(f->rows[2]),"Wi-Fi/BLE: Not Tested/disabled");
+        snprintf(f->rows[3],sizeof(f->rows[3]),"NRF: Unavailable (route/lock)");
+        snprintf(f->rows[4],sizeof(f->rows[4]),"CC: Unavailable (provider)");
+        snprintf(f->rows[5],sizeof(f->rows[5]),"Back: dashboard; no radio I/O");
+    } else if(a->page == NS_PAGE_HOME) {
         unsigned first = a->menu < 4 ? 0 : a->menu-3;
         for(unsigned i = 0; i < 4; i++) snprintf(f->rows[i+1], sizeof(f->rows[i+1]), "%c %s", a->menu == first+i ? '>' : ' ', a->capabilities.esp_info_only && first+i == 0 ? "ESP32 diagnostics" : menu[first+i]);
         if(a->storage_status != NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "SD: %s; Diagnostics retries", ns_result_name(a->storage_status));
@@ -527,15 +605,17 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 if(a->capabilities.esp_info_only) {
                     snprintf(f->rows[1], sizeof(f->rows[1]), "ESP32 info-only USART");
                     /* Only known matched constants reach diagnostics, never untrusted identity text. */
-                    snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->info_validated ? "v1.11.0 (last success)" : "Identity not validated");
+                    snprintf(f->rows[1], sizeof(f->rows[1]), "%s", a->session.active==NS_RADIO_ESP ? "Live info query (no scans)" :
+                        a->info_pending ? "Queued info query" : a->info_validated ? "Last Successful Reading" : "ESP32 Diagnostics: Not Tested");
+                    snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->info_validated ? "v1.11.0 (last success)" : "Not Tested: no valid reply");
                     snprintf(f->rows[3], sizeof(f->rows[3]), "%s", a->info_validated ? "Marauder v4 (last)" : "");
                     if(a->info_view == 1) {
-                        snprintf(f->rows[1], sizeof(f->rows[1]), "ESP-IDF (validated reply)");
+                        snprintf(f->rows[1], sizeof(f->rows[1]), "%s", a->info_validated ? "Last Successful IDF reading" : "ESP-IDF: Not Tested");
                         snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->info_validated ? "v5.5.1-710-g8410210c9a" : "Not validated");
                         snprintf(f->rows[3], sizeof(f->rows[3]), "%s", a->info_validated ? (a->info_sd_connected ? "SD: Connected (last success)" : "SD: Disconnected (last success)") : "SD: unknown");
                     } else if(a->info_view == 2) {
                         snprintf(f->rows[1], sizeof(f->rows[1]), "Last success: %lu (session)", (unsigned long)a->info_success_id);
-                        snprintf(f->rows[2], sizeof(f->rows[2]), "Elapsed: %lu ms%s", (unsigned long)a->info_elapsed_ms, a->session.active == NS_RADIO_ESP ? " (running)" : "");
+                        snprintf(f->rows[2], sizeof(f->rows[2]), "Last attempt: %lu ms%s", (unsigned long)a->info_elapsed_ms, a->session.active == NS_RADIO_ESP ? " (running)" : "");
                         snprintf(f->rows[3], sizeof(f->rows[3]), "Timeout: %lu ms", (unsigned long)a->session.timeout_ms);
                     } else if(a->info_view == 3) {
                         snprintf(f->rows[1], sizeof(f->rows[1]), "Last info outcome (redacted)");
@@ -546,6 +626,8 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                             a->info_state == NS_ESP_CONNECTING ? "pending" : ns_result_name(a->info_result));
                     }
                     snprintf(f->rows[4], sizeof(f->rows[4]), "%s", a->info_pending || a->session.active != NS_RADIO_NONE ? "Retry disabled; Back cancels" : "OK retry; Up/Down views");
+                    if(a->storage_status!=NS_OK && !a->info_pending && a->session.active==NS_RADIO_NONE)
+                        snprintf(f->rows[4],sizeof(f->rows[4]),"Storage: %s (Tools retries)",ns_result_name(a->storage_status));
                     if(a->info_pending) state = "Connecting: USART requested";
                     else if(a->info_state == NS_ESP_CONNECTING) state = "Connecting: waiting for info";
                     else if(a->info_state == NS_ESP_TIMEOUT) state = "Timeout: link unconfirmed";
@@ -646,7 +728,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
     } else if(a->page == NS_PAGE_WIFI_OVERVIEW) {
         snprintf(f->rows[0], sizeof(f->rows[0]), "Wi-Fi observation readiness");
         snprintf(f->rows[1], sizeof(f->rows[1]), "AP/channel core: software");
-        snprintf(f->rows[2], sizeof(f->rows[2]), "Marauder init starts AP mode");
+        snprintf(f->rows[2], sizeof(f->rows[2]), "Passive lifecycle not verified");
         snprintf(f->rows[3], sizeof(f->rows[3]), "May TX; PCAP defaults on");
         snprintf(f->rows[4], sizeof(f->rows[4]), "No Wi-Fi commands sent");
         snprintf(f->rows[5], sizeof(f->rows[5]), "OK: ESP info; Back: home");

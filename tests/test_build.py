@@ -8,10 +8,14 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'scripts'))
-from build_esp_info import VARIANTS, source_paths, variant_manifest
+from build_esp_info import VARIANTS, FEATURE_DEFINES, check_protected_output, source_paths, variant_manifest
 
 
 class BuildContracts(unittest.TestCase):
+    def test_owner_status_filename_frozen(self):
+        with self.assertRaises(RuntimeError):
+            check_protected_output(Path('netsentinel_esp_status.fap'))
+        check_protected_output(Path('netsentinel_esp_stable.fap'))
     def test_all_variant_manifests(self):
         original = (ROOT/'application.fam').read_text()
         for variant, (appid, title, gate) in VARIANTS.items():
@@ -20,7 +24,8 @@ class BuildContracts(unittest.TestCase):
             fields = {item.arg: item.value for item in call.keywords}
             self.assertEqual(ast.literal_eval(fields['appid']), appid)
             self.assertEqual(ast.literal_eval(fields['name']), title)
-            self.assertEqual(ast.literal_eval(fields['cdefines']), [gate])
+            self.assertEqual(ast.literal_eval(fields['cdefines']), [gate, *FEATURE_DEFINES.get(variant, [])])
+            self.assertFalse(any('NS_TEST_' in d or 'PASSIVE_START_VERIFIED' in d for d in ast.literal_eval(fields['cdefines'])))
             self.assertEqual(ast.literal_eval(fields['entry_point']), 'netsentinel_app')
             self.assertEqual(ast.literal_eval(fields['fap_icon']), 'assets/netsentinel_icon.png')
             self.assertEqual(ast.literal_eval(fields['fap_version']), '1.0')

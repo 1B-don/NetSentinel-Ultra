@@ -1,5 +1,22 @@
 # Development milestones and limitations
 
+## Unified ESP diagnostics and disabled Wi-Fi discovery — 2026-10-13
+
+Continued from `22dd593a716f740b9cf1abce2822a442dae5a67b`. Recorded owner-reported successful info query, relaunch/requery and original Marauder interoperation for the exact 49,924-byte ESP Status SHA-256 `7751b712e71b84b396a13a6ca2f33649e7d3b65031bd4dceb99d5b732ff11cf7`. Rehashed and preserved that file and all seven existing FAPs with recovery copies/checksums; the helper now refuses its frozen filename. These observations are physical owner reports, not automated results or complete field/cancellation/restoration/passivity verification.
+
+Implemented separate esp-stable/wifi-dev variants with a six-destination dashboard plus More tools retaining all eleven prior entries. Polished four-view/six-state info diagnostics, live/queued/historical/not-tested labels, storage-error visibility and attempt timing; no unvalidated device fields are displayed. Added finite list/detail result parsers, typed optional BSSID/security, 48-record/191-character/16,384-byte limits, strict missing/malformed/duplicate/truncation handling, split-byte input and host-only discovery/stop/list intent states. Unconfirmed stop keeps the model's peer-may-scan flag and prevents restart; a modeled stop reply is not installed RF-silence evidence. New Network Results uses redacted numeric data only; the wifi-dev offline parser self-check never inserts synthetic observations or touches UART. Physical discovery is unavailable in both variants, and all scan/list/detail/stop commands remain denied by NS_ESP_INFO_ONLY. NRF/CC/BLE gates and saved data schema are unchanged.
+
+Pinned public-source recheck corrects the earlier AP-initialization attribution: initWiFi loads settings/changes channel, discovery selects NULL/promiscuous mode, and AP setup is in a separate routine. Current documentation/readiness regression was corrected; historical records are superseded explicitly. Installed binary passivity, peer PCAP (default-on SavePCAP), persistent-setting effects and conditional shutdown remain unresolved. No permission was inferred from “sniff,” NULL mode or stop text. Details/source links: WIFI_DISCOVERY.md.
+
+Validation passed: all 17 C suites and 27 Python checks, warnings-as-errors, short enums, ASan/UBSan, both matching Momentum API 87.1 / target 7 builds/link/APPCHK, strict metadata/icon/entry and all 63 imports per artifact, publication audit and source/privacy review. Local sanitizer leak detection remains disabled. Both candidates have stack 8192, zero flags/weak imports and no SPI/Sub-GHz registry/power/USB/direct GPIO imports. Exact artifacts:
+
+| Variant | Bytes | SHA-256 |
+|---|---|---|
+| netsentinel_esp_stable.fap | 53,056 | `0ae4e44f514c99adaea89f7cc586a8f8ac195bad95df1ccd38baeff62fc6b19f` |
+| netsentinel_wifi_dev.fap | 55,108 | `24b46c5f05bdfd678a5292f427eb990fd9c8e3e69f136a7188dd21076a4afd10` |
+
+All seven original FAPs and their recovery copies still match the initial snapshot; the frozen filename refusal was exercised without running build steps. Both new candidates are undeployed/physically untested. No device data, RF, selector/settings/power, flash, restricted source or firmware modification occurred. Binaries/logs/public review source stay local/ignored; no Release/download is created. Exact-checksum approval is required before future candidate deployment/launch, and Wi-Fi needs separate passive/privacy/stop review and command authorization. Normal source milestone commit/push follows reviewed staging and audit.
+
 ## ESP32 information-only status interface — 2026-10-13
 
 Continued from `cdbddb3`. Reviewed existing verified USART13/14 at 115200/8N1 and permitted pinned public Marauder v1.11.0 CLI/RunInfo. Implemented typed Disconnected/Connecting/Connected/Timeout/Protocol Error/Cancelled outcomes separate from general UI/storage status; retained validated historical identity/SD snapshots, added a fourth redacted response/result view, discarded pre-dispatch queued bytes and rejected duplicate echoes. Cancellation retains cleanup errors; no-query/pending states do not invent OK results. No extra commands, raw serial UI/history/CSV or radio capability was added. Whole late stale replies cannot be authenticated without protocol request IDs, and HAL TX remains without a deadline/status contract; these limitations are explicit in ESP32_STATUS_DIAGNOSTICS.md.

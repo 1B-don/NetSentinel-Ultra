@@ -1,5 +1,7 @@
 # ESP32 information-only status candidate
 
+**Owner update, 2026-10-13:** the exact SHA-256 `7751b712e71b84b396a13a6ca2f33649e7d3b65031bd4dceb99d5b732ff11cf7` candidate completed an information query, relaunch/requery and original Marauder interoperation according to the owner. These supersede the historical undeployed status below for this exact file only. Its filename is now frozen and preserved; rebuild using separately named esp-stable/wifi-dev candidates, not esp-status. Independent field, cancellation and restoration checks remain pending. See USART_HARDWARE_CHECKLIST.md.
+
 Baseline: `cdbddb38653d152dc3c62cd14c698bc00ea8d1e7`. Target: permitted Momentum d3f89dfe SDK, API 87.1, target 7. This candidate is software/SDK validated, not installed or physically tested. Earlier three successful information transactions and original-app interoperation remain evidence for the preserved earlier artifact only.
 
 ## Supported behavior

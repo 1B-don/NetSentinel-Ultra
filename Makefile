@@ -2,9 +2,10 @@ CC ?= cc
 BUILD := builds/host
 CPPFLAGS := -Iinclude -I.
 CFLAGS := -std=c11 -Wall -Wextra -Werror -pedantic -g
-CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/nrf_probe.c src/core/cc_spi.c src/core/marauder.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c src/core/observation.c src/core/export.c src/core/simulation.c
+CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/nrf_probe.c src/core/cc_spi.c src/core/marauder.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c src/core/observation.c src/core/export.c src/core/simulation.c src/core/wifi_discovery.c
+FLIPPER := src/flipper/ns_flipper.c src/flipper/ns_uart.c src/flipper/netsentinel_app.c
 .PHONY: test clean sanitize audit-test sdk-test sdk-preflight short-enums
-test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD)/test_esp_info_build $(BUILD)/test_minimal_build $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_marauder_gate $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract $(BUILD)/test_simulation $(BUILD)/test_nrf_probe
+test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD)/test_esp_info_build $(BUILD)/test_minimal_build $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_marauder_gate $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract $(BUILD)/test_simulation $(BUILD)/test_nrf_probe $(BUILD)/test_wifi_discovery $(BUILD)/test_unified_ui
 	$(BUILD)/test_stress
 	$(BUILD)/test_observation
 	$(BUILD)/test_esp_info_build
@@ -20,8 +21,14 @@ test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD
 	$(BUILD)/test_flipper_contract
 	$(BUILD)/test_simulation
 	$(BUILD)/test_nrf_probe
+	$(BUILD)/test_wifi_discovery
+	$(BUILD)/test_unified_ui
 $(BUILD):
 	mkdir -p $@
+$(BUILD)/test_wifi_discovery: src/core/wifi_discovery.c tests/test_wifi_discovery.c include/netsentinel/wifi_discovery.h | $(BUILD)
+	$(CC) $(CPPFLAGS) -DNS_TEST_WIFI_DISCOVERY_PROTOCOL $(CFLAGS) src/core/wifi_discovery.c tests/test_wifi_discovery.c -o $@
+$(BUILD)/test_unified_ui: $(CORE) $(FLIPPER) tests/test_unified_ui.c tests/flipper_mock/mock_sdk.c $(wildcard include/netsentinel/*.h) src/flipper/ns_flipper.h | $(BUILD)
+	$(CC) $(CPPFLAGS) -DNS_ESP_INFO_ONLY -DNS_UNIFIED_UI -DNS_WIFI_DEVELOPMENT -Itests/flipper_mock -Isrc/flipper $(CFLAGS) $(CORE) $(FLIPPER) tests/flipper_mock/mock_sdk.c tests/test_unified_ui.c -o $@
 $(BUILD)/test_parser: ap_parser.c tests/test_parser.c ap_parser.h | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) ap_parser.c tests/test_parser.c -o $@
 $(BUILD)/test_analysis: ns_analysis.c tests/test_analysis.c ns_analysis.h ap_parser.h | $(BUILD)

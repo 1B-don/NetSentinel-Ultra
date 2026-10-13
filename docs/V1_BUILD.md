@@ -4,6 +4,8 @@ Target: supplied Momentum Dev d3f89dfe SDK ZIP, API 87.1, hardware target 7. uFB
 
 ## Inputs and setup
 
+Owner-verified `netsentinel_esp_status.fap` is frozen and the helper refuses rebuilding that filename. Build the separately named `esp-stable` and `wifi-dev` variants with `scripts/verify_development.sh esp-stable|wifi-dev` (choose one value). Both define NS_ESP_INFO_ONLY and NS_UNIFIED_UI; wifi-dev adds NS_WIFI_DEVELOPMENT for the offline parser check only. No host protocol-test flag or physical scan gate is enabled. See WIFI_DISCOVERY.md for recovery and exact capability distinctions.
+
 For the separately named ESP status review candidate use `scripts/verify_development.sh esp-status`. It produces `dist/netsentinel_esp_status.fap` with NS_ESP_INFO_ONLY and preserves all other FAPs. Exact evidence, capability limits and approval requirements are in [ESP32_STATUS_DIAGNOSTICS.md](ESP32_STATUS_DIAGNOSTICS.md); no deployment is performed.
 
 Keep the supplied ZIP at builds/sdk-input/flipper-z-f7-sdk-mntm-dev-d3f89dfe.zip, SHA-256 238db260ee7e8f6e9a79dd1c760e07a832351a7d92d896b4cb19082f8548b2c1. Its API table is copied unmodified to builds/sdk-input/api_symbols.csv, SHA-256 a2bdb9893ba57ac6ccc4eae2e66ab201fa84f48508347f4c52685cfb3c3a8d4f. SDK installation was already completed and validated. For a new authorized environment use the supported local update described in MOMENTUM_BUILD.md with isolated UFBT_HOME ~/.ufbt-netsentinel-momentum, FBT_TOOLCHAIN_PATH ~/.ufbt and --hw-target f7. No internet/firmware update is part of application verification.

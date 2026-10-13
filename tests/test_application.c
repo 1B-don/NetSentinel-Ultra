@@ -312,7 +312,7 @@ static void test_completion_navigation_and_recovery(void) {
         ns_app_frame(&a,&frame);
         if(i>=1 && i<=3) assert(strstr(frame.rows[5],"Unavailable"));
         if(i==9) {
-            assert(strstr(frame.rows[2],"AP mode") && strstr(frame.rows[3],"PCAP"));
+    assert(strstr(frame.rows[2],"Passive lifecycle") && strstr(frame.rows[3],"PCAP"));
             assert(strstr(frame.rows[4],"No Wi-Fi commands"));
             unsigned acquired=m.acquired;
             assert(ns_app_key(&a,NS_KEY_OK,20)==NS_OK && a.page==NS_PAGE_RADIO && m.acquired==acquired);

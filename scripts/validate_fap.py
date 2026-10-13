@@ -45,7 +45,7 @@ def metadata(data):
     if b'\0' not in name:
         raise ValueError('unterminated application name')
     raw_name, padding = name.split(b'\0', 1)
-    allowed = (b'NetSentinel Ultra', b'NetSentinel ESP Info', b'ESP Diagnostics v0.2', b'NetSentinel ESP Status', b'NetSentinel Ultra Dev', b'NetSentinel Ultra Lab Sim', b'NetSentinel Ultra v1.0 RC1')
+    allowed = (b'NetSentinel Ultra', b'NetSentinel ESP Info', b'ESP Diagnostics v0.2', b'NetSentinel ESP Status', b'NetSentinel ESP Stable', b'NetSentinel WiFi Dev', b'NetSentinel Ultra Dev', b'NetSentinel Ultra Lab Sim', b'NetSentinel Ultra v1.0 RC1')
     if raw_name not in allowed or any(padding) or app_version != 0x00010000 or manifest[85] != 0:
         raise ValueError('unexpected name/app version/icon/flags metadata')
     if manifest[52] not in (0, 1) or manifest[53:85] != (EXPECTED_ICON if manifest[52] else bytes(32)):
@@ -67,6 +67,9 @@ def main():
     if artifact.name == 'netsentinel_esp_status.fap' and \
        (result['name'] != 'NetSentinel ESP Status' or not result['icon']):
         raise ValueError('ESP status candidate identity/icon mismatch')
+    candidates={'netsentinel_esp_stable.fap':'NetSentinel ESP Stable','netsentinel_wifi_dev.fap':'NetSentinel WiFi Dev'}
+    if artifact.name in candidates and (result['name']!=candidates[artifact.name] or not result['icon']):
+        raise ValueError('unified candidate identity/icon mismatch')
     if artifact.name == 'netsentinel_ultra_v1_0_rc1.fap' and \
        (result['name'] != 'NetSentinel Ultra v1.0 RC1' or not result['icon']):
         raise ValueError('release candidate identity/icon mismatch')

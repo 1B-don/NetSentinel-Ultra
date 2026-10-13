@@ -70,10 +70,9 @@ NsResult ns_marauder_begin(NsMarauder* m, const NsPlatform* io, bool wifi, bool 
 #ifdef NS_ESP_INFO_ONLY
     if(wifi) return NS_UNSUPPORTED;
 #elif !defined(NS_MARAUDER_PASSIVE_START_VERIFIED) && !defined(NS_TEST_MARAUDER_PROTOCOL_SIM)
-    /* The reviewed v1.11.0 sniffbeacon CLI path first runs initWiFi(), which
-     * starts a hidden AP before RunBeaconScan switches to NULL mode. It also
-     * opens PCAP output (SavePCAP defaults true). Version matching alone is
-     * not evidence that this path is receive-only or storage-safe. */
+    /* Public discovery paths select NULL/promiscuous mode but open PCAP;
+     * installed passivity, capture privacy and teardown remain unverified.
+     * Version matching alone is not permission for physical discovery. */
     if(wifi) return NS_UNSUPPORTED;
 #endif
     if(wifi && !verified) return NS_UNSUPPORTED;

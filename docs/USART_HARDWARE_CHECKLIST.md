@@ -2,6 +2,10 @@
 
 ## Recorded physical result
 
+### Owner-reported ESP Status validation — 2026-10-13
+
+Owner reports a successful information query, successful relaunch/requery, and continued original Marauder application interoperation for the candidate with SHA-256 `7751b712e71b84b396a13a6ca2f33649e7d3b65031bd4dceb99d5b732ff11cf7` (49,924 bytes). These are owner-reported physical observations, not automated results or an exhaustive field/cancellation/pin restoration test. The local exact FAP hash matches and is preserved at `dist/netsentinel_esp_status.fap` plus `builds/preserved-owner-20261013/netsentinel_esp_status.fap`; all seven existing FAPs were snapshotted with local checksums. Its filename is frozen by the build helper. New polished/experimental candidates require separate approval and do not inherit these physical results. No scanning, RF passivity or packet capture is verified.
+
 Owner reports the first authorized NetSentinel ESP Info test on Momentum Dev d3f89dfe, API87.1, target7, attached Ultra V3: requesting Marauder information resulted in **Connected**. Record this as one successful information transaction only. No independent audit of every response field, callback teardown, pin/serial/logging restoration, SD contents, repeatability or cancellation was reported. No RF functionality is verified.
 
 The previously prepared local test FAP is preserved at `builds/preserved-first-esp-info/netsentinel_esp_info.fap`:37384 bytes, SHA256 `c27cefddc3379404b4bd689a3196574f858d31a91af262d0a71700a39f45db67`. The owner did not supply an independently checked on-device transfer checksum; this is preserved local build identity, not proof of the exact transferred bytes.

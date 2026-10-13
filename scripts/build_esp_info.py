@@ -19,10 +19,19 @@ VARIANTS = {
     "info": ("netsentinel_esp_info", "NetSentinel ESP Info", "NS_ESP_INFO_ONLY"),
     "diagnostics": ("netsentinel_esp_diagnostics", "ESP Diagnostics v0.2", "NS_ESP_INFO_ONLY"),
     "esp-status": ("netsentinel_esp_status", "NetSentinel ESP Status", "NS_ESP_INFO_ONLY"),
+    "esp-stable": ("netsentinel_esp_stable", "NetSentinel ESP Stable", "NS_ESP_INFO_ONLY"),
+    "wifi-dev": ("netsentinel_wifi_dev", "NetSentinel WiFi Dev", "NS_ESP_INFO_ONLY"),
     "development": ("netsentinel_development", "NetSentinel Ultra Dev", "NS_ESP_INFO_ONLY"),
     "lab-sim": ("netsentinel_lab_sim", "NetSentinel Ultra Lab Sim", "NS_ESP_INFO_ONLY"),
     "rc": ("netsentinel_ultra_v1_0_rc1", "NetSentinel Ultra v1.0 RC1", "NS_ESP_INFO_ONLY"),
 }
+
+FEATURE_DEFINES = {"esp-stable": ["NS_UNIFIED_UI"], "wifi-dev": ["NS_UNIFIED_UI", "NS_WIFI_DEVELOPMENT"]}
+KNOWN_GOOD_STATUS = "7751b712e71b84b396a13a6ca2f33649e7d3b65031bd4dceb99d5b732ff11cf7"
+
+def check_protected_output(path):
+    if path.name == "netsentinel_esp_status.fap":
+        raise RuntimeError("Owner-verified ESP Status filename is frozen; use esp-stable or wifi-dev")
 
 def variant_manifest(manifest, variant):
     """Pure generation; keep root baseline and all variant gates explicit."""
@@ -30,7 +39,7 @@ def variant_manifest(manifest, variant):
     replacements = {
         'appid="netsentinel"': f'appid="{appid}"',
         'name="NetSentinel Ultra"': f'name="{title}"',
-        'cdefines=["NS_GUI_STORAGE_ONLY"]': f'cdefines=["{gate}"]',
+        'cdefines=["NS_GUI_STORAGE_ONLY"]': 'cdefines=[' + ', '.join(f'"{d}"' for d in [gate, *FEATURE_DEFINES.get(variant, [])]) + ']',
     }
     if 'fap_icon="assets/netsentinel_icon.png"' not in manifest:
         raise RuntimeError("Bundled manifest icon missing; no build attempted")
@@ -59,6 +68,10 @@ def main():
         parser.error("use either --development or --variant")
     variant = "development" if args.development else (args.variant or "diagnostics")
     appid, _, _ = VARIANTS[variant]
+    check_protected_output(ROOT/"dist"/(appid+".fap"))
+    protected = ROOT/"dist/netsentinel_esp_status.fap"
+    if protected.exists() and digest(protected) != KNOWN_GOOD_STATUS:
+        raise RuntimeError("Owner-verified ESP Status checksum changed; stop before building")
     manifest = variant_manifest((ROOT/"application.fam").read_text(), variant)
     if SDK_HOME.is_symlink() or (SDK_HOME/"current").is_symlink():
         raise RuntimeError("SDK home must be the reviewed independent cache")
