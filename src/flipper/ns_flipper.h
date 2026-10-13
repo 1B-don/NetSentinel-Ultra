@@ -9,6 +9,11 @@
     (defined(NS_ESP_INFO_ONLY) && (defined(NS_GUI_STORAGE_ONLY) || defined(NS_ENABLE_BOARD_PORT)))
 #error "GUI/storage build cannot enable hardware board ports"
 #endif
+#if defined(NS_ENABLE_BOARD_PORT) && !defined(NS_TEST_BOARD_PORT) && \
+    !defined(NS_VERIFIED_ULTRA_V3_NRF24_ROUTE) && \
+    !(defined(NS_VERIFIED_ULTRA_V3_CC1101_ROUTE) && defined(NS_VERIFIED_MOMENTUM_CC1101_PROVIDER))
+#error "physical radio board port requires a verified Ultra V3 route; host mock tests must define NS_TEST_BOARD_PORT"
+#endif
 #include <stdatomic.h>
 #define NS_UART_CAPACITY 4096
 typedef struct {

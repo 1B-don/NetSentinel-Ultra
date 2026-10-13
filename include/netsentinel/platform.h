@@ -9,9 +9,12 @@ typedef struct {
     uint8_t part, version, state, rssi_raw;
     uint32_t transactions;
 } NsCcDiagnostics;
-/* Adapter owns bus locking, finite transfer timeouts, CS and pin restoration.
- * release must lower CE, put the peripheral in a safe state and restore pins.
- * CC adapter must use external-only receive interfaces: never fall back internally. */
+/* Adapter owns exclusive bus locking, finite transfer timeouts, CS and pin
+ * restoration. The current callback ABI does not carry a deadline argument:
+ * every future physical implementation must enforce a documented finite bound
+ * internally and return NS_TIMEOUT. The host/core can cancel between calls,
+ * not preempt a blocked callback. release must lower CE, idle the peripheral
+ * and restore pins. CC must be external-only; never fall back internally. */
 typedef struct {
     void* ctx;
     NsResult (*acquire)(void*, NsRadio);

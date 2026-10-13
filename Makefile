@@ -51,7 +51,7 @@ $(BUILD)/test_cc: $(CORE) tests/test_cc.c tests/mock_platform.h $(wildcard inclu
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE) tests/test_cc.c -o $@
 
 $(BUILD)/test_board_contract: $(CORE) $(FLIPPER) src/flipper/ns_flipper.h tests/test_board_contract.c tests/mock_platform.h tests/flipper_mock/mock_sdk.c $(wildcard tests/flipper_mock/*.h tests/flipper_mock/*/*.h) $(wildcard include/netsentinel/*.h) ap_parser.h ns_analysis.h | $(BUILD)
-	$(CC) $(CPPFLAGS) -DNS_ENABLE_BOARD_PORT -Itests/flipper_mock -Isrc/flipper $(CFLAGS) $(CORE) $(FLIPPER) tests/flipper_mock/mock_sdk.c tests/test_board_contract.c -o $@
+	$(CC) $(CPPFLAGS) -DNS_ENABLE_BOARD_PORT -DNS_TEST_BOARD_PORT -Itests/flipper_mock -Isrc/flipper $(CFLAGS) $(CORE) $(FLIPPER) tests/flipper_mock/mock_sdk.c tests/test_board_contract.c -o $@
 
 audit-test:
 	python3 -m unittest discover -s tests -p test_publication.py

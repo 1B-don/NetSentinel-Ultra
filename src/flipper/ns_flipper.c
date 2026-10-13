@@ -155,7 +155,15 @@ bool ns_flipper_init(NsFlipper* f) {
         .file_create = log_create, .file_write = log_write, .file_sync = log_sync, .file_close = log_close};
     f->store = (NsStore){f, slot_read, slot_write};
 #ifdef NS_ENABLE_BOARD_PORT
-    if(!ns_flipper_board_bind(&f->board) || !ns_flipper_board_valid(&f->board)) { ns_flipper_deinit(f); return false; }
+    if(!ns_flipper_board_bind(&f->board)) { ns_flipper_deinit(f); return false; }
+    if(!ns_flipper_board_valid(&f->board)) { ns_flipper_deinit(f); return false; }
+#if !defined(NS_TEST_BOARD_PORT) && !defined(NS_VERIFIED_ULTRA_V3_NRF24_ROUTE)
+    if(f->board.nrf) { ns_flipper_deinit(f); return false; }
+#endif
+#if !defined(NS_TEST_BOARD_PORT) && \
+    (!defined(NS_VERIFIED_ULTRA_V3_CC1101_ROUTE) || !defined(NS_VERIFIED_MOMENTUM_CC1101_PROVIDER))
+    if(f->board.cc) { ns_flipper_deinit(f); return false; }
+#endif
     f->capabilities.nrf = f->board.nrf; f->capabilities.cc = f->board.cc;
     if(f->board.io.cc_diagnose) f->platform.cc_diagnose = board_diagnose;
 #endif

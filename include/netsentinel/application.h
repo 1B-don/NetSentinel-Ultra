@@ -7,6 +7,27 @@ typedef enum { NS_PAGE_HOME, NS_PAGE_RADIO, NS_PAGE_SELECTOR, NS_PAGE_SETTINGS, 
 #define NS_MENU_COUNT 11u
 typedef enum { NS_MODE_MONITOR, NS_MODE_LAB, NS_MODE_SIMULATION, NS_MODE_HARDWARE_DIAGNOSTICS, NS_MODE_COUNT } NsOperatingMode;
 typedef struct { bool nrf, cc, esp_uart, esp_wifi_verified, esp_info_only; } NsCapabilities;
+typedef enum { NS_CAP_SUPPORTED, NS_CAP_SIMULATED, NS_CAP_UNAVAILABLE, NS_CAP_UNVERIFIED } NsCapabilityState;
+typedef enum { NS_IF_NONE, NS_IF_UART, NS_IF_SPI, NS_IF_SUBGHZ_REGISTRY } NsCapabilityInterface;
+enum {
+    NS_CAP_BLOCK_ROUTE = 1u << 0,
+    NS_CAP_BLOCK_PROVIDER = 1u << 1,
+    NS_CAP_BLOCK_PASSIVE_POLICY = 1u << 2,
+    NS_CAP_BLOCK_PEER_STORAGE = 1u << 3,
+    NS_CAP_BLOCK_ACTIVE_BLE = 1u << 4,
+};
+/* Describes software evidence separately from physical readiness. `available`
+ * never means that a guessed board binding may be opened. */
+typedef struct {
+    NsCapabilityState state;
+    NsCapabilityInterface interface;
+    bool interface_available;
+    bool routing_verified;
+    bool receiver_supported;
+    bool simulation_available;
+    bool physical_enabled;
+    uint8_t blockers;
+} NsRadioCapability;
 /* Wi-Fi requires installed-build command/output verification in addition to
  * a UART port. BLE is unsupported. Information queries do not scan. */
 typedef struct {
@@ -14,6 +35,8 @@ typedef struct {
     NsSavedState saved;
     NsPersistence persistence;
     NsCapabilities capabilities;
+    NsRadioCapability esp_info_capability, wifi_capability, ble_capability;
+    NsRadioCapability nrf_capability, cc_capability;
     /* Volatile by design: restored settings can never enable a mode or radio. */
     NsOperatingMode mode;
     NsSimulation simulation;

@@ -37,6 +37,18 @@ class BuildContracts(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 variant_manifest(original.replace(old, new), 'rc')
 
+    def test_physical_board_gate_requires_evidence_or_explicit_host_mock(self):
+        header = (ROOT/'src/flipper/ns_flipper.h').read_text()
+        self.assertIn('NS_TEST_BOARD_PORT', header)
+        self.assertIn('NS_VERIFIED_ULTRA_V3_NRF24_ROUTE', header)
+        self.assertIn('NS_VERIFIED_ULTRA_V3_CC1101_ROUTE', header)
+        self.assertIn('NS_VERIFIED_MOMENTUM_CC1101_PROVIDER', header)
+        for _, (_, _, gate) in VARIANTS.items():
+            self.assertNotEqual(gate, 'NS_ENABLE_BOARD_PORT')
+        manifest = (ROOT/'application.fam').read_text()
+        self.assertIn('cdefines=["NS_GUI_STORAGE_ONLY"]', manifest)
+        self.assertNotIn('NS_ENABLE_BOARD_PORT', manifest)
+
     def test_complete_sources_and_icon(self):
         sources = source_paths()
         self.assertEqual(len(sources), len(set(sources)))

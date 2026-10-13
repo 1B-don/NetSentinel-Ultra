@@ -29,10 +29,25 @@ static void apply_settings(NsApplication* a) {
     a->session.timeout_ms = a->saved.settings.timeout_ms;
     a->session.dwell_us = a->saved.settings.dwell_us;
 }
+static NsRadioCapability capability(NsCapabilityState state, NsCapabilityInterface interface,
+                                    bool available, bool route, bool receiver, bool simulated,
+                                    bool physical, uint8_t blockers) {
+    return (NsRadioCapability){state, interface, available, route, receiver, simulated, physical, blockers};
+}
 NsResult ns_app_init(NsApplication* a, const NsPlatform* io, const NsStore* store, NsCapabilities caps) {
     if(!a || !io || !store) return NS_INVALID;
     memset(a, 0, sizeof(*a)); a->observation_filter = ns_observation_filter_default(); a->capabilities = caps; a->running = true;
     a->mode = NS_MODE_MONITOR; /* never restored from persistent user settings */
+    a->esp_info_capability = capability(caps.esp_info_only && caps.esp_uart ? NS_CAP_SUPPORTED : NS_CAP_UNAVAILABLE,
+        NS_IF_UART, caps.esp_uart, caps.esp_uart, false, false, caps.esp_info_only && caps.esp_uart, 0);
+    a->wifi_capability = capability(NS_CAP_UNVERIFIED, NS_IF_UART, caps.esp_uart, caps.esp_uart,
+        true, true, false, NS_CAP_BLOCK_PASSIVE_POLICY | NS_CAP_BLOCK_PEER_STORAGE);
+    a->ble_capability = capability(NS_CAP_UNAVAILABLE, NS_IF_UART, caps.esp_uart, caps.esp_uart,
+        false, true, false, NS_CAP_BLOCK_ACTIVE_BLE);
+    a->nrf_capability = capability(NS_CAP_UNVERIFIED, NS_IF_SPI, false, false,
+        true, true, false, NS_CAP_BLOCK_ROUTE);
+    a->cc_capability = capability(NS_CAP_UNVERIFIED, NS_IF_SUBGHZ_REGISTRY, false, false,
+        true, true, false, NS_CAP_BLOCK_ROUTE | NS_CAP_BLOCK_PROVIDER);
     ns_simulation_init(&a->simulation);
     ns_saved_defaults(&a->saved);
     NsResult r = ns_persistence_load(&a->persistence, store, &a->saved);
@@ -412,7 +427,7 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
         a->selected = NS_RADIO_ESP; a->ble = false; a->page = NS_PAGE_RADIO;
     } else if(a->page == NS_PAGE_EXPORTS && key == NS_KEY_OK) return ns_app_export_history(a, now);
     else if(a->page == NS_PAGE_DIAGNOSTICS) {
-        if(key == NS_KEY_UP || key == NS_KEY_DOWN) a->diagnostic_view = (a->diagnostic_view+(key == NS_KEY_DOWN ? 1 : 2))%3;
+        if(key == NS_KEY_UP || key == NS_KEY_DOWN) a->diagnostic_view = (a->diagnostic_view+(key == NS_KEY_DOWN ? 1 : 3))%4;
         if(key == NS_KEY_OK) return a->history_dirty ? (a->status = persist_history(a)) : ns_app_reload(a);
     }
     return NS_OK;
@@ -616,20 +631,25 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
         snprintf(f->rows[4], sizeof(f->rows[4]), "No Wi-Fi commands sent");
         snprintf(f->rows[5], sizeof(f->rows[5]), "OK: ESP info; Back: home");
     } else {
-        snprintf(f->rows[1], sizeof(f->rows[1]), "NRF:%s CC:%s", a->capabilities.nrf ? "port ready" : "no port", a->capabilities.cc ? "port ready" : "no port");
-        snprintf(f->rows[2], sizeof(f->rows[2]), "CSV: %s", a->session.logging ? "open" : "closed");
+        snprintf(f->rows[1], sizeof(f->rows[1]), "NRF: simulated; physical off");
+        snprintf(f->rows[2], sizeof(f->rows[2]), "CC: simulated; provider absent");
         snprintf(f->rows[3], sizeof(f->rows[3]), "History: %s", !a->persistence.loaded ? "unreadable; writes blocked" : (a->history_dirty ? "unsaved; OK retries" : "saved"));
-        snprintf(f->rows[4], sizeof(f->rows[4]), "Gen %lu  OK: retry SD", (unsigned long)a->persistence.generation);
+        snprintf(f->rows[4], sizeof(f->rows[4]), "CSV:%s Gen%lu Up/Down details", a->session.logging ? "open" : "closed", (unsigned long)a->persistence.generation);
         if(a->diagnostic_view == 1) {
             snprintf(f->rows[1], sizeof(f->rows[1]), "%s", a->capabilities.esp_uart ? "USART TX13 RX14 115200" : "USART adapter disabled");
             snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->session.active == NS_RADIO_ESP ? "8N1; query in progress" : "USART closed; info-only");
             snprintf(f->rows[3], sizeof(f->rows[3]), "Lines %lu dropped %lu", (unsigned long)a->session.lines, (unsigned long)a->session.dropped_lines);
-            snprintf(f->rows[4], sizeof(f->rows[4]), "Raw serial never persisted");
+            snprintf(f->rows[4], sizeof(f->rows[4]), "Info only; raw data not stored");
         } else if(a->diagnostic_view == 2) {
-            snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi passive proof pending");
-            snprintf(f->rows[2], sizeof(f->rows[2]), "NRF24 SPI routing pending");
-            snprintf(f->rows[3], sizeof(f->rows[3]), "CC external RX pending");
-            snprintf(f->rows[4], sizeof(f->rows[4]), "BLE active discovery excluded");
+            snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi: parser simulated only");
+            snprintf(f->rows[2], sizeof(f->rows[2]), "Blocked: start may transmit");
+            snprintf(f->rows[3], sizeof(f->rows[3]), "Peer SD may retain raw PCAP");
+            snprintf(f->rows[4], sizeof(f->rows[4]), "BLE: unavailable (active scan)");
+        } else if(a->diagnostic_view == 3) {
+            snprintf(f->rows[1], sizeof(f->rows[1]), "NRF RX core: simulated");
+            snprintf(f->rows[2], sizeof(f->rows[2]), "SPI/CE/CSN route unverified");
+            snprintf(f->rows[3], sizeof(f->rows[3]), "CC RX core: simulated");
+            snprintf(f->rows[4], sizeof(f->rows[4]), "SDK API exported; plugin absent");
         }
         if(a->storage_status != NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "SD state: %s; OK retries", ns_result_name(a->storage_status));
     }
