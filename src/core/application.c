@@ -61,7 +61,7 @@ static NsResult persist_history(NsApplication* a) {
 }
 NsResult ns_app_save_settings(NsApplication* a, const NsSettings* settings) {
     if(!a || !settings) return NS_INVALID;
-    if(a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
+    if(a->session.active != NS_RADIO_NONE || a->info_pending) return a->status = NS_BUSY;
     NsResult r = persist_history(a);
     if(r != NS_OK) return a->status = r;
     NsSavedState next = a->saved; next.settings = *settings;
@@ -74,7 +74,7 @@ NsResult ns_app_save_settings(NsApplication* a, const NsSettings* settings) {
 }
 static NsResult start_session(NsApplication* a, NsRadio radio, bool ble, bool confirmed, uint32_t now) {
     if(!a || !a->running) return NS_INVALID;
-    if(a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
+    if(a->session.active != NS_RADIO_NONE || a->info_pending) return a->status = NS_BUSY;
     if(radio == NS_RADIO_ESP) {
         if(ble || a->saved.settings.baud != 115200 || !a->capabilities.esp_uart || (a->session.wifi_request && !a->capabilities.esp_wifi_verified)) return a->status = NS_UNSUPPORTED;
     } else {
@@ -110,7 +110,7 @@ static NsResult start_session(NsApplication* a, NsRadio radio, bool ble, bool co
 }
 NsResult ns_app_start(NsApplication* a, NsRadio radio, bool ble, bool confirmed, uint32_t now) {
     if(!a) return NS_INVALID;
-    if(a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
+    if(a->session.active != NS_RADIO_NONE || a->info_pending) return a->status = NS_BUSY;
     if(a->capabilities.esp_info_only && radio == NS_RADIO_ESP && !ble) return ns_app_device_info(a, now);
     a->session.wifi_request = radio == NS_RADIO_ESP;
     return start_session(a, radio, ble, confirmed, now);
@@ -130,7 +130,7 @@ NsResult ns_app_cc_tune(NsApplication* a, uint32_t frequency, uint32_t now) {
 }
 NsResult ns_app_device_info(NsApplication* a, uint32_t now) {
     if(!a) return NS_INVALID;
-    if(a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
+    if(a->session.active != NS_RADIO_NONE || a->info_pending) return a->status = NS_BUSY;
     a->session.wifi_request = false;
     return start_session(a, NS_RADIO_ESP, false, false, now);
 }

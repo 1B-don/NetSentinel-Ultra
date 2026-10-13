@@ -10,7 +10,7 @@ The earlier API 89.1 report is superseded by the owner’s direct USB CLI result
 
 UART logs now contain fixed redacted telemetry rather than raw serial bytes; owner MACs and other identifiers are excluded. USB-C communication does not verify Flipper GPIO routing.
 
-A separate **ESP32 information-only** test FAP now compiles with `NS_ESP_INFO_ONLY`; it permits only one info query and keeps NRF24/CC1101/scanning disabled. The owner confirmed the intended Flipper USART path; [test-build evidence and approval boundary](docs/ESP32_LIVE_INFO.md) describe the supported API, exact artifact and remaining physical checks. The owner reports one authorized information request displayed Connected. Independent response-field, cleanup, repeatability and cancellation checks remain pending. The newly rebuilt cleanup/privacy artifact has not been deployed; [hardware verification checklist](docs/USART_HARDWARE_CHECKLIST.md). The default FAP remains unchanged.
+A separate **ESP32 information-only** test FAP now compiles with `NS_ESP_INFO_ONLY`; it permits only one info query and keeps NRF24/CC1101/scanning disabled. The owner confirmed the intended Flipper USART path; [test-build evidence and approval boundary](docs/ESP32_LIVE_INFO.md) describe the supported API, exact artifact and remaining physical checks. The owner reports one authorized information request displayed Connected. The owner also confirms clean exit and the original Marauder app working afterward. Independent field checks, exhaustive restoration, repeatability and cancellation checks remain pending. The newly rebuilt cleanup/privacy artifact has not been deployed; [hardware verification checklist](docs/USART_HARDWARE_CHECKLIST.md). The default FAP remains unchanged.
 
 ## Build and tests
 

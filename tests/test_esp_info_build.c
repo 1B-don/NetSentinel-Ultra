@@ -16,6 +16,33 @@ static void fixture(char* out) {
     }
     assert(!ferror(file)); fclose(file); strcat(out, "> ");
 }
+int32_t netsentinel_app(void*);
+static void repeated(void) {
+    mock_sdk_reset(); NsFlipper f; NsApplication a; assert(ns_flipper_init(&f));
+    assert(ns_app_init(&a,&f.platform,&f.store,f.capabilities)==NS_ABSENT);
+    a.page=NS_PAGE_RADIO; a.selected=NS_RADIO_ESP;
+    assert(ns_app_key(&a,NS_KEY_OK,0)==NS_OK);
+    assert(ns_app_device_info(&a,0)==NS_BUSY && !f.serial && a.info_pending==2);
+    assert(ns_app_stop(&a,0)==NS_BUSY && !a.info_pending);
+    char reply[1024]; fixture(reply);
+    for(unsigned i=0;i<8;i++) {
+        uint32_t now=i*6000+1;
+        assert(ns_app_device_info(&a,now)==NS_OK);
+        assert(ns_app_device_info(&a,now)==NS_BUSY);
+        if(i%4==0) { mock_serial_feed((const uint8_t*)reply,strlen(reply)); assert(ns_app_step(&a,now+1)==NS_OK); }
+        else if(i%4==1) assert(ns_app_step(&a,now+5000)==NS_TIMEOUT);
+        else if(i%4==2) { const char* bad="#info\nVersion: \n"; mock_serial_feed((const uint8_t*)bad,strlen(bad)); assert(ns_app_step(&a,now+1)==NS_INVALID); }
+        else assert(ns_app_stop(&a,now+1)==NS_OK);
+        assert(!f.serial && f.owner==NS_RADIO_NONE && !a.history_dirty);
+        assert(!strcmp(mock_serial_commands(),"info\n"));
+        assert(a.saved.history_count==i+1);
+    }
+    ns_flipper_deinit(&f); assert(!mock_sdk_live()&&!mock_sdk_records());
+    mock_sdk_reset(); InputEvent events[]={{InputKeyOk,InputTypeShort},{InputKeyOk,InputTypeShort},
+        {InputKeyUp,InputTypeRepeat},{InputKeyBack,InputTypeShort},{InputKeyBack,InputTypeShort}};
+    mock_sdk_events(events,sizeof(events)/sizeof(*events));
+    assert(netsentinel_app(NULL)==0 && !mock_sdk_live()&&!mock_sdk_records());
+}
 int main(void) {
     mock_sdk_reset(); NsFlipper f; assert(ns_flipper_init(&f));
     assert(f.capabilities.esp_info_only && f.capabilities.esp_uart);
@@ -103,6 +130,7 @@ int main(void) {
     assert(ns_app_start(&a, NS_RADIO_NRF, false, true, 5016) == NS_UNSUPPORTED);
     assert(ns_app_start(&a, NS_RADIO_CC, false, true, 5016) == NS_UNSUPPORTED);
     ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
+    repeated();
     puts("PASS: info-only USART mapping/framing, command exclusion, state UI, response budget and cleanup (MOCK)");
     return 0;
 }

@@ -16,8 +16,8 @@ The revised FAP requires new deployment/launch approval for its exact hash. Back
 |---|---|---|
 | One info request | Connecting → Waiting → Connected/query passed | Owner reports PASS once |
 | Identity/status fields | Independently compare permitted firmware/version/profile/IDF/SD/battery fields without addresses | Pending |
-| Cleanup after success | USART available for a subsequent approved information-only client; no ownership error or reset | Pending |
-| Exit after success | Back to dashboard, Back exits; ordinary USB/UI access continues | Pending for ESP build |
+| Cleanup after success | Original Marauder app remains functional; detailed restoration checks separate | Owner operational PASS; exhaustive restoration pending |
+| Exit after success | App exits and original Marauder app works afterward | Owner reports PASS for one sequence |
 | Repeated queries | Ten manual info requests; one submission per acquisition, no Busy/error buildup, expected history count | Pending |
 | Repeated launch/exit | Ten manual launch/query/exit cycles, resource stability; count each completed cycle | Pending |
 | Cancel while Connecting | Back cancels pending acquisition; no new query/history if acquisition never occurred | Pending |
@@ -44,3 +44,11 @@ The updated, untested FAP is `dist/netsentinel_esp_info.fap`,37856 bytes, SHA256
 All ten host suites, short-enum and ASan/UBSan variants, eight SDK-preflight/four publication cases and exact import/whitespace audits pass (local leak detection disabled). Evidence remains ignored/local under `logs/info-cleanup-*`, with clean compiler output in `logs/live-info-build.log`. No new deployment, firmware operation, radio scan or release occurred.
 
 Next safe milestone: with separately approved exact-artifact deployment, execute the information-only cleanup/reacquisition, repeated launch/exit and cancellation cases above. Keep scan/NRF/CC enablement outside that milestone.
+
+## USART reliability milestone
+
+Owner now confirms launch, Connected after info, clean application exit, and Momentum's original Marauder app still functioning afterward on d3f89dfe/API87.1/target7, USART13/14/115200/8N1. This is operational restoration evidence for that sequence, not exhaustive pin/setting/heap restoration or repeated-session proof. Independent field checks and timing-sensitive cancellation remain pending.
+
+Audit found queued UI requests could be bypassed by the public info API. Both queued and active transactions now block overlapping requests; pending cancellation still performs no acquisition. New exact-flag mock tests exercise eight mixed success/timeout/malformed/cancel transactions, correct history counts, command exclusion, reacquisition and actual GUI worker exit during an active query. No raw-response diagnostics or identifier persistence introduced. RX stop/deinit/buffer clearing/release and callback-context lifetimes remain unchanged and reviewed.
+
+Ten host suites, short-enum/ASan-UBSan variants, eight preflight/four publication cases pass. Clean Momentum build/API87.1/target7/all62 imports pass. Updated undeployed FAP:37892 bytes, SHA25632e8eb76941d803e3b79f02880e50aadc27b3b94d68d0978889639a3b8c4952b. Default GUI/storage FAP, first ESP baseline and prior cleanup test preserved; prior cleanup artifact additionally stored in builds/preserved-67df4fc. All info-only gates remain; no expansion/power/firmware/deployment changes. Next safe milestone: approved repeated info/exit/cancellation verification using the structured checklist.
