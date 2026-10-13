@@ -59,21 +59,21 @@ static void board_ce(void* ctx, bool high) {
 static void board_delay(void* ctx, uint32_t us) {
     NsFlipper* f = ctx; if(f->owner == NS_RADIO_NRF) f->board.io.delay_us(f->board.io.ctx, us);
 }
-static NsResult board_probe(void* ctx) {
-    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC ? f->board.io.cc_probe(f->board.io.ctx) : NS_INVALID;
+static NsResult board_probe(void* ctx, uint32_t timeout_ms) {
+    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC && timeout_ms && timeout_ms <= NS_CC_PROBE_TIMEOUT_MS ? f->board.io.cc_probe(f->board.io.ctx, timeout_ms) : NS_INVALID;
 }
-static NsResult board_receive(void* ctx, uint32_t hz) {
-    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC ? f->board.io.cc_receive(f->board.io.ctx, hz) : NS_INVALID;
+static NsResult board_receive(void* ctx, uint32_t hz, uint32_t timeout_ms) {
+    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC && timeout_ms && timeout_ms <= NS_CC_TUNE_TIMEOUT_MS ? f->board.io.cc_receive(f->board.io.ctx, hz, timeout_ms) : NS_INVALID;
 }
-static NsResult board_rssi(void* ctx, int16_t* out) {
-    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC ? f->board.io.cc_rssi(f->board.io.ctx, out) : NS_INVALID;
+static NsResult board_rssi(void* ctx, int16_t* out, uint32_t timeout_ms) {
+    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC && timeout_ms && timeout_ms <= NS_CC_IO_TIMEOUT_MS ? f->board.io.cc_rssi(f->board.io.ctx, out, timeout_ms) : NS_INVALID;
 }
-static NsResult board_idle(void* ctx) {
-    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC ? f->board.io.cc_idle(f->board.io.ctx) : NS_INVALID;
+static NsResult board_idle(void* ctx, uint32_t timeout_ms) {
+    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC && timeout_ms && timeout_ms <= NS_CC_IO_TIMEOUT_MS ? f->board.io.cc_idle(f->board.io.ctx, timeout_ms) : NS_INVALID;
 }
 #ifdef NS_ENABLE_BOARD_PORT
-static NsResult board_diagnose(void* ctx, NsCcDiagnostics* out) {
-    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC ? f->board.io.cc_diagnose(f->board.io.ctx, out) : NS_INVALID;
+static NsResult board_diagnose(void* ctx, NsCcDiagnostics* out, uint32_t timeout_ms) {
+    NsFlipper* f = ctx; return f->owner == NS_RADIO_CC && timeout_ms && timeout_ms <= NS_CC_DIAG_TIMEOUT_MS ? f->board.io.cc_diagnose(f->board.io.ctx, out, timeout_ms) : NS_INVALID;
 }
 #endif
 static NsResult prepare(NsFlipper* f) {

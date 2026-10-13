@@ -1,7 +1,7 @@
 #include "../../include/netsentinel/cc_spi.h"
 static NsResult status(const NsCcBus* bus, uint8_t address, uint8_t* value, uint32_t* count) {
     uint8_t tx[2] = {(uint8_t)(0xc0u | address), 0}, rx[2] = {0};
-    NsResult r = bus->transfer(bus->ctx, tx, rx, sizeof(tx)); (*count)++;
+    NsResult r = bus->transfer(bus->ctx, tx, rx, sizeof(tx), NS_CC_IO_TIMEOUT_MS); (*count)++;
     if(r != NS_OK) return r;
     if(rx[0] & 0x80) return NS_TIMEOUT; /* chip-ready must be bounded by adapter */
     *value = rx[1]; return NS_OK;
@@ -42,7 +42,7 @@ NsResult ns_cc_spi_check_rx_policy(const NsCcBus* bus, uint8_t* out) {
     for(unsigned i = 0; i < 2; i++) {
         const uint8_t tx[2] = {0x97, 0}; /* single-read MCSM1 configuration register */
         uint8_t rx[2] = {0};
-        NsResult r = bus->transfer(bus->ctx, tx, rx, sizeof(tx));
+        NsResult r = bus->transfer(bus->ctx, tx, rx, sizeof(tx), NS_CC_IO_TIMEOUT_MS);
         if(r != NS_OK) return r;
         if(rx[0] & 0x80) return NS_TIMEOUT;
         values[i] = rx[1];

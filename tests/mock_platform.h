@@ -6,7 +6,8 @@
 typedef struct {
     NsRadio owner;
     uint8_t regs[32];
-    bool ce, fail_spi, timeout_spi, absent, fail_write, fail_sync, fail_uart, fail_idle, fail_close;
+    bool ce, fail_spi, timeout_spi, absent, timeout_cc_probe, timeout_cc_receive,
+        timeout_cc_rssi, timeout_cc_idle, fail_write, fail_sync, fail_uart, fail_idle, fail_close;
     unsigned acquired, released, transfers, delay, ce_high, closes, writes, uart_calls, fail_at, spi_timeout_ms;
     int16_t rssi;
     uint32_t frequency;
@@ -50,10 +51,10 @@ static NsResult uart(void* ctx, const uint8_t* data, size_t n) {
     memcpy(m->commands+length, data, n); m->commands[length+n] = 0;
     return NS_OK;
 }
-static NsResult probe(void* ctx) { return ((Mock*)ctx)->absent ? NS_ABSENT : NS_OK; }
-static NsResult receive(void* ctx, uint32_t f) { ((Mock*)ctx)->frequency = f; return NS_OK; }
-static NsResult rssi(void* ctx, int16_t* v) { *v = ((Mock*)ctx)->rssi; return NS_OK; }
-static NsResult idle(void* ctx) { Mock* m = ctx; m->frequency = 0; return m->fail_idle ? NS_IO : NS_OK; }
+static NsResult probe(void* ctx, uint32_t timeout_ms) { Mock* m = ctx; assert(timeout_ms <= NS_CC_PROBE_TIMEOUT_MS && timeout_ms); return m->timeout_cc_probe ? NS_TIMEOUT : m->absent ? NS_ABSENT : NS_OK; }
+static NsResult receive(void* ctx, uint32_t f, uint32_t timeout_ms) { Mock* m = ctx; assert(timeout_ms <= NS_CC_TUNE_TIMEOUT_MS && timeout_ms); if(m->timeout_cc_receive) return NS_TIMEOUT; m->frequency = f; return NS_OK; }
+static NsResult rssi(void* ctx, int16_t* v, uint32_t timeout_ms) { Mock* m = ctx; assert(timeout_ms <= NS_CC_IO_TIMEOUT_MS && timeout_ms); if(m->timeout_cc_rssi) return NS_TIMEOUT; *v = m->rssi; return NS_OK; }
+static NsResult idle(void* ctx, uint32_t timeout_ms) { assert(timeout_ms <= NS_CC_IO_TIMEOUT_MS && timeout_ms); Mock* m = ctx; m->frequency = 0; return m->timeout_cc_idle ? NS_TIMEOUT : m->fail_idle ? NS_IO : NS_OK; }
 static NsResult create(void* ctx, const char* path) {
     Mock* m = ctx; assert(path); m->size = 0; m->file[0] = 0; return NS_OK;
 }

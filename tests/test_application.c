@@ -224,8 +224,9 @@ static void test_readback_and_disabled(void) {
     assert(ns_app_start(&a, NS_RADIO_NRF, false, true, 0) == NS_OK && a.session.id == 2);
     assert(ns_app_stop(&a, 1) == NS_OK);
 }
-static NsResult cc_diagnostic(void* ctx, NsCcDiagnostics* out) {
+static NsResult cc_diagnostic(void* ctx, NsCcDiagnostics* out, uint32_t timeout_ms) {
     Mock* m = ctx; assert(m->owner == NS_RADIO_CC);
+    assert(timeout_ms == NS_CC_DIAG_TIMEOUT_MS);
     if(m->fail_spi) return NS_TIMEOUT;
     *out = (NsCcDiagnostics){.part=0, .version=0x14, .state=m->frequency ? 13 : 1, .transactions=7};
     return NS_OK;

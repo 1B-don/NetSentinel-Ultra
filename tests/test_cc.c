@@ -7,8 +7,9 @@ typedef struct {
     unsigned calls, fail_at;
     bool unstable, identity_flip;
 } BusMock;
-static NsResult transfer(void* ctx, const uint8_t* tx, uint8_t* rx, size_t count) {
+static NsResult transfer(void* ctx, const uint8_t* tx, uint8_t* rx, size_t count, uint32_t timeout_ms) {
     BusMock* b = ctx;
+    assert(timeout_ms == NS_CC_IO_TIMEOUT_MS);
     assert(count == 2 && !tx[1]);
     /* Reject every strobe, write, FIFO access and undocumented status read. */
     assert(tx[0] == 0xf0 || tx[0] == 0xf1 || tx[0] == 0xf4 || tx[0] == 0xf5);
@@ -23,7 +24,8 @@ static NsResult transfer(void* ctx, const uint8_t* tx, uint8_t* rx, size_t count
     return NS_OK;
 }
 typedef struct { uint8_t config,status; unsigned calls,fail_at; bool unstable; } PolicyMock;
-static NsResult policy_transfer(void* ctx,const uint8_t* tx,uint8_t* rx,size_t n) {
+static NsResult policy_transfer(void* ctx,const uint8_t* tx,uint8_t* rx,size_t n,uint32_t timeout_ms) {
+    assert(timeout_ms == NS_CC_IO_TIMEOUT_MS);
     PolicyMock* p=ctx; assert(n==2 && tx[0]==0x97 && !tx[1]);
     p->calls++; if(p->calls==p->fail_at) return NS_IO;
     rx[0]=p->status;rx[1]=p->config^(p->unstable && p->calls==2 ? 1 : 0);return NS_OK;
@@ -71,8 +73,8 @@ static void bus_cases(void) {
     assert(ns_cc_spi_diagnose(NULL, &d) == NS_INVALID);
 }
 typedef struct { Mock io; BusMock bus; } Combined;
-static NsResult diagnose(void* ctx, NsCcDiagnostics* out) {
-    Combined* c = ctx; assert(c->io.owner == NS_RADIO_CC);
+static NsResult diagnose(void* ctx, NsCcDiagnostics* out, uint32_t timeout_ms) {
+    Combined* c = ctx; assert(c->io.owner == NS_RADIO_CC && timeout_ms == NS_CC_DIAG_TIMEOUT_MS);
     NsCcBus bus = {&c->bus, transfer}; return ns_cc_spi_diagnose(&bus, out);
 }
 static void driver_cases(void) {
@@ -124,4 +126,41 @@ static void session_cases(void) {
     assert(ns_cc_tune(&s.cc, 433920000) == NS_OK);
     m.bus.unstable = true; assert(ns_session_cc_diagnose(&s, 201) == NS_TIMEOUT && !m.io.owner);
 }
-int main(void) { policy_cases(); bus_cases(); driver_cases(); session_cases(); puts("PASS: SIMULATED CC1101 status SPI, bounded faults, RX-state checks, RSSI trace/retune/cadence and CSV cleanup"); }
+static void lifecycle_and_deadline_cases(void) {
+    Mock contention={0}; NsPlatform blocked=platform(&contention); NsCc busy={0};
+    contention.owner=NS_RADIO_NRF;
+    assert(ns_cc_open(&busy,&blocked,true)==NS_BUSY && contention.owner==NS_RADIO_NRF && !contention.released);
+
+    Mock m={.rssi=-92}; NsPlatform io=platform(&m); NsCc c={0};
+    m.timeout_cc_probe=true;
+    assert(ns_cc_open(&c,&io,true)==NS_TIMEOUT && !m.owner && !c.owned && m.acquired==m.released);
+    m.timeout_cc_probe=false;
+    for(unsigned i=0;i<12;i++) {
+        assert(ns_cc_open(&c,&io,true)==NS_OK);
+        assert(ns_cc_tune(&c,433920000)==NS_OK);
+        m.rssi=(int16_t)(-100+(int)(i*3));
+        assert(ns_cc_sample(&c)==NS_OK && c.last==m.rssi);
+        assert(ns_cc_close(&c)==NS_OK && !m.owner && !c.ready);
+    }
+    assert(m.acquired==m.released);
+
+    assert(ns_cc_open(&c,&io,true)==NS_OK);
+    m.timeout_cc_receive=true;
+    assert(ns_cc_tune(&c,433920000)==NS_TIMEOUT && !m.owner && !c.ready);
+    m.timeout_cc_receive=false;
+    assert(ns_cc_open(&c,&io,true)==NS_OK && ns_cc_tune(&c,433920000)==NS_OK);
+    m.timeout_cc_rssi=true;
+    assert(ns_cc_sample(&c)==NS_TIMEOUT && !m.owner && !c.ready);
+    m.timeout_cc_rssi=false;
+
+    NsSession s; ns_session_init(&s,&io,NULL);
+    assert(ns_session_start(&s,NS_RADIO_CC,false,true,10)==NS_OK);
+    assert(ns_cc_tune(&s.cc,433920000)==NS_OK && m.owner==NS_RADIO_CC);
+    ns_session_stop(&s,11);
+    assert(!m.owner && s.active==NS_RADIO_NONE && m.acquired==m.released);
+
+    assert(ns_cc_open(&c,&io,true)==NS_OK);
+    m.timeout_cc_idle=true;
+    assert(ns_cc_close(&c)==NS_TIMEOUT && !m.owner && !c.owned && m.acquired==m.released);
+}
+int main(void) { policy_cases(); bus_cases(); driver_cases(); session_cases(); lifecycle_and_deadline_cases(); puts("PASS: SIMULATED CC1101 status SPI, deadline/error cleanup, contention, repeated sessions, cancellation and RSSI trace"); }

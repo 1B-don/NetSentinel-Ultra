@@ -5,7 +5,7 @@
  * deassert CS even on failure, and restore bus state. No GPIO assumptions here. */
 typedef struct {
     void* ctx;
-    NsResult (*transfer)(void*, const uint8_t*, uint8_t*, size_t);
+    NsResult (*transfer)(void*, const uint8_t*, uint8_t*, size_t, uint32_t timeout_ms);
 } NsCcBus;
 /* Read-only status headers only: no strobes, register writes or TX FIFO. */
 NsResult ns_cc_spi_diagnose(const NsCcBus*, NsCcDiagnostics*);

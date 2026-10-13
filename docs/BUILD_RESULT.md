@@ -88,3 +88,9 @@ Validation: 14 C suites, 24 Python checks, short-enum suite, ASan/UBSan suite, M
 The newest undeployed `dist/netsentinel_development.fap` is **49,444 bytes**, SHA-256 `72d50a813a54d2a111f796fb54609bf7a0636da47e868c5158dccc65557ddaca`, API 87.1 / target 7, icon present, 63 imports / zero weak. Momentum SDK compile/link/package/APPCHK succeeded; the strict FAP validator and export-name preflight passed. No SPI or Sub-GHz import is present because the physical adapters remain disabled. Fourteen host C suites, 24 Python checks, short-enum, ASan/UBSan and publication audits passed. The prior development FAP remains preserved locally byte-for-byte at 49,432 bytes, SHA-256 `e6f76caca37a00a6941fe9ae34208974921a8b7eefd56ba02654ce843e313938`.
 
 See [NRF24_HARDWARE.md](NRF24_HARDWARE.md) for the public Sniffer audit, generic SDK pin evidence, the unbounded SDK acquire limitation, and exact physical dependencies. No NRF24 initialization, RF activity or deployment was performed.
+
+## CC1101 adapter contract milestone — 2026-10-13
+
+New undeployed development artifact: **49,504 bytes**, SHA-256 `892e8b262de4f509ceef3cda010c19003a5af7eb7643066f7121ff87c63853af`; API 87.1 / target 7, icon present, 63 imports / zero weak. SDK compile/link/package/APPCHK and strict FAP validation passed. The SDK symbol preflight finds all imported names enabled; SPI/Sub-GHz imports remain absent. Fourteen host C suites, 24 Python checks, short-enum, ASan/UBSan and publication audit passed. The immediately prior development build is preserved locally with SHA-256 `72d50a813a54d2a111f796fb54609bf7a0636da47e868c5158dccc65557ddaca`.
+
+The owner-reported 433.92 MHz Read RAW/RSSI-screen observation is not NetSentinel hardware evidence. Physical CC remains gated because the SDK has no enabled external-provider entry point and generic registry operations do not provide the required finite/cancellable contract. See [CC1101.md](CC1101.md).

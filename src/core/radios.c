@@ -72,7 +72,7 @@ bool ns_cc_frequency_valid(uint32_t f) {
 NsResult ns_cc_close(NsCc* c) {
     if(!c) return NS_INVALID;
     if(!c->owned) return NS_OK;
-    NsResult r = c->io->cc_idle(c->io->ctx);
+    NsResult r = c->io->cc_idle(c->io->ctx, NS_CC_IO_TIMEOUT_MS);
     c->io->release(c->io->ctx, NS_RADIO_CC);
     c->owned = c->ready = false;
     return r;
@@ -85,7 +85,7 @@ NsResult ns_cc_open(NsCc* c, const NsPlatform* io, bool confirmed) {
     NsResult r = io->acquire(io->ctx, NS_RADIO_CC);
     if(r != NS_OK) return r;
     c->owned = true;
-    r = io->cc_probe(io->ctx);
+    r = io->cc_probe(io->ctx, NS_CC_PROBE_TIMEOUT_MS);
     if(r != NS_OK) { ns_cc_close(c); return r; }
     c->ready = true;
     if(io->cc_diagnose) {
@@ -98,7 +98,7 @@ NsResult ns_cc_diagnose(NsCc* c) {
     if(!c || !c->ready || !c->owned) return NS_INVALID;
     if(!c->io->cc_diagnose) return NS_UNSUPPORTED;
     NsCcDiagnostics d = {0};
-    NsResult r = c->io->cc_diagnose(c->io->ctx, &d);
+    NsResult r = c->io->cc_diagnose(c->io->ctx, &d, NS_CC_DIAG_TIMEOUT_MS);
     c->diagnostic_valid = false;
     if(r != NS_OK) return r;
     if(d.part != 0 || d.version == 0 || d.version == 0xff) return NS_ABSENT;
@@ -107,8 +107,8 @@ NsResult ns_cc_diagnose(NsCc* c) {
 }
 NsResult ns_cc_tune(NsCc* c, uint32_t f) {
     if(!c || !c->ready || !ns_cc_frequency_valid(f)) return NS_INVALID;
-    NsResult r = c->io->cc_idle(c->io->ctx);
-    if(r == NS_OK) r = c->io->cc_receive(c->io->ctx, f);
+    NsResult r = c->io->cc_idle(c->io->ctx, NS_CC_IO_TIMEOUT_MS);
+    if(r == NS_OK) r = c->io->cc_receive(c->io->ctx, f, NS_CC_TUNE_TIMEOUT_MS);
     if(r != NS_OK) { ns_cc_close(c); return r; }
     if(r == NS_OK && c->io->cc_diagnose) {
         r = ns_cc_diagnose(c);
@@ -127,7 +127,7 @@ NsResult ns_cc_sample(NsCc* c) {
         r = ns_cc_diagnose(c);
         if(r == NS_OK && c->diagnostic.state != 0x0d) r = NS_IO;
     }
-    if(r == NS_OK) r = c->io->cc_rssi(c->io->ctx, &value);
+    if(r == NS_OK) r = c->io->cc_rssi(c->io->ctx, &value, NS_CC_IO_TIMEOUT_MS);
     if(r != NS_OK) { ns_cc_close(c); return r; }
     if(value < -150 || value > 20) { ns_cc_close(c); return NS_IO; }
     c->last = value;

@@ -30,7 +30,7 @@ static void port_lifecycle(void) {
     assert(f.platform.acquire(&f, NS_RADIO_CC) == NS_OK);
     assert(f.platform.acquire(&f, NS_RADIO_ESP) == NS_BUSY);
     assert(f.platform.acquire(&f, NS_RADIO_NRF) == NS_BUSY);
-    assert(f.platform.cc_receive(&f, 433920000) == NS_OK);
+    assert(f.platform.cc_receive(&f, 433920000, NS_CC_TUNE_TIMEOUT_MS) == NS_OK);
     uint8_t tx[] = {0, 0}, rx[2]; assert(f.platform.spi(&f, tx, rx, 2, NS_NRF_SPI_TIMEOUT_MS) == NS_INVALID);
     f.platform.release(&f, NS_RADIO_NRF); assert(board.owner == NS_RADIO_CC);
     ns_flipper_deinit(&f); assert(!board.owner && !board.frequency && binds == unbinds);
