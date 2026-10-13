@@ -81,3 +81,7 @@ Real uFBT 0.2.6 build against permitted official SDK 1.4.3 succeeds, `-Werror` r
 ## First device-test preparation milestone
 
 Direct package inspection and real official-SDK rebuild pass. Current FAP: 33,484 bytes, SHA256 `af74bfb1cdcc8fc3bf319d97b8fe056b563474cc39da223a1f87cd005ee37d30`, target 7 / API 87.1; all 49 packaged imports resolve officially. All 12 compiler commands retain GUI/storage-only mode. Nine host, short-enum and sanitizer suites plus eight preflight/four publication cases pass. No source changes, device operations or radio operations. Earlier binary fingerprints remain historical. See [first device-test procedure](FIRST_DEVICE_TEST.md) for exact compatibility evidence, missing permitted metadata and reversible, approval-gated GUI/storage checks. Momentum compatibility and physical verification remain pending. Remote master was verified at `42bdaec` before this milestone; earlier pending milestones are published.
+
+## Confirmed API mismatch and public SDK candidate
+
+Owner confirms exact Momentum revision d3f89dfe2ef6b01839201598e9be1590cba80322, August 18, 2026, API 89.1, target 7. Official FAP API 87.1 remains a successful official build, not a target-compatible build. Public distributor lists a matching-short-revision SDK ZIP; one download fails with DNS/curl exit 6. Archive contents/instructions/full revision/API are unverified, so no matching-SDK rebuild is claimed. [SDK source and smallest manual input](MOMENTUM_SDK.md). No firmware/device operations, metadata overrides or radio changes.

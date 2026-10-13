@@ -6,6 +6,8 @@ Artifact: `dist/netsentinel.fap` (33,484 bytes), hardware target 7 / API 87.1. S
 
 First on-device test is prepared in [the approval-gated test procedure](docs/FIRST_DEVICE_TEST.md). Package structure/imports are verified against the official SDK; exact installed-Momentum API/export evidence remains missing. No installation or launch has occurred.
 
+Owner device information confirms **Momentum API 89.1 / target 7**. The current FAP uses API 87.1 and is not validated for that firmware. An exact-revision public SDK ZIP candidate has been located, but downloading/inspecting it is blocked by DNS. See [SDK investigation and minimum next input](docs/MOMENTUM_SDK.md).
+
 ## Build and tests
 
 ```sh
