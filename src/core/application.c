@@ -5,7 +5,7 @@
 static const char* const menu[] = {"Wi-Fi", "BLE", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics"};
 const char* ns_result_name(NsResult r) {
     static const char* const names[] = {"OK", "Invalid", "Busy", "Unsupported", "I/O failure", "Absent", "Timeout", "Full"};
-    return r >= NS_OK && r <= NS_FULL ? names[r] : "Unknown";
+    return (unsigned)r <= NS_FULL ? names[(unsigned)r] : "Unknown";
 }
 static void clear_cc_measurements(NsApplication* a) {
     a->session.cc.frequency = 0; a->session.cc.samples = 0;
@@ -200,7 +200,7 @@ static NsResult change_setting(NsApplication* a, bool increase) {
     return ns_app_save_settings(a, &s);
 }
 NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
-    if(!a || !a->running || key > NS_KEY_BACK || key < NS_KEY_UP) return NS_INVALID;
+    if(!a || !a->running || (unsigned)key > NS_KEY_BACK) return NS_INVALID;
     if(key == NS_KEY_BACK) {
         NsResult r = ns_app_stop(a, now);
         if(a->page == NS_PAGE_HOME) {

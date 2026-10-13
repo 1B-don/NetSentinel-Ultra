@@ -223,7 +223,14 @@ static void test_cc_explorer(void) {
     disk.fail_write = false;
     assert(ns_app_key(&a, NS_KEY_RIGHT, 314) == NS_OK && !a.session.cc.samples && !a.session.cc.diagnostic_valid);
 }
-int main(void) { test_cc_explorer();
+int main(void) {
+    assert(!strcmp(ns_result_name((NsResult)-1), "Unknown"));
+    assert(!strcmp(ns_result_name((NsResult)(NS_FULL+1)), "Unknown"));
+    assert(!strcmp(ns_result_name(NS_OK), "OK"));
+    NsApplication invalid_key_app = {0}; invalid_key_app.running = true;
+    assert(ns_app_key(&invalid_key_app, (NsKey)-1, 0) == NS_INVALID);
+    assert(ns_app_key(&invalid_key_app, (NsKey)(NS_KEY_BACK+1), 0) == NS_INVALID);
+ test_cc_explorer();
     test_persistence(); test_torn_writes(); test_app(); test_history_wrap_and_exhaustion(); test_recovery_and_cleanup(); test_readback_and_disabled();
     puts("PASS: application navigation, restart persistence, 420 torn writes, ID reservation and recovery");
 }

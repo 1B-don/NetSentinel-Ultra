@@ -24,7 +24,7 @@ static bool valid(const NsSavedState* s) {
     for(size_t i = 0; i < s->history_count; i++) {
         const NsHistory* h = &s->history[i];
         if(!h->id || h->id <= prior || h->id > s->last_id || h->radio < NS_RADIO_ESP ||
-           h->radio > NS_RADIO_CC || h->result > NS_FULL || h->result < NS_OK) return false;
+           h->radio > NS_RADIO_CC || (unsigned)h->result > NS_FULL) return false;
         prior = h->id;
     }
     return true;

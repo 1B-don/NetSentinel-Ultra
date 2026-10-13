@@ -3,7 +3,7 @@ BUILD := builds/host
 CPPFLAGS := -Iinclude -I.
 CFLAGS := -std=c11 -Wall -Wextra -Werror -pedantic -g
 CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/cc_spi.c src/core/marauder.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c
-.PHONY: test clean sanitize audit-test sdk-test sdk-preflight
+.PHONY: test clean sanitize audit-test sdk-test sdk-preflight short-enums
 test: audit-test sdk-test $(BUILD)/test_minimal_build $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
 	$(BUILD)/test_minimal_build
 	$(BUILD)/test_board_contract
@@ -55,3 +55,6 @@ sdk-preflight:
 
 $(BUILD)/test_minimal_build: $(CORE) $(FLIPPER) src/flipper/ns_flipper.h tests/test_minimal_build.c tests/flipper_mock/mock_sdk.c $(wildcard tests/flipper_mock/*.h tests/flipper_mock/*/*.h) $(wildcard include/netsentinel/*.h) ap_parser.h ns_analysis.h | $(BUILD)
 	$(CC) $(CPPFLAGS) -DNS_GUI_STORAGE_ONLY -Itests/flipper_mock -Isrc/flipper $(CFLAGS) $(CORE) $(FLIPPER) tests/flipper_mock/mock_sdk.c tests/test_minimal_build.c -o $@
+
+short-enums:
+	$(MAKE) BUILD=builds/short-enums CFLAGS='$(CFLAGS) -fshort-enums' test
