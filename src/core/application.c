@@ -173,9 +173,11 @@ void ns_app_baseline(NsApplication* a) {
 }
 NsResult ns_app_stop(NsApplication* a, uint32_t now) {
     if(!a) return NS_INVALID;
+    bool queued = a->info_pending != 0;
     if(a->info_pending && a->capabilities.esp_info_only) a->info_cancelled = true;
     a->info_pending = 0;
-    if(a->session.active == NS_RADIO_NONE && !a->history_dirty) return a->status;
+    if(a->session.active == NS_RADIO_NONE && !a->history_dirty)
+        return queued ? (a->status = NS_OK) : a->status;
     NsResult session_result = NS_OK;
     if(a->session.active != NS_RADIO_NONE) {
         a->info_cancelled = a->capabilities.esp_info_only;
@@ -244,6 +246,7 @@ static NsResult change_setting(NsApplication* a, bool increase) {
         if(!ns_cc_frequency_valid(f)) return a->status = NS_INVALID;
         s.cc_frequency_hz = f; break;
     }
+    case 3: s.baud = 115200; break; /* explicit recovery of legacy app settings only */
     default: return NS_INVALID;
     }
     return ns_app_save_settings(a, &s);
@@ -329,8 +332,9 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
         }
     } else if(a->page == NS_PAGE_SETTINGS) {
         if(key == NS_KEY_UP && a->setting) a->setting--;
-        if(key == NS_KEY_DOWN && a->setting < 2) a->setting++;
+        if(key == NS_KEY_DOWN && a->setting < 3) a->setting++;
         if(key == NS_KEY_LEFT || key == NS_KEY_RIGHT) return change_setting(a, key == NS_KEY_RIGHT);
+        if(key == NS_KEY_OK && a->setting == 3) return change_setting(a, true);
     } else if(a->page == NS_PAGE_HISTORY) {
         if(key == NS_KEY_UP && a->history_index) a->history_index--;
         if(key == NS_KEY_DOWN && ns_history_select(&a->saved, &a->history_filter, a->history_index+1)) a->history_index++;
@@ -515,7 +519,8 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
         snprintf(f->rows[1], sizeof(f->rows[1]), "%c Timeout %lu ms", a->setting == 0 ? '>' : ' ', (unsigned long)a->saved.settings.timeout_ms);
         snprintf(f->rows[2], sizeof(f->rows[2]), "%c NRF dwell %lu us", a->setting == 1 ? '>' : ' ', (unsigned long)a->saved.settings.dwell_us);
         snprintf(f->rows[3], sizeof(f->rows[3]), "%c CC %lu Hz", a->setting == 2 ? '>' : ' ', (unsigned long)a->saved.settings.cc_frequency_hz);
-        snprintf(f->rows[4], sizeof(f->rows[4]), "Left/Right: change + save");
+        snprintf(f->rows[4], sizeof(f->rows[4]), "%c Baud %lu; OK: 115200", a->setting == 3 ? '>' : ' ', (unsigned long)a->saved.settings.baud);
+        if(a->status == NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "L/R saves; Back returns");
     } else if(a->page == NS_PAGE_HISTORY) {
         const NsHistory* h = ns_history_select(&a->saved, &a->history_filter, a->history_index);
         snprintf(f->rows[0], sizeof(f->rows[0]), "History %s %s", radio_name(a->history_filter.radio), a->history_filter.failures_only ? "errors" : "all");
@@ -558,7 +563,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
             snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi passive proof pending");
             snprintf(f->rows[2], sizeof(f->rows[2]), "NRF24 SPI routing pending");
             snprintf(f->rows[3], sizeof(f->rows[3]), "CC external RX pending");
-            snprintf(f->rows[4], sizeof(f->rows[4]), "BLE protocol unverified");
+            snprintf(f->rows[4], sizeof(f->rows[4]), "BLE active discovery excluded");
         }
         if(a->storage_status != NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "SD state: %s; OK retries", ns_result_name(a->storage_status));
     }

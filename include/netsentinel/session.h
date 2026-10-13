@@ -34,7 +34,7 @@ typedef struct {
     uint32_t ap_seen_ms[NS_AP_LIMIT];
     char line[NS_LINE_LIMIT];
     size_t line_len;
-    bool discard_line, ble, logging, capture_complete;
+    bool discard_line, pending_cr, ble, logging, capture_complete;
     uint32_t dropped_lines, lines, last_rx_ms, started_ms, id, observations;
     uint32_t timeout_ms, dwell_us;
     uint8_t nrf_channel;

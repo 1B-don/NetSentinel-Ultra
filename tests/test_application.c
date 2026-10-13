@@ -327,6 +327,15 @@ static void test_completion_navigation_and_recovery(void) {
     unsigned writes=disk.writes;
     for(unsigned i=0;i<50;i++) assert(ns_app_key(&a,NS_KEY_RIGHT,50+i)==NS_OK);
     assert(disk.writes==writes); /* no writes from repeat at a setting boundary */
+    settings=a.saved.settings; settings.baud=9600;
+    assert(ns_app_save_settings(&a,&settings)==NS_OK);
+    a.setting=3; ns_app_frame(&a,&frame);
+    assert(strstr(frame.rows[4],"9600") && strstr(frame.rows[4],"OK: 115200"));
+    assert(ns_app_key(&a,NS_KEY_OK,100)==NS_OK && a.saved.settings.baud==115200 && !m.acquired);
+    unsigned fixed_writes=disk.writes;
+    assert(ns_app_key(&a,NS_KEY_OK,100)==NS_OK && disk.writes==fixed_writes);
+    NsApplication reboot;
+    assert(ns_app_init(&reboot,&radio,&io,(NsCapabilities){0})==NS_OK && reboot.saved.settings.baud==115200);
     a.page=NS_PAGE_HISTORY;
     assert(ns_app_key(&a,NS_KEY_RIGHT,100)==NS_OK && a.history_filter.radio==NS_RADIO_ESP);
     assert(ns_app_key(&a,NS_KEY_OK,100)==NS_OK && a.history_filter.failures_only);

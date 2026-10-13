@@ -32,6 +32,14 @@ class FapMetadataTests(unittest.TestCase):
             changed=bytearray(b); changed[offset] ^= 2
             with self.assertRaises(ValueError): metadata(changed)
 
+    def test_candidate_metadata(self):
+        b=elf(); b[220:252]=b'NetSentinel Ultra v1.0 RC1'.ljust(32,b'\0')
+        b[252]=1; b[253:285]=EXPECTED_ICON
+        result=metadata(b)
+        self.assertEqual(result['name'],'NetSentinel Ultra v1.0 RC1')
+        self.assertTrue(result['icon'])
+        self.assertEqual((result['api'],result['target'],result['flags']),('87.1',7,0))
+
     def test_versions_and_identity(self):
         for offset,value in [(0,0),(4,2),(8,2),(10,89),(12,6),(14,4096)]:
             b=elf()

@@ -1,6 +1,6 @@
-# NetSentinel Ultra — v1.0 development
+# NetSentinel Ultra — v1.0 software RC1
 
-NetSentinel compiles and packages against the permitted Momentum Dev d3f89dfe SDK, **API 87.1 / target 7**. The unified development app implements dashboard/navigation, ESP32 information diagnostics, filters, session history, persistent settings, private CSV exports and receive-analysis cores. **Full three-radio v1.0 remains blocked** by verified board routing, bounded external-radio implementation and installed Marauder passive/storage behavior. No Release or additional deployment is authorized.
+NetSentinel compiles and packages against the permitted Momentum Dev d3f89dfe SDK, **API 87.1 / target 7**. The unified hardware-gated candidate implements dashboard/navigation, ESP32 information diagnostics, filters, session history, persistent settings, private CSV exports and receive-analysis cores. **Full three-radio v1.0 remains blocked** by verified board routing, bounded external-radio implementation and installed Marauder passive/storage behavior. No Release or additional deployment is authorized.
 
 Owner-verified prior results: GUI launch/dashboard/exit/settings persistence; three consecutive ESP Info queries returning Connected; normal exit and original Marauder app functionality afterward; no identifiers found in inspected history/CSV. Back cancellation and new diagnostics/observation workflows remain physically unverified. Prior FAPs, device evidence and user data are preserved.
 
@@ -9,12 +9,12 @@ Owner-verified prior results: GUI launch/dashboard/exit/settings persistence; th
 From this project directory:
 
 ```sh
-scripts/verify_development.sh
+scripts/verify_development.sh rc
 ```
 
-The pipeline runs **12 C suites and 19 Python checks**, short-enum builds, ASan/UBSan, clean uFBT compilation/link/packaging/APPCHK, complete FAP metadata/entry/import checks and publication audit. Local sanitizer leak detection defaults off; address/undefined-behavior checks remain enabled. Host peripherals are mocks, not hardware evidence. See [build instructions](docs/V1_BUILD.md) for permitted SDK inputs, isolated cache and local build evidence.
+The pipeline runs **12 C suites and 23 Python checks**, short-enum builds, ASan/UBSan, clean uFBT compilation/link/packaging/APPCHK, complete FAP metadata/entry/import checks and publication audit. Local sanitizer leak detection defaults off; address/undefined-behavior checks remain enabled. Host peripherals are mocks, not hardware evidence. See [build instructions](docs/V1_BUILD.md) for permitted SDK inputs, isolated cache and local build evidence.
 
-Separate output: `dist/netsentinel_development.fap`. Root manifest remains GUI/storage-only; development manifest uses the info-only USART gate. Live USART is fixed TX13/PB6, RX14/PB7, 115200/8N1 and accepts one info command per acquisition. NRF24/CC1101/Wi-Fi/BLE physical workflows stay disabled. No device access or firmware operation occurs in the pipeline. Validate each generated checksum; packaging is not claimed byte-for-byte deterministic.
+Candidate output: `dist/netsentinel_ultra_v1_0_rc1.fap`. Root manifest remains GUI/storage-only; candidate manifest uses the info-only USART gate. Live USART is fixed TX13/PB6, RX14/PB7, 115200/8N1 and accepts one info command per acquisition. NRF24/CC1101/Wi-Fi/BLE physical workflows stay disabled. No device access or firmware operation occurs in the pipeline. Validate each generated checksum; packaging is not claimed byte-for-byte deterministic.
 
 ## Implemented boundaries
 
@@ -35,3 +35,5 @@ Use the [user guide](docs/USER_GUIDE.md), [current readiness matrix](docs/V1_REA
 The application now bundles the owner-supplied 10x10 monochrome icon in GUI, ESP Info, ESP Diagnostics and development builds. See [build instructions](docs/V1_BUILD.md) for variant selection and preserved artifact evidence. Feature gates are unchanged; no new device deployment has occurred.
 
 The [software completion audit](docs/SOFTWARE_COMPLETION.md) records corrected query outcomes, capture deadlines, storage recovery presentation, queue cancellation and all-screen restart coverage.
+
+RC1 is a built software candidate, not a fully operational three-radio release. All presently supported workflows are implemented and tested; remaining hardware-dependent features stay explicitly blocked. See [known limitations](docs/V1_LIMITATIONS.md). Use `scripts/verify_development.sh` without an argument to retain the separate development workflow.

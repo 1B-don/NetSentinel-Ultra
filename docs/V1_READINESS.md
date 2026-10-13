@@ -1,107 +1,39 @@
-# NetSentinel Ultra v1.0 readiness
+# NetSentinel Ultra v1.0 software RC1 readiness
 
-Current target: Momentum Dev d3f89dfe, API 87.1, hardware target 7. No deployment authorized. Historical milestone audits follow the current matrix; they must not override this status. Source/build validation and owner physical reports remain distinct.
+Target: permitted Momentum Dev d3f89dfe SDK, API 87.1, hardware target 7. No new deployment or GitHub Release authorized. RC1 consolidates all presently supported functions; it is not an operational three-radio release. Historical evidence remains in MILESTONES.md and USART_HARDWARE_CHECKLIST.md.
 
-## Current completion matrix
+## Completion checklist
 
-The [software completion audit](SOFTWARE_COMPLETION.md) records actionable fixes and their tests; the next packaging milestone consolidates them into one hardware-gated release candidate.
+- [x] Audit dbecb97 source, lifecycle and manifest against v1.0 scope; preserve stable artifacts and icon.
+- [x] Fix actionable query outcomes, serial corruption, CSV close-error propagation, cancellation queue handling, bounded capture sessions and storage recovery presentation.
+- [x] Complete dashboard, ten-menu navigation, diagnostics, settings, filters, history, session lifecycle and numeric CSV workflows.
+- [x] Explicit legacy app-baud recovery to 115200 without firmware or expansion setting changes.
+- [x] Single unified RC1 manifest with info-only transport gate and approved embedded icon.
+- [x] Host/mock, malformed input, persistence recovery, repeated launch/navigation, fuzz/stress, short-enum, ASan/UBSan, publication tests.
+- [x] Actual matching SDK compilation/link/APPCHK and strict metadata/entry/import validation.
+- [x] User guide, reproducible build procedure, limitations and physical checklist.
+- [ ] Resolve board SPI/CE/CSN/CS/GDO routing and bounded physical providers.
+- [ ] Resolve installed Marauder passive lifecycle and peer-side capture policy before any observation authorization.
+- [ ] Verify final artifact physically and obtain explicit release approval.
 
-| Feature | Implemented | Simulated / tests | SDK validation | Physical validation / blocker |
+## Feature classification
+
+| Feature | Software-tested / implemented | Simulated | SDK-validated | Hardware evidence / dependency |
 |---|---|---|---|---|
-| Dashboard/navigation/Back/GUI width | Yes | Allocation, queue, exit and navigation stress | Pass | Prior dashboard/exit; full new navigation pending |
-| ESP USART info | Yes, fixed verified mapping/framing | Fragment/error/timeout/cancel/repeat | Pass | Prior three Connected queries/exit/interop/privacy; cancellation pending |
-| Identity/IDF/SD diagnostics | Yes, strict complete/matched snapshots; no-SD consistency | Positive/negative variants, unsafe-field exclusion | Pass | New fields/no-SD variant pending |
-| Timing/retry/error diagnostics | Yes, typed bounded metadata, query-closed semantics | Busy/timeout/malformed/overlap tests | Pass | Full new UI pending |
-| Wi-Fi AP/channel/RSSI/baseline | Yes, strict numeric observation processing | Reviewed synthetic formats and seeded mutations | Core compile; hardware gate off | Installed lifecycle/provenance and SavePCAP state blocked |
-| Wi-Fi security | Explicit unknown | No guessed format | Field compiled | Reviewed beacon output lacks security; unavailable |
-| BLE discovery | No, deliberately excluded | Denial tests | Disabled | Upstream active scan; no permitted passive protocol |
-| NRF RPD driver/graph/summaries/CSV | Yes, primary RX/ACK off | SPI/readback/error/counter tests | Core compile; no SPI imports | Exact Ultra SPI/CE/CSN routes and bounded port blocked |
-| CC status and RXOFF guard | Yes, reads only | All statuses/faults; all 256 policy values | Core compile; no SPI imports | External provider/routes unverified; single guard is not full passive proof |
-| CC frequency/RSSI/trace/CSV | Yes through RX contract | Tune/cadence/calibration arithmetic/error tests | Core compile; registry gate off | Actual plugin/preset/bounded waits/RSSI calibration and RF reception blocked |
-| Observation/history filters | Yes, volatile, worker-clock expiry | Age wrap/empty/invalid/capacity/private UI | Pass | New physical UI pending |
-| Settings/state/history | Yes, NSP1 unchanged, CRC/readback/monotonic IDs | Torn writes, recovery, enum rejection | Pass | Prior settings pass; broader power-loss tests pending |
-| CSV exports/privacy | Yes, numeric/redacted, exclusive create | Write/sync/close/failure/ID reservation | Pass | Prior info record privacy; new exports pending |
-| Session lifecycle/resources | Yes, single owner, teardown, capacity stop | Interrupted transactions, overflow, exit and repeat | Pass | Exhaustive ISR/pin/heap restoration pending; HAL TX has no deadline return |
-| Fuzz/stress/build/imports | Yes, seeded valid/mutated/random paths | 12 C suites, 19 Python checks, short enums, ASan/UBSan | Complete ARM metadata/entry/63 imports pass | Development artifact undeployed |
+| Dashboard, all menus, controls, width, Back/exit | Complete supported workflows and unavailable states | Three cycles through all ten screens; queue/allocation/error tests, 10,000 UI events | Pass | Prior dashboard/exit pass; final full GUI/visual/soak pending |
+| USART info exchange, retries, timeout/cancellation | Fixed TX13/PB6 RX14/PB7, 115200 8N1, one info command, no overlaps, safe teardown | Fragmentation, errors, interrupted/repeated queries, wrap, limits and resource contention | Pass | Prior three Connected queries, exit and original app interoperation; final cancellation/restoration pending |
+| Version/profile/IDF/SD diagnostics | Complete matched reply required; typed historical snapshot, duration/session/timeout/error views | Complete/missing/mismatched/no-SD/corrupt replies | Pass | Prior successful transaction does not independently verify every field; final screen checks pending |
+| Settings/history/recovery | NSP1 CRC dual slots/readback, monotonic IDs, 16 retained sessions, idempotent saves and explicit baud repair | 420 torn writes, read/write failures, enum validation, restart/recovery | Pass | Prior settings persistence; final controls and fault behavior pending |
+| History and observation filters | Complete volatile channel/RSSI/age and radio/error filters | Empty/filtered-empty, invalid values, wrap and idle expiry | Pass | Final physical navigation pending; filters intentionally reset at launch |
+| CSV exports/privacy | Numeric/redacted, exclusive create, pre-reserved IDs, sync/close errors, no identifiers/raw UART | Storage faults and privacy tests | Pass | Prior records inspected by owner; final exports and SD failure handling pending |
+| Wi-Fi AP/channel/RSSI/baseline cores | Implemented, no invented encryption output | Sanitized protocol/observation fixtures, parser mutations, overflow/recovery | Compiled; physical scan gate off | Blocked: installed build/options, passivity across init/stop/background state, SavePCAP side effects |
+| BLE discovery | Explicitly unsupported | Command denial | Disabled | Reviewed upstream path uses active discovery; no verified receive-only alternative |
+| NRF24 receive sampling, capability checks, plot/statistics/CSV | PRIM_RX, auto-ACK/retry off, readback, bounded 60-second sessions | SPI faults, counter/deadline cleanup, 25,200 PRX samples | Core compiled; no SPI imports | Blocked: Ultra SPI/CE/CSN routes, ownership/bounded provider and chip verification; standalone scanner owner success is not this adapter's evidence |
+| CC1101 receive diagnostics, tuning, RSSI/trace/CSV | Status reads, RXOFF guard, checked receive contract, cadence, bounded sessions | All 256 RXOFF values, identity/state/fault/RSSI/trace/deadline tests | Core compiled; no external registry/SPI imports | Blocked: exact routes/provider/preset, bounded calibration/init, RSSI calibration and formal RF reception |
+| Packaging/approved icon | One named RC1 with exact icon bytes, API/target/stack/name/entry/import checks | Manifest/icon mutation, all variant/source bundle tests | Pass; 63 imports, zero weak | This exact RC1 is undeployed and untested on device |
 
-## Remaining authorized inputs
+## Exact remaining inputs
 
-[Dependency review](DEPENDENCY_REVIEW.md) gives exact source references and the smallest next actions. Obtain the manufacturer board-revision netlist, a permitted installed external CC plugin/bounded provider and preset, and Marauder build correspondence plus sanitized capture/connection-state facts. No generic pin table, successful unrelated app, UI label or SDK export name substitutes for that evidence. No firmware replacement, settings dump, credentials, captures or new physical test is requested. Full hardware-dependent functionality cannot responsibly be claimed until these gates close.
+[Dependency review](DEPENDENCY_REVIEW.md) contains primary source references. Obtain an independently permitted manufacturer signal/net table for the actual Ultra V3 revision (SPI, NRF CE/CSN, CC CS/GDO, selector and voltage circuitry). A separately approved owner power-off continuity check is an alternative; none performed here. For CC, obtain a permitted installed external plugin/provider implementation and reviewed receive-only preset with recoverable bounded init/calibration/ownership behavior; generic SDK exports or official-driver pin expectations are insufficient. For Wi-Fi, obtain installed-build/source correspondence and sanitized capture/association/background-state facts; do not provide credentials, complete settings dumps or packets.
 
-## Historical audits and milestones
-
-
-This is a development audit, not a release declaration. Target: supplied Momentum Dev d3f89dfe SDK, API 87.1, target 7. No deployment is authorized. Preserved stable GUI/storage, ESP Info and diagnostics artifacts and checksums are under ignored builds/preserved-v1-start; prior physical evidence remains unchanged. Application SD data was not accessed.
-
-## Audit at 0b84e05
-
-| Capability | Implemented | Simulated | SDK validated | Physical evidence | Blocker / remaining work |
-|---|---|---|---|---|---|
-| GUI/navigation/lifecycle | Worker/frame/queue, Back latch, cleanup | Allocation unwind/navigation/exit | Yes | Baseline launch/dashboard/exit | Full navigation polish and soak pending |
-| ESP USART info | Exclusive USART, bounded ISR ring, strict one-info allowlist | Fragment/error/timeout/cancel/repeat | Yes | Three consecutive Connected, normal exit, original app works | Physical cancellation and exhaustive restoration pending |
-| ESP diagnostics | Matched constants, typed SD state, timing/retry | Yes | Yes | Diagnostics v0.2 not tested | Full readiness/connection presentation |
-| Wi-Fi observations | AP parser, channel counts, baseline comparisons, signal range | Synthetic beacon output | Core compiled, adapter disabled | Other app AP discovery only | Installed passive initialization/stop behavior not proved |
-| BLE observations | Explicit unsupported state | Exclusion tests | Disabled | None | No verified passive command/output contract |
-| NRF24 activity | PRX, auto-ACK/retry off, RPD counters, plot/CSV | SPI readback/CE/error mocks | Core compiled, adapter disabled | Standalone app works | Ultra SPI/CE/CS routing and bounded physical port unknown |
-| CC1101 RSSI | Band validation, receive contract, status-read SPI, trace/CSV | Identity/RX/state/RSSI mocks | Core compiled, adapter disabled | Prior operation reported | External-only port, routing, RX preset/calibration and RF reception pending |
-| Persistence/history | CRC dual slots, ID reservation, exclusive CSV, error recovery | Torn writes/readback/history wrap | Yes | Settings persist; inspected info CSV/history private | Filtering/export UX and broader fault/stress coverage |
-| Privacy | Info UI constants, raw UART redaction | Identifier tests | Yes | Owner inspected records | Audit dormant AP UI/CSV paths before enabling observation |
-| Filters | Missing unified filters | No | No | None | Bounded history/channel/signal filters |
-| Reproducible full development build | Separate info artifact helper | Build guards | Yes for current helper | No new artifact authorized | Unified dev helper and mandatory package evidence |
-
-## Sequential milestones
-
-1. Audit and preserve baseline (this document). Record precise dependencies and passive policy.
-2. Implement bounded filtering, privacy-safe observation/CSV presentation, history navigation and NRF activity summaries. Preserve NSP1 persistence schema/data compatibility.
-3. Add deterministic malformed-input fuzz/stress, cancellation and ownership regressions; fix findings. Existing suites remain mandatory.
-4. Prepare unified development FAP using reviewed SDK-only APIs, preserve all stable artifacts, strictly validate actual metadata/imports, document user guide and final hardware procedure.
-5. Physical adapters are separate dependency work: only implement bindings after routing and receive configuration evidence exists. Hardware testing waits until software work is complete and separately approved.
-
-## Authoritative hardware investigation
-
-Reviewed manufacturer [Ultra V3 guide](https://sacredlabstech.com/boards/ultra-v3/) and [component guide](https://sacredlabstech.com/guides/components/). They identify ESP32-WROOM-32UE/NRF24/CC1101, the 18-pin connector, NRF/CC selector and 433 MHz emphasis; neither supplies an SPI netlist, CE/CS/GDO pin assignments, switch truth table or voltage circuitry. Module datasheets cannot establish PCB routing. Required input: an authorized manufacturer schematic/netlist or permitted working external-radio source identifying exact pin routes and bus ownership. Continuity measurements, selector changes and hardware access require owner action/approval; none performed here.
-
-NRF register-level receive behavior is encoded and tested: CONFIG PRIM_RX before CE, EN_AA=0, SETUP_RETR=0, no payload/TX/carrier commands. [Nordic specification](https://docs.nordicsemi.com/r/bundle/pdf_ps_nrf24l01p/) defines chip behavior, not Ultra wiring. CC SPI diagnostics issue status reads only; [TI datasheet](https://www.ti.com/lit/ds/symlink/cc1101.pdf) defines silicon bands and RX state. Physical cc_receive must additionally supply a reviewed preset, calibration/settling and automatic-state policy excluding TX, with external-only selection and cleanup. An opaque receive callback name is not evidence of passive operation.
-
-[Marauder beacon sniff](https://github.com/justcallmekoko/ESP32Marauder/wiki/beacon-sniff) documents received beacon processing. It does not prove installed build initialization emits no probes/association traffic or BLE scan requests. Hardware UART remains info-only until exact installed command/init/stop source evidence demonstrates the full passive lifecycle. Successful Wi-Fi Recon in another app is functional evidence, not TX exclusion evidence. No speculative scan/BLE commands will be enabled.
-
-## Release gate
-
-Full three-radio functionality is blocked by the above inputs. Software mocks and a packaged development FAP do not establish hardware completeness. No v1.0 Release until implemented capabilities, passive review, compatible SDK build, physical checklist and explicit owner approval are all satisfied. Existing licensing/provenance requirements remain applicable.
-
-## Observation and storage milestone
-
-Implemented bounded channel/RSSI/age filters, filtered newest-first history and numeric history CSV exports with pre-create ID reservation, exclusive creation and cleanup on every storage fault. Added NRF measured-channel peak/quiet summaries, blocked-adapter explanations, and a private AP UI/CSV path. Filters are deliberately volatile; existing NSP1 settings/history schema remains compatible. Added tests for age wrap, invalid measurements, small-buffer transactionality, filtered UI, storage failures, ownership exclusion and actual FAP metadata mutation. Eleven C suites, short enums, sanitizer, preflight/publication tests and matching SDK build/import checks pass. Physical bindings remain blocked; full feature completeness is not claimed.
-
-## Stress, diagnostics and remaining gates
-
-Twelve C suites now pass, including deterministic 20,000 parser mutations, 2,000 fragmented/interrupted UART transactions across tick wrap, 25,200 mocked NRF primary-RX samples, and 10,000 UI events. UART line staging is scrubbed at teardown. GUI rendering measures real SDK string width and marks truncation instead of drawing outside the 128-pixel screen; host draw mocks assert width bounds. Unified diagnostics has storage, USART and blocked-radio views. Full visual navigation remains physically untested.
-
-Observed vs implemented status remains separate: ESP info has owner-reported repeated success and restored original app functionality; Back cancellation is still pending. NRF/CC processing is implemented and simulated, compiled into the development FAP, but physical adapters remain disabled. Wi-Fi channel/AP processing and filtering are implemented/simulated; installed initialization/receive/stop TX exclusion remains unresolved. BLE remains unsupported because no verified passive protocol exists. No complete three-radio v1.0 claim is justified.
-
-Permitted SDK headers/export table provide SPI and SubGhzDevice APIs (see SDK_INTERFACES.md). Transfer deadlines exist, but SPI bus acquisition has no deadline parameter. External plugin implementation, exact device identity, pin routes and ownership semantics are still required. Manufacturer guides contain no netlist; no inferred binding was created.
-
-## Updated passive-protocol investigation
-
-Read-only [upstream v1.11.0 WiFiScan.cpp](https://raw.githubusercontent.com/justcallmekoko/ESP32Marauder/v1.11.0/esp32_marauder/WiFiScan.cpp) review finds receive modes calling setWiFiMode with WIFI_MODE_NULL, a promising passive configuration. It does not establish the exact installed binary/options or complete initialization/stop path. RunAPScan also starts PCAP handling; its default storage effects need review before privacy-safe live integration. The upstream Bluetooth scan path explicitly enables active scan (setActiveScan(true)), so it cannot be treated as passive discovery. No commands were sent or upstream code copied. These are source facts; installed-build correspondence and side effects remain unresolved.
-
-## Current readiness summary
-
-| Area | Implemented / simulated | SDK build | Physical / blocked |
-|---|---|---|---|
-| Dashboard, lifecycle, GUI width/recovery | Implemented; navigation/fault/stress mocks pass | Pass | Prior dashboard/exit pass; new full navigation pending |
-| ESP info/diagnostics | Implemented; bounded transport/parser/cancellation mocks pass | Pass | Prior three queries/exit/interop/privacy pass; new diagnostics and cancellation pending |
-| Filters/history/settings/private exports | Implemented; torn-write/export/filter mocks pass | Pass | Prior settings/privacy pass; new workflows pending |
-| NRF RPD sampling, graphical/statistical analysis, CSV | Implemented; receive-only SPI mocks pass | Compiled; no physical SPI imports | Board routing/ownership port blocked |
-| CC status/RSSI trace/tune/CSV | Implemented; simulated responses pass | Compiled; no external device imports | External plugin/routing/preset/calibration and RF verification blocked |
-| Wi-Fi AP/channel/baseline/signal processing | Implemented with synthetic observations | Compiled; live scan gate off | Exact installed passive/privacy lifecycle blocked |
-| BLE discovery | Unsupported; no guessed parser/commands | Disabled | Upstream active scan unsuitable for receive-only requirement |
-| Software verification pipeline | Implemented; strict metadata/import/privacy checks pass | Pass | Full hardware release gate remains open |
-
-Smallest authorized next input is documentation/source, not another experimental deployment: manufacturer Ultra V3 SPI/CE/CS/GDO netlist and switch circuitry, permitted external CC1101 plugin implementation/identity and receive preset, and installed Marauder build correspondence/options plus receive/stop/PCAP-default evidence. No additional radio binding can responsibly be completed without those facts. Inputs must be independently permitted and outside the restricted checkout. No firmware replacement is proposed. Security information is currently absent in the reviewed AP fixtures; arbitrary new field formats are not guessed.
-
-## Software completion audit fixes
-
-Found and corrected age filtering that advanced only on input, AP-table capacity errors that retained UART ownership, and unbounded total observation counters. Filter expiry now follows worker/feed time across tick wrap, including idle screens. AP-table/counter exhaustion stops, closes logs and releases resources with Full recorded in history. No-measurement NRF statistics and empty filtered history have explicit states. History result CSV values now use enum units. Wi-Fi mock observations produce only session-local AP numbers, channel and RSSI in CSV; no names/MAC/raw responses. The development FAP still cannot issue scans.
-
-Fuzz now mixes valid seeds, seeded mutations and random inputs, asserts more than 3,000 successful parses for each AP/settings path, and round-trips valid settings. UART stress includes complete sanitized replies, mutations and garbage with random fragment sizes. All 12 C suites, 17 Python checks, short enums, ASan/UBSan and real Momentum build/metadata/63-import validation pass. No hardware operation was performed; preserved-0564846 retains all prior artifacts/checksums.
+Nothing in software can establish unknown PCB routing, guarantee an opaque blocking driver deadline, prove installed RF silence or exercise physical cancellation without those inputs and separate approval. No guessed bindings, internal-radio fallback, firmware replacement, attack commands or synthetic live measurements were added. See SOFTWARE_COMPLETION.md for implemented audit fixes and V1_LIMITATIONS.md for release gates.

@@ -69,6 +69,7 @@ void mock_sdk_fail_mutex(unsigned);
 void mock_sdk_fail_queue(bool);
 void mock_sdk_burst(bool);
 unsigned mock_sdk_queue_drops(void);
+unsigned mock_sdk_queue_remaining(void);
 unsigned mock_sdk_live(void);
 unsigned mock_sdk_records(void);
 unsigned mock_sdk_draws(void);

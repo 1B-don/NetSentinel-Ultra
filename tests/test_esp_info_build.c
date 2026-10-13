@@ -23,7 +23,7 @@ static void repeated(void) {
     a.page=NS_PAGE_RADIO; a.selected=NS_RADIO_ESP;
     assert(ns_app_key(&a,NS_KEY_OK,0)==NS_OK);
     assert(ns_app_device_info(&a,0)==NS_BUSY && !f.serial && a.info_pending==2);
-    assert(ns_app_stop(&a,0)==NS_BUSY && !a.info_pending);
+    assert(ns_app_stop(&a,0)==NS_OK && !a.info_pending);
     char reply[1024]; fixture(reply);
     for(unsigned i=0;i<8;i++) {
         uint32_t now=i*6000+1;
@@ -66,6 +66,10 @@ int main(void) {
     NsApplication a; assert(ns_app_init(&a, &f.platform, &f.store, f.capabilities) == NS_ABSENT);
     a.page = NS_PAGE_RADIO; a.selected = NS_RADIO_ESP;
     check_frame(&a, "Disconnected: USART closed");
+    assert(ns_app_key(&a,NS_KEY_OK,0)==NS_OK && !f.serial);
+    assert(ns_app_key(&a,NS_KEY_RIGHT,0)==NS_BUSY && !f.serial);
+    assert(ns_app_key(&a,NS_KEY_BACK,0)==NS_OK && !a.info_pending && !f.serial && !a.saved.last_id);
+    a.page=NS_PAGE_RADIO; check_frame(&a,"Cancelled: USART closed");
     assert(ns_app_key(&a, NS_KEY_OK, 0) == NS_OK && !f.serial);
     check_frame(&a, "Connecting: USART requested");
     assert(ns_app_step(&a, 1) == NS_OK && !f.serial);
@@ -177,6 +181,14 @@ int main(void) {
         assert(a.saved.history[a.saved.history_count-1].result==NS_INVALID);
         assert(!strcmp(mock_serial_commands(),"info\n"));
     }
+    assert(ns_app_device_info(&a,5040)==NS_OK);
+    const char* embedded_cr="#info\nVersion: v1.\r";
+    mock_serial_feed((const uint8_t*)embedded_cr,strlen(embedded_cr));
+    assert(ns_app_step(&a,5041)==NS_OK && f.serial);
+    const char* repaired="11.0\n";
+    mock_serial_feed((const uint8_t*)repaired,strlen(repaired));
+    assert(ns_app_step(&a,5042)==NS_INVALID && !f.serial && !a.session.pending_cr);
+    assert(a.saved.history[a.saved.history_count-1].result==NS_INVALID);
     ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
     repeated();
     puts("PASS: info-only USART mapping/framing, command exclusion, state UI, response budget and cleanup (MOCK)");

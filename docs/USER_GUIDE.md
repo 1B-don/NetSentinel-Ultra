@@ -1,6 +1,6 @@
-# NetSentinel Ultra development user guide
+# NetSentinel Ultra v1.0 software RC1 user guide
 
-This guide describes implemented software, not a v1.0 hardware release. No additional installation is authorized. The unified development FAP uses the verified info-only USART path; Wi-Fi/BLE observation and external-radio bindings stay blocked. A screen listing a module is not detection evidence.
+This guide describes implemented software, not a v1.0 hardware release. No additional installation is authorized. The unified RC1 FAP uses the verified info-only USART path; Wi-Fi/BLE observation and external-radio bindings stay blocked. A screen listing a module is not detection evidence.
 
 ## Navigation
 
@@ -20,7 +20,7 @@ Wi-Fi software: Up/Down selects filtered observations; Right toggles details; Le
 
 Filters screen: Up/Down selects channel/minimum RSSI/maximum age; Left/Right changes; OK clears. Channel 0 and age 0 mean all/no expiry. Filters are volatile and reset at launch; they do not alter acquisition or stored settings. Age uses wrapping application milliseconds. History Up/Down selects newest-first records; Left/Right cycles all/ESP/NRF/CC, OK toggles failures only. History names ESP32/NRF24/CC1101; CSV codes remain 1=ESP, 2=NRF, 3=CC. Empty history shows no completed sessions; filtered-empty history shows no matching sessions.
 
-Settings retain the NSP1 dual-slot CRC schema: query timeout, NRF dwell, idle CC frequency. Changes save immediately when idle; identical values avoid additional SD writes. Errors preserve the previous in-memory setting and state-file failures remain visible on the dashboard and Diagnostics. USART remains fixed at TX13/PB6, RX14/PB7, 115200/8N1. Corrupted/unreadable state is never silently overwritten; Diagnostics reports retry failure.
+Settings retain the NSP1 dual-slot CRC schema: query timeout, NRF dwell, idle CC frequency and application baud. The fourth row displays stored baud; OK restores the verified 115200 value explicitly. Left/Right on that row has the same effect. No expansion setting, firmware or power configuration is changed. Changes save immediately when idle; identical values avoid additional SD writes. Errors preserve the previous in-memory setting and state-file failures remain visible on the dashboard and Diagnostics. USART remains fixed at TX13/PB6, RX14/PB7, 115200/8N1. Corrupted/unreadable state is never silently overwritten; Diagnostics reports retry failure.
 
 ## CSV exports and storage
 

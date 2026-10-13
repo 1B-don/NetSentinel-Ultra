@@ -45,7 +45,7 @@ def metadata(data):
     if b'\0' not in name:
         raise ValueError('unterminated application name')
     raw_name, padding = name.split(b'\0', 1)
-    allowed = (b'NetSentinel Ultra', b'NetSentinel ESP Info', b'ESP Diagnostics v0.2', b'NetSentinel Ultra Dev')
+    allowed = (b'NetSentinel Ultra', b'NetSentinel ESP Info', b'ESP Diagnostics v0.2', b'NetSentinel Ultra Dev', b'NetSentinel Ultra v1.0 RC1')
     if raw_name not in allowed or any(padding) or app_version != 0x00010000 or manifest[85] != 0:
         raise ValueError('unexpected name/app version/icon/flags metadata')
     if manifest[52] not in (0, 1) or manifest[53:85] != (EXPECTED_ICON if manifest[52] else bytes(32)):
@@ -56,11 +56,17 @@ def metadata(data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('artifact', type=Path)
+    parser.add_argument('--require-icon', action='store_true', help='reject legacy no-icon metadata for new builds')
     args = parser.parse_args()
     artifact = args.artifact.resolve()
     if not artifact.is_relative_to(ROOT/'dist') or not artifact.is_file():
         raise ValueError('artifact must be a project-local dist file')
     data = artifact.read_bytes(); result = metadata(data)
+    if args.require_icon and not result['icon']:
+        raise ValueError('new application build must contain the approved icon')
+    if artifact.name == 'netsentinel_ultra_v1_0_rc1.fap' and \
+       (result['name'] != 'NetSentinel Ultra v1.0 RC1' or not result['icon']):
+        raise ValueError('release candidate identity/icon mismatch')
     table = sdk_preflight.permitted_input(ROOT/'builds/sdk-input/api_symbols.csv').read_bytes()
     if hashlib.sha256(table).hexdigest() != 'a2bdb9893ba57ac6ccc4eae2e66ab201fa84f48508347f4c52685cfb3c3a8d4f':
         raise ValueError('unexpected permitted SDK export-table checksum')

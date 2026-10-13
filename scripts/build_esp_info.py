@@ -14,24 +14,50 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 SDK_HOME = Path.home()/".ufbt-netsentinel-momentum"
 UFBT = Path.home()/"flipper-build-env/bin/ufbt"
+VARIANTS = {
+    "gui": ("netsentinel", "NetSentinel Ultra", "NS_GUI_STORAGE_ONLY"),
+    "info": ("netsentinel_esp_info", "NetSentinel ESP Info", "NS_ESP_INFO_ONLY"),
+    "diagnostics": ("netsentinel_esp_diagnostics", "ESP Diagnostics v0.2", "NS_ESP_INFO_ONLY"),
+    "development": ("netsentinel_development", "NetSentinel Ultra Dev", "NS_ESP_INFO_ONLY"),
+    "rc": ("netsentinel_ultra_v1_0_rc1", "NetSentinel Ultra v1.0 RC1", "NS_ESP_INFO_ONLY"),
+}
+
+def variant_manifest(manifest, variant):
+    """Pure generation; keep root baseline and all variant gates explicit."""
+    appid, title, gate = VARIANTS[variant]
+    replacements = {
+        'appid="netsentinel"': f'appid="{appid}"',
+        'name="NetSentinel Ultra"': f'name="{title}"',
+        'cdefines=["NS_GUI_STORAGE_ONLY"]': f'cdefines=["{gate}"]',
+    }
+    if 'fap_icon="assets/netsentinel_icon.png"' not in manifest:
+        raise RuntimeError("Bundled manifest icon missing; no build attempted")
+    for expected, replacement in replacements.items():
+        if manifest.count(expected) != 1:
+            raise RuntimeError("Default manifest contract changed; inspect before building")
+        manifest = manifest.replace(expected, replacement)
+    return manifest
+
+def source_paths():
+    paths = [ROOT/n for n in ("ap_parser.c", "ap_parser.h", "ns_analysis.c", "ns_analysis.h",
+                              "assets/netsentinel_icon.png")]
+    for folder in ("src/core", "src/flipper", "include/netsentinel"):
+        paths += sorted(p for p in (ROOT/folder).glob("*") if p.suffix in (".c", ".h"))
+    return paths
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--variant", choices=("gui", "info", "diagnostics", "development"), help="explicit build variant; default remains diagnostics")
+    parser.add_argument("--variant", choices=tuple(VARIANTS), help="explicit build variant; default remains diagnostics; rc is the unified hardware-gated candidate")
     parser.add_argument("--development", action="store_true", help="build the unified v1 development app with pending radios disabled")
     args = parser.parse_args()
     if args.development and args.variant:
         parser.error("use either --development or --variant")
     variant = "development" if args.development else (args.variant or "diagnostics")
-    appid, title = {
-        "gui": ("netsentinel", "NetSentinel Ultra"),
-        "info": ("netsentinel_esp_info", "NetSentinel ESP Info"),
-        "diagnostics": ("netsentinel_esp_diagnostics", "ESP Diagnostics v0.2"),
-        "development": ("netsentinel_development", "NetSentinel Ultra Dev"),
-    }[variant]
+    appid, _, _ = VARIANTS[variant]
+    manifest = variant_manifest((ROOT/"application.fam").read_text(), variant)
     if SDK_HOME.is_symlink() or (SDK_HOME/"current").is_symlink():
         raise RuntimeError("SDK home must be the reviewed independent cache")
     archive = ROOT/"builds/sdk-input/flipper-z-f7-sdk-mntm-dev-d3f89dfe.zip"
@@ -53,10 +79,7 @@ def main():
     stage.mkdir(parents=True, exist_ok=True)
     if not stage.resolve().is_relative_to(ROOT/"builds"):
         raise RuntimeError("Build stage escaped authorized project directory")
-    paths = [ROOT/n for n in ("ap_parser.c", "ap_parser.h", "ns_analysis.c", "ns_analysis.h")]
-    paths.append(ROOT/"assets/netsentinel_icon.png")
-    for folder in ("src/core", "src/flipper", "include/netsentinel"):
-        paths += [p for p in (ROOT/folder).glob("*") if p.suffix in (".c", ".h")]
+    paths = source_paths()
     for src in paths:
         if src.is_symlink() or not src.resolve().is_relative_to(ROOT):
             raise RuntimeError("Source symlink is not permitted")
@@ -65,18 +88,10 @@ def main():
         if dst.is_symlink() or not dst.parent.resolve().is_relative_to(stage.resolve()):
             raise RuntimeError("Staged source symlink is not permitted")
         shutil.copy2(src, dst)
-    manifest = (ROOT/"application.fam").read_text()
-    if 'cdefines=["NS_GUI_STORAGE_ONLY"]' not in manifest:
-        raise RuntimeError("Default manifest gate changed; inspect before building")
-    manifest = manifest.replace('appid="netsentinel"', f'appid="{appid}"')
-    manifest = manifest.replace('name="NetSentinel Ultra"', f'name="{title}"')
-    if variant != "gui":
-        manifest = manifest.replace('cdefines=["NS_GUI_STORAGE_ONLY"]', 'cdefines=["NS_ESP_INFO_ONLY"]')
     if (stage/"application.fam").is_symlink():
         raise RuntimeError("Staged manifest must not be a symlink")
     (stage/"application.fam").write_text(manifest)
-    stable = [ROOT/"dist"/name for name in ("netsentinel.fap", "netsentinel_esp_info.fap", "netsentinel_esp_diagnostics.fap")
-              if name != appid+".fap" and (ROOT/"dist"/name).exists()]
+    stable = [p for p in (ROOT/"dist").glob("*.fap") if p.name != appid+".fap"]
     before = {path: digest(path) for path in stable}
     env = dict(os.environ, UFBT_HOME=str(SDK_HOME), FBT_TOOLCHAIN_PATH=str(Path.home()/".ufbt"))
     logs = ROOT/"logs"; logs.mkdir(exist_ok=True)

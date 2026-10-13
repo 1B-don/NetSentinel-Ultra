@@ -127,6 +127,7 @@ static void test_input_failures(void) {
     flood[24] = (InputEvent){InputKeyBack, InputTypeShort};
     mock_sdk_events(flood, 25); mock_sdk_burst(true);
     assert(netsentinel_app(NULL) == 0 && mock_sdk_queue_drops() == 8 && !mock_sdk_live() && !mock_sdk_records());
+    assert(mock_sdk_queue_remaining()==0); /* Back drained stale input despite overflow */
     mock_sdk_reset(); mock_sdk_fail_queue(true);
     mock_sdk_events(ignored, 3); assert(netsentinel_app(NULL) == 0 && !mock_sdk_live() && !mock_sdk_records());
     const char* records[] = {RECORD_GUI, RECORD_STORAGE};

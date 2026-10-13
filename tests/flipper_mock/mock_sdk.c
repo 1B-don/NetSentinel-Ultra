@@ -14,7 +14,7 @@ static Entry files[16];
 static unsigned live, records, allocations, fail_allocation, draws;
 static bool fail_storage, fail_queue, burst;
 static const char* failed_record;
-static unsigned mutex_calls, mutex_failure, queue_drops;
+static unsigned mutex_calls, mutex_failure, queue_drops, queue_remaining;
 static ViewPort* active_viewport;
 static uint32_t ticks;
 static const InputEvent* events;
@@ -27,6 +27,7 @@ static void* allocate(size_t size) {
 }
 static void dispose(void* p) { assert(p && live); live--; free(p); }
 void mock_sdk_reset(void) { assert(!live && !records); memset(files, 0, sizeof(files)); allocations = fail_allocation = draws = 0; fail_storage = fail_queue = burst = false; failed_record = NULL; mutex_calls = mutex_failure = queue_drops = 0;
+    queue_remaining = 0;
     assert(!active_viewport); ticks = 0; event_count = event_index = 0; }
 void mock_sdk_events(const InputEvent* e, size_t n) { events = e; event_count = n; event_index = 0; }
 void mock_sdk_fail_allocation(unsigned n) { fail_allocation = n; }
@@ -36,6 +37,7 @@ void mock_sdk_fail_mutex(unsigned call) { mutex_failure = call; }
 void mock_sdk_fail_queue(bool on) { fail_queue = on; }
 void mock_sdk_burst(bool on) { burst = on; }
 unsigned mock_sdk_queue_drops(void) { return queue_drops; }
+unsigned mock_sdk_queue_remaining(void) { return queue_remaining; }
 unsigned mock_sdk_live(void) { return live; }
 unsigned mock_sdk_records(void) { return records; }
 unsigned mock_sdk_draws(void) { return draws; }
@@ -46,7 +48,7 @@ FuriStatus furi_mutex_acquire(FuriMutex* m, uint32_t wait) { (void)wait; mutex_c
 void furi_mutex_release(FuriMutex* m) { assert(m->locked); m->locked = false; }
 FuriMessageQueue* furi_message_queue_alloc(size_t n, size_t size) { assert(n <= 16 && size == sizeof(InputEvent)); FuriMessageQueue* q = allocate(sizeof(*q));
     if(q) { q->item_size = size; q->capacity = n; } return q; }
-void furi_message_queue_free(FuriMessageQueue* q) { dispose(q); }
+void furi_message_queue_free(FuriMessageQueue* q) { queue_remaining = (unsigned)q->count; dispose(q); }
 FuriStatus furi_message_queue_put(FuriMessageQueue* q, const void* data, uint32_t wait) { (void)wait;
     if(fail_queue || q->count == q->capacity) { queue_drops++; return FuriStatusError; }
     memcpy(q->data+(q->first+q->count)%q->capacity, data, q->item_size); q->count++;

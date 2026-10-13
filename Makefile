@@ -52,6 +52,7 @@ audit-test:
 sdk-test:
 	python3 -m unittest discover -s tests -p test_sdk_preflight.py
 	python3 -m unittest discover -s tests -p test_fap.py
+	python3 -m unittest discover -s tests -p test_build.py
 
 # Owner must supply a permitted export table and confirm its provenance first.
 sdk-preflight:

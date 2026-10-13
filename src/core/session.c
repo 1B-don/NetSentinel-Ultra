@@ -79,7 +79,7 @@ NsResult ns_session_start(NsSession* s, NsRadio radio, bool ble, bool confirmed,
     if(r != NS_OK) { s->error = r; return r; }
     s->active = radio; s->ble = ble; s->started_ms = s->last_rx_ms = now;
     s->capture_complete = false;
-    s->line_len = 0; s->discard_line = false; s->lines = s->dropped_lines = 0;
+    s->line_len = 0; s->discard_line = s->pending_cr = false; s->lines = s->dropped_lines = 0;
     s->ap_count = s->observations = 0; s->nrf_channel = 0; s->cc_sampled = false; s->error = NS_OK; s->id++;
     return NS_OK;
 }
@@ -110,7 +110,7 @@ void ns_session_stop(NsSession* s, uint32_t now) {
     s->history_next = (s->history_next + 1) % NS_HISTORY_LIMIT;
     if(s->history_count < NS_HISTORY_LIMIT) s->history_count++;
     memset(s->line, 0, sizeof(s->line));
-    s->line_len = 0; s->discard_line = false;
+    s->line_len = 0; s->discard_line = s->pending_cr = false;
     s->active = NS_RADIO_NONE;
 }
 NsResult ns_session_cancel(NsSession* s, uint32_t now) {
@@ -126,7 +126,16 @@ NsResult ns_session_feed(NsSession* s, const uint8_t* data, size_t count, uint32
     if(!s || s->active != NS_RADIO_ESP || (!data && count)) return NS_INVALID;
     for(size_t i = 0; i < count; i++) {
         unsigned char c = data[i];
-        if(c == '\r') continue;
+        if(s->pending_cr) {
+            s->pending_cr = false;
+            if(c != '\n') {
+                if(s->use_marauder && s->marauder.stage != NS_M_SCAN) {
+                    s->error = NS_INVALID; ns_session_stop(s, now); return NS_INVALID;
+                }
+                s->discard_line = true;
+            }
+        }
+        if(c == '\r') { s->pending_cr = true; continue; }
         if(s->use_marauder && !s->discard_line && c == ' ' && s->line_len == 1 && s->line[0] == '>') {
             NsResult r = ns_marauder_prompt(&s->marauder, now);
             s->line_len = 0;

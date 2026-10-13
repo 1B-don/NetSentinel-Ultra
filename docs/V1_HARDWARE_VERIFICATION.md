@@ -1,6 +1,6 @@
 # Final hardware verification procedure (not authorized to run)
 
-Do not repeatedly install experimental FAPs. First finish the software gates in V1_READINESS.md and resolve the physical adapter/passivity dependencies. The current development FAP is info-only and cannot pass the full radio checklist. Any later installation/launch, selector change or hardware measurement requires separate owner authorization of the exact artifact, configuration and procedure. No firmware, expansion settings, USB permissions or device storage erase is part of this procedure.
+Do not repeatedly install experimental FAPs. First finish the software gates in V1_READINESS.md and resolve the physical adapter/passivity dependencies. The current RC1 FAP (dist/netsentinel_ultra_v1_0_rc1.fap) is info-only and cannot pass the full radio checklist. Any later installation/launch, selector change or hardware measurement requires separate owner authorization of the exact artifact, configuration and procedure. No firmware, expansion settings, USB permissions or device storage erase is part of this procedure.
 
 ## Preconditions
 
@@ -34,3 +34,7 @@ Wi-Fi/BLE: enable nothing until the exact installed-build command/init/receive/s
 ## Stop and completion conditions
 
 Stop on unexpected transmission, raw identifier display/storage, reset/update behavior, stale Connected state presented as an open connection, unresponsive Back, serial ownership leak, wrong/internal radio, storage overwrite, crash or unexpected peripheral power/setting changes. Preserve only sanitized failure metadata; do not publish captures or personal data. Use preserved application rollback only with owner approval, never firmware rollback/flash. Mark each result PASS/FAIL/NOT EXERCISED with exact artifact and distinguish owner report, software simulation and physical measurement. Release requires all required gates and explicit approval, not simply an installable FAP.
+
+## RC1-specific checks after separate approval
+
+Confirm the approved embedded icon and candidate loader title; navigate all ten entries including Wi-Fi readiness; verify blocked BLE/NRF/CC screens perform no access. Exercise history radio/error filters, empty/matching states, exclusive history export and unchanged settings after relaunch. Verify the displayed application baud and use its explicit restore action only if appropriate; it must not alter Momentum expansion/power settings. Validate matched firmware/profile/IDF/SD snapshots and timed info retry, then cancel opportunistically during a normal query. Ensure queued input does not trigger a retry after Back and the original Marauder app still works afterward. Preserve and privately inspect data for identifiers; do not publish raw responses or captures. Actual NRF/CC capture deadlines and Wi-Fi observation cannot be tested with RC1 because their physical adapters remain disabled. Record these as BLOCKED, not passed.

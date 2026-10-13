@@ -2,14 +2,20 @@
 # Local software/build checks only: no network, device access, SDK update or deployment.
 set -euo pipefail
 cd -- "$(dirname -- "$0")/.."
+variant="${1:-development}"
+case "$variant" in
+    development) artifact=netsentinel_development.fap ;;
+    rc) artifact=netsentinel_ultra_v1_0_rc1.fap ;;
+    *) echo "Usage: $0 [development|rc]" >&2; exit 2 ;;
+esac
 mkdir -p logs
 make test > logs/v1-final-host.log 2>&1
 make short-enums > logs/v1-final-short.log 2>&1
 ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0}" make sanitize > logs/v1-final-sanitize.log 2>&1
-python3 scripts/build_esp_info.py --development > logs/v1-final-build.log 2>&1
-python3 scripts/validate_fap.py dist/netsentinel_development.fap > logs/v1-final-package.json
+python3 scripts/build_esp_info.py --variant "$variant" > logs/v1-final-build.log 2>&1
+python3 scripts/validate_fap.py "dist/$artifact" --require-icon > logs/v1-final-package.json
 "$HOME/.ufbt/toolchain/x86_64-linux/bin/arm-none-eabi-nm" \
-    --undefined-only --format=posix dist/netsentinel_development.fap > builds/sdk-input/v1-final-imports.txt
+    --undefined-only --format=posix "dist/$artifact" > builds/sdk-input/v1-final-imports.txt
 python3 scripts/sdk_preflight.py builds/sdk-input/api_symbols.csv \
     --firmware-revision d3f89dfe2ef6b01839201598e9be1590cba80322 \
     --undefined-symbols builds/sdk-input/v1-final-imports.txt > logs/v1-final-preflight.log

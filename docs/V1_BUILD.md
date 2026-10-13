@@ -13,21 +13,21 @@ The build helper validates the ZIP checksum, installed SDK component identity, h
 From the application directory:
 
 ```sh
-scripts/verify_development.sh
+scripts/verify_development.sh rc
 ```
 
 This runs the twelve host C suites and Python checks, all short-enum suites and ASan/UBSan, clean uFBT build, actual-package validation, strict actual-import preflight and publication audit. Tests run sequentially because Python preflight fixtures share temporary project-local inputs. Local leak detection defaults off for the current environment; ASan/UBSan remain enabled. Override ASAN_OPTIONS to enable leak detection where supported. CI retains its regular sanitizer configuration.
 
-Only builds/, logs/ and the separately named dist/netsentinel_development.fap are created/updated. The helper preserves checksums for existing GUI/storage, ESP Info and ESP diagnostics FAPs. No device connection, deployment, launch, peripheral energizing, SDK update, firmware flashing or network command is performed. Publication audit reads the Git index; stage intended source/docs before the final publication audit.
+Only builds/, logs/ and the separately named dist/netsentinel_ultra_v1_0_rc1.fap are created/updated. The helper preserves checksums for existing GUI/storage, ESP Info and ESP diagnostics FAPs. No device connection, deployment, launch, peripheral energizing, SDK update, firmware flashing or network command is performed. Publication audit reads the Git index; stage intended source/docs before the final publication audit.
 
 To build/validate only:
 
 ```sh
-python3 scripts/build_esp_info.py --development
-python3 scripts/validate_fap.py dist/netsentinel_development.fap
+python3 scripts/build_esp_info.py --variant rc
+python3 scripts/validate_fap.py dist/netsentinel_ultra_v1_0_rc1.fap --require-icon
 ```
 
-Generated staged application.fam uses appid netsentinel_development, title NetSentinel Ultra Dev, entry netsentinel_app, stack 8192 and NS_ESP_INFO_ONLY. Root application.fam remains NS_GUI_STORAGE_ONLY. All core modules compile; firmware-facing USART is info-only, NRF/CC ports absent and Wi-Fi/BLE commands denied. Runtime UI does not elevate blocked capabilities. Existing data and state schema are unchanged.
+Generated RC `application.fam` uses appid `netsentinel_ultra_v1_0_rc1`, title `NetSentinel Ultra v1.0 RC1`, entry `netsentinel_app`, stack 8192 and `NS_ESP_INFO_ONLY`. Root application.fam remains NS_GUI_STORAGE_ONLY. All core modules compile; firmware-facing USART is info-only, NRF/CC ports absent and Wi-Fi/BLE commands denied. Runtime UI does not elevate blocked capabilities. Existing data and state schema are unchanged.
 
 ## Package evidence
 
@@ -35,28 +35,34 @@ Final JSON is in ignored logs/v1-final-package.json: filename, actual size/SHA-2
 
 Build evidence: logs/v1-final-host.log, v1-final-short.log, v1-final-sanitize.log, v1-final-build.log, live-info-build.log, v1-final-preflight.log and v1-final-publication.log. All are local/ignored. Build logs may be replaced by later verification; preserve a checksum/evidence snapshot before proposing a different artifact. Fresh packaging can produce a different checksum, so always validate the exact final file; no byte-for-byte reproducibility claim is made.
 
-## Current packaged development result
+## Current packaged software candidate
 
 | Field | Verified result |
 |---|---|
-| Source milestone | Application icon integration milestone (based on a65d0da source) |
-| Artifact | dist/netsentinel_development.fap |
-| Size | 43,800 bytes |
-| SHA-256 | 4a070c082700ad7ec2188a360d98ce4ba8fb928a0d76ef0c20079b643c8cf82d |
+| Source milestone | Unified v1.0 software RC1 completion candidate |
+| Artifact | dist/netsentinel_ultra_v1_0_rc1.fap |
+| Size | 45,928 bytes |
+| SHA-256 | `170402918860ae1032378e4dc9f2a1e914cb97626074423832b73a0bc48ba8a6` |
 | API / target / stack | 87.1 / 7 / 8192 |
 | Required imports / weak imports | 63 / 0 |
 | SDK compile/link/APPCHK | Passed; no compiler/linker errors |
 | Host / short enums / sanitizer | All 12 C suites passed |
-| Python checks | 8 preflight, 6 manifest, 5 publication tests passed |
-| Hardware operations | USART info only; other physical features disabled |
-| Physical validation | Not performed on this development artifact |
+| Python checks | 8 preflight, 7 manifest, 5 publication, 3 bundle/variant tests passed |
+| Hardware operations for this build | None; the artifact is undeployed. Its sole live hardware path remains the separately verified info-only USART query. |
+| Physical validation | Not performed on this RC1 artifact |
 
-The pre-icon stable GUI/storage, ESP Info and ESP diagnostics binaries remain preserved with their original checksums under builds/preserved-v1-start and builds/preserved-before-icon; current dist variants now include the icon. The preceding unified development artifact and stable FAPs are also preserved under builds/preserved-0564846. No device data was accessed or rewritten. All seeded fuzz, counter/capacity, RXOFF and no-SD/stop-framing tests pass. Local sanitizer leak detection is disabled; ASan/UBSan ran. Public dependency findings are in DEPENDENCY_REVIEW.md. Packaging hashes can vary; this evidence applies to the exact file above, not another rebuild. No deployment/Release is authorized.
+The stable GUI/storage, ESP Info, ESP diagnostics and prior development binaries remain preserved with their pre-RC checksums under `builds/preserved-dbecb97/`; each preserved file was re-hashed and matched the recorded snapshot. No device data was accessed or rewritten. All seeded fuzz, counter/capacity, RXOFF and no-SD/stop-framing tests pass. Local sanitizer leak detection is disabled; ASan/UBSan ran. Public dependency findings are in DEPENDENCY_REVIEW.md. Packaging hashes can vary; this evidence applies to the exact file above, not another rebuild. No deployment/Release is authorized.
 
 ## Bundled application icon
 
 All manifests use `fap_icon="assets/netsentinel_icon.png"`. The owner-supplied PNG is 10x10, one-bit grayscale, black/white only, with no ancillary metadata. The SDK encodes it into the FAP metadata; no runtime asset path is needed. The source artwork is retained for attribution/editing. Publication permits only the two reviewed artwork checksums; modified or unrelated binary assets fail the audit.
 
-Build each variant with `python3 scripts/build_esp_info.py --variant gui|info|diagnostics|development` (choose one value). The default remains diagnostics and `--development` remains supported. GUI uses NS_GUI_STORAGE_ONLY; the other variants retain NS_ESP_INFO_ONLY. All staged builds copy the bundled icon. Prior overwritten artifacts are preserved by checksum under ignored builds/preserved-artifacts; the complete pre-icon snapshot is builds/preserved-before-icon. No settings or device files are touched.
+Build each variant with `python3 scripts/build_esp_info.py --variant gui|info|diagnostics|development|rc` (choose one value). The default remains diagnostics and `--development` remains supported. GUI uses NS_GUI_STORAGE_ONLY; the other variants retain NS_ESP_INFO_ONLY. All staged builds copy the bundled icon. Prior overwritten artifacts are preserved by checksum under ignored builds/preserved-artifacts; the complete pre-icon snapshot is builds/preserved-before-icon. No settings or device files are touched.
 
-The current icon development build is not physically tested or authorized for deployment. The prior artifact evidence remains in local snapshots and historical milestones.
+This RC1 build is not physically tested or authorized for deployment. The prior artifact evidence remains in local snapshots and historical milestones.
+
+## Reproduce the unified software candidate
+
+Run `scripts/verify_development.sh rc` from the project root. It uses only the checksum-verified local SDK and isolated cache, does not update an SDK or access a device/network, and produces `dist/netsentinel_ultra_v1_0_rc1.fap` with manifest name `NetSentinel Ultra v1.0 RC1`, app version 1.0, 8192-byte stack, approved icon, flags zero, API 87.1 and target 7. The root GUI-only manifest is preserved; the generated RC uses only NS_ESP_INFO_ONLY. Live UART sends one info+LF per acquisition; all other radios/scans remain disabled.
+
+The builder protects every other dist FAP by pre/post hashes and preserves an overwritten candidate by checksum. Pre-RC known-good snapshots and checksums are in ignored builds/preserved-dbecb97 and earlier preservation directories. The final RC1 package metadata/import evidence is in ignored `logs/rc1-validation-pipeline.json`; full test/build logs are under ignored `logs/rc1-*` and `logs/v1-final-*`. The names-only preflight explicitly limits its scope; actual SDK compilation and validate_fap.py provide the additional build/package evidence. No physical data or SDK implementation is published.
