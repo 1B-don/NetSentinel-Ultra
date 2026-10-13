@@ -41,5 +41,11 @@ int main(void) {
     a.observation_filter.channel=6;ns_app_frame(&a,&frame);
     assert(strstr(frame.rows[1],"AP 2") && !strstr(frame.rows[1],"PRIVATE"));
     a.observation_filter.channel=14;ns_app_frame(&a,&frame);assert(strstr(frame.rows[1],"No observations"));
+    a.observation_filter.channel=6;a.observation_filter.maximum_age_ms=100;
+    a.session.ap_seen_ms[1]=UINT32_MAX-10;
+    assert(ns_app_step(&a,20)==NS_OK);ns_app_frame(&a,&frame);assert(strstr(frame.rows[1],"AP 2"));
+    assert(ns_app_step(&a,200)==NS_OK);ns_app_frame(&a,&frame);assert(strstr(frame.rows[1],"No observations"));
+    a.selected=NS_RADIO_NRF;a.capabilities.nrf=true;a.nrf_details=true;
+    ns_app_frame(&a,&frame);assert(strstr(frame.rows[2],"No channels"));
     puts("PASS: bounded filters, age wrap, history selection, RPD summaries and private UI (MOCK)");
 }

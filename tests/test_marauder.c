@@ -43,6 +43,23 @@ static void protocol(void) {
     assert(!strcmp(m.commands, "info\nhelp\nsniffbeacon\nstopscan\n"));
     assert(strstr(m.file, "wifi_channel,,6,1,APs"));
 }
+static void observation_limits(void) {
+    Mock m={0};NsPlatform io=platform(&m);NsSession s;open_scan(&s,&io);
+    assert(ns_session_log_open(&s,"/ext/apps_data/netsentinel/session_0000000001.csv")==NS_OK);
+    const char* ap="-50 Ch: 6 00:11:22:33:44:55 ESSID: PRIVATE_SYNTHETIC_AP\n";
+    assert(ns_session_feed(&s,(const uint8_t*)ap,strlen(ap),40)==NS_OK);
+    assert(strstr(m.file,"wifi_ap,ap_1,6,-50,dBm") && !strstr(m.file,"PRIVATE") && !strstr(m.file,"00:11"));
+    m.fail_write=true;
+    assert(ns_session_feed(&s,(const uint8_t*)ap,strlen(ap),41)==NS_IO && !s.active && !m.owner);
+    memset(&m,0,sizeof(m));open_scan(&s,&io);
+    s.observations=UINT32_MAX;
+    assert(ns_session_feed(&s,(const uint8_t*)ap,strlen(ap),40)==NS_FULL && !s.active && !m.owner);
+    assert(s.observations==UINT32_MAX && !s.ap_count && s.history[0].result==NS_FULL);
+    memset(&m,0,sizeof(m));open_scan(&s,&io);s.ap_count=NS_AP_LIMIT;
+    for(unsigned j=0;j<NS_AP_LIMIT;j++) { strcpy(s.aps[j].ssid,"other");s.aps[j].channel=1; }
+    assert(ns_session_feed(&s,(const uint8_t*)ap,strlen(ap),40)==NS_FULL && !s.active && !m.owner);
+    assert(s.history_count==1 && s.history[0].result==NS_FULL && m.acquired==m.released);
+}
 static void failures(void) {
     Mock m = {0}; NsPlatform io = platform(&m); NsSession s;
     open_scan(&s, &io);
@@ -266,4 +283,4 @@ static void observed_info_malformed(void) {
     assert(ns_marauder_line(&p, "Version: v1.11.0", 3) == NS_INVALID); /* duplicate fails closed */
     assert(!p.info_complete);
 }
-int main(void) { protocol(); failures(); rejection(); information_deadlines(); info_fragment_boundaries(); info_malformed_and_retry(); info_disconnect_and_cancel(); observed_info_status(); observed_info_malformed(); puts("PASS: gated Marauder protocol, byte fragments, fixture observations, cancellation, logging and timeout recovery"); }
+int main(void) { observation_limits(); protocol(); failures(); rejection(); information_deadlines(); info_fragment_boundaries(); info_malformed_and_retry(); info_disconnect_and_cancel(); observed_info_status(); observed_info_malformed(); puts("PASS: gated Marauder protocol, byte fragments, fixture observations, cancellation, logging and timeout recovery"); }

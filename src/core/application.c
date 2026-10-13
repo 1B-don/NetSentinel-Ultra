@@ -172,6 +172,7 @@ NsResult ns_app_stop(NsApplication* a, uint32_t now) {
 }
 NsResult ns_app_step(NsApplication* a, uint32_t now) {
     if(!a || !a->running) return NS_INVALID;
+    a->now_ms = now; /* Age filters advance even without input or active hardware. */
     if(a->info_pending) {
         if(--a->info_pending) return NS_OK; /* publish connecting before hardware */
         return ns_app_device_info(a, now);
@@ -205,6 +206,7 @@ NsResult ns_app_step(NsApplication* a, uint32_t now) {
 }
 NsResult ns_app_feed(NsApplication* a, const uint8_t* bytes, size_t n, uint32_t now) {
     if(!a) return NS_INVALID;
+    a->now_ms = now;
     bool active = a->session.active != NS_RADIO_NONE;
     NsResult r = ns_session_feed(&a->session, bytes, n, now);
     if(active && a->session.active == NS_RADIO_NONE) {
@@ -437,8 +439,10 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
             NsActivitySummary summary;
             if(a->nrf_details && ns_activity_summary(&a->session.nrf, &summary) == NS_OK) {
                 f->bar_count = 0;
-                snprintf(f->rows[2], sizeof(f->rows[2]), "Peak ch%u: %u%%", summary.peak_channel, summary.peak_percent);
-                snprintf(f->rows[3], sizeof(f->rows[3]), "Quiet ch%u: %u%%", summary.quiet_channel, summary.quiet_percent);
+                if(summary.measured_channels) {
+                    snprintf(f->rows[2], sizeof(f->rows[2]), "Peak ch%u: %u%%", summary.peak_channel, summary.peak_percent);
+                    snprintf(f->rows[3], sizeof(f->rows[3]), "Quiet ch%u: %u%%", summary.quiet_channel, summary.quiet_percent);
+                } else snprintf(f->rows[2], sizeof(f->rows[2]), "No channels measured yet");
                 snprintf(f->rows[4], sizeof(f->rows[4]), "Measured %u/126; Right: plot", summary.measured_channels);
             } else snprintf(f->rows[4], sizeof(f->rows[4]), "0-125 %lu samples; Right: stats", (unsigned long)a->session.observations);
             if(!a->capabilities.nrf) {
@@ -481,7 +485,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
             snprintf(f->rows[2], sizeof(f->rows[2]), "%lu observations", (unsigned long)h->observations);
             snprintf(f->rows[3], sizeof(f->rows[3]), "Result: %s", ns_result_name(h->result));
             snprintf(f->rows[4], sizeof(f->rows[4]), "Duration %lu ms", (unsigned long)(h->ended_ms-h->started_ms));
-        } else snprintf(f->rows[1], sizeof(f->rows[1]), "No completed sessions");
+        } else snprintf(f->rows[1], sizeof(f->rows[1]), "%s", a->saved.history_count ? "No matching sessions" : "No completed sessions");
     } else if(a->page == NS_PAGE_EXPORTS) {
         snprintf(f->rows[1], sizeof(f->rows[1]), "Filtered numeric history CSV");
         snprintf(f->rows[2], sizeof(f->rows[2]), "OK: export; no radio access");

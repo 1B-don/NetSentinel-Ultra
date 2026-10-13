@@ -279,7 +279,7 @@ static void test_exports(void) {
     a.saved.history[1]=(NsHistory){3,10,20,4,NS_RADIO_CC,NS_IO};
     a.history_filter.radio=NS_RADIO_CC;
     assert(ns_app_export_history(&a,100)==NS_OK && a.export_id==4 && a.saved.last_id==4);
-    assert(strstr(m.file,"history_result,radio_3,3,4,count") && !strstr(m.file,"radio_1"));
+    assert(strstr(m.file,"history_result,radio_3,3,4,enum") && !strstr(m.file,"radio_1"));
     assert(m.acquired==0 && m.uart_calls==0 && m.closes==1);
     a.info_pending=2;assert(ns_app_export_history(&a,101)==NS_BUSY && a.saved.last_id==4);
     a.info_pending=0;m.fail_write=true;

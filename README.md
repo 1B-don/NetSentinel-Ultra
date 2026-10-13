@@ -67,3 +67,5 @@ The [development user guide](docs/USER_GUIDE.md) covers observation/history filt
 The development suite now includes deterministic parser/UART/RX/navigation stress and three unified diagnostic views. Full radio readiness remains gated by external wiring/plugin evidence and installed ESP32 passive-lifecycle verification; see the current readiness checklist.
 
 Run `scripts/verify_development.sh` for the full local pipeline. [Build instructions](docs/V1_BUILD.md), [user guide](docs/USER_GUIDE.md) and [final hardware procedure](docs/V1_HARDWARE_VERIFICATION.md) accompany the readiness checklist. This is a development build; complete three-radio v1.0 remains blocked and no additional deployment is authorized.
+
+Completion audit fixes now enforce idle filter expiry, bounded observation counts, AP-capacity cleanup and numeric Wi-Fi CSV records. The seeded fuzz suite tests accepted as well as rejected inputs. Radio hardware gates remain unchanged.

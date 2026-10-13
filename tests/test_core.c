@@ -49,6 +49,15 @@ static void test_cc(void) {
     m.rssi = -151; assert(ns_cc_sample(&c) == NS_IO && !m.owner && !m.frequency);
     m.absent = true; assert(ns_cc_open(&c, &io, true) == NS_ABSENT && !m.owner);
 }
+static void test_observation_counter_limits(void) {
+    Mock m={0};NsPlatform io=platform(&m);NsSession s;ns_session_init(&s,&io,NULL);
+    assert(ns_session_start(&s,NS_RADIO_NRF,false,true,0)==NS_OK);s.observations=UINT32_MAX;
+    assert(ns_session_tick(&s,1)==NS_FULL && !m.owner && !m.ce && s.observations==UINT32_MAX);
+    assert(s.history[0].result==NS_FULL);
+    assert(ns_session_start(&s,NS_RADIO_CC,false,true,2)==NS_OK);
+    assert(ns_cc_tune(&s.cc,433920000)==NS_OK);s.observations=UINT32_MAX;
+    assert(ns_session_tick(&s,3)==NS_FULL && !m.owner && !s.active && s.observations==UINT32_MAX);
+}
 static void test_session(void) {
     Mock m = {0}; NsPlatform io = platform(&m); NsSession s;
     ns_session_init(&s, &io, NULL);
@@ -114,4 +123,4 @@ static void test_settings(void) {
     assert(ns_graph_height(UINT32_MAX, UINT32_MAX, 40) == 40);
     assert(ns_graph_height(1, 0, 40) == 0);
 }
-int main(void) { test_settings(); test_spi_fault_matrix(); test_nrf(); test_cc(); test_session(); puts("PASS: receive safety, SPI/UART/storage failures, bounds, session cleanup and recovery"); }
+int main(void) { test_observation_counter_limits(); test_settings(); test_spi_fault_matrix(); test_nrf(); test_cc(); test_session(); puts("PASS: receive safety, SPI/UART/storage failures, bounds, session cleanup and recovery"); }

@@ -123,7 +123,6 @@ NsResult ns_session_cancel(NsSession* s, uint32_t now) {
 }
 NsResult ns_session_feed(NsSession* s, const uint8_t* data, size_t count, uint32_t now) {
     if(!s || s->active != NS_RADIO_ESP || (!data && count)) return NS_INVALID;
-    NsResult result = NS_OK;
     for(size_t i = 0; i < count; i++) {
         unsigned char c = data[i];
         if(c == '\r') continue;
@@ -162,6 +161,9 @@ NsResult ns_session_feed(NsSession* s, const uint8_t* data, size_t count, uint32
                         if(ap.bssid[0] && old->bssid[0] ? !strcmp(ap.bssid, old->bssid) :
                            ap.channel == old->channel && !strcmp(ap.ssid, old->ssid)) break;
                     }
+                    if(index >= NS_AP_LIMIT || s->observations == UINT32_MAX) {
+                        s->error = NS_FULL; ns_session_stop(s, now); return NS_FULL;
+                    }
                     if(index < NS_AP_LIMIT) {
                         if(index == s->ap_count) {
                             s->ap_min[index] = s->ap_max[index] = ap.rssi; s->ap_count++;
@@ -171,14 +173,19 @@ NsResult ns_session_feed(NsSession* s, const uint8_t* data, size_t count, uint32
                         }
                         s->ap_seen_ms[index] = now; s->aps[index] = ap;
                         s->observations++;
-                    } else result = NS_FULL;
+                        char record[120];
+                        snprintf(record, sizeof(record), "%lu,%lu,wifi_ap,ap_%u,%u,%d,dBm\n",
+                            (unsigned long)s->id, (unsigned long)now, (unsigned)index+1, ap.channel, ap.rssi);
+                        NsResult r = write_log(s, record);
+                        if(r != NS_OK) { s->error = r; ns_session_stop(s, now); return r; }
+                    }
                 }
             }
             s->line_len = 0; s->discard_line = false;
         } else if(c == 0 || s->line_len + 1 >= sizeof(s->line)) s->discard_line = true;
         else if(!s->discard_line) s->line[s->line_len++] = c >= 32 && c < 127 ? (char)c : '?';
     }
-    return result;
+    return NS_OK;
 }
 static NsResult cc_metadata(NsSession* s, uint32_t now) {
     if(!s->cc.diagnostic_valid) return NS_OK;
@@ -224,6 +231,7 @@ NsResult ns_session_tick(NsSession* s, uint32_t now) {
         if(s->use_marauder) r = ns_marauder_tick(&s->marauder, now);
         else if((uint32_t)(now - s->last_rx_ms) >= s->timeout_ms) r = NS_TIMEOUT;
     } else if(s->active == NS_RADIO_NRF) {
+        if(s->observations == UINT32_MAX) { s->error = NS_FULL; ns_session_stop(s, now); return NS_FULL; }
         uint8_t ch = s->nrf_channel;
         r = ns_nrf_sample(&s->nrf, ch, s->dwell_us);
         if(r == NS_OK) {
@@ -235,6 +243,7 @@ NsResult ns_session_tick(NsSession* s, uint32_t now) {
         }
     } else {
         if(s->cc_sampled && (uint32_t)(now-s->cc_last_ms) < NS_CC_SAMPLE_MS) return NS_OK;
+        if(s->observations == UINT32_MAX) { s->error = NS_FULL; ns_session_stop(s, now); return NS_FULL; }
         r = ns_cc_sample(&s->cc);
         if(r == NS_OK) {
             s->cc_sampled = true; s->cc_last_ms = now; s->observations++;

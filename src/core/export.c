@@ -26,7 +26,7 @@ NsResult ns_app_export_history(NsApplication* a, uint32_t now) {
             char row[128];
             int n = snprintf(row, sizeof(row), "%lu,%lu,history_%s,radio_%u,%lu,%lu,%s\n",
                 (unsigned long)next.last_id, (unsigned long)now, labels[field], (unsigned)h->radio,
-                (unsigned long)h->id, (unsigned long)values[field], field == 0 ? "ms" : "count");
+                (unsigned long)h->id, (unsigned long)values[field], field == 0 ? "ms" : (field == 2 ? "enum" : "count"));
             r = n < 0 || (size_t)n >= sizeof(row) ? NS_FULL : io->file_write(io->ctx, row, (size_t)n);
         }
     }
