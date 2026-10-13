@@ -39,15 +39,16 @@ Build evidence: logs/v1-final-host.log, v1-final-short.log, v1-final-sanitize.lo
 
 | Field | Verified result |
 |---|---|
+| Source milestone | a65d0da (subsequent build-evidence documentation only) |
 | Artifact | dist/netsentinel_development.fap |
-| Size | 43,268 bytes |
-| SHA-256 | 79e92c0b7677d3fa7f32e4e0a09c540d2ce57d38b55875c5e0d15363ba97899c |
+| Size | 43,800 bytes |
+| SHA-256 | dbbd5be6eb5f4c3dac1994a76dc4ac100ba8b1b9cb2345461deae62ca5da4987 |
 | API / target / stack | 87.1 / 7 / 8192 |
 | Required imports / weak imports | 63 / 0 |
 | SDK compile/link/APPCHK | Passed; no compiler/linker errors |
 | Host / short enums / sanitizer | All 12 C suites passed |
 | Python checks | 8 preflight, 5 manifest, 4 publication tests passed |
-| Hardware operations | ESP info only; other physical adapters disabled |
+| Hardware operations | USART info only; other physical features disabled |
 | Physical validation | Not performed on this development artifact |
 
-The preserved stable GUI, ESP Info and ESP diagnostics FAP checksums still match builds/preserved-v1-start/checksums.json. No device storage was accessed. Sanitizer leak detection was disabled locally; ASan/UBSan ran. Packaging hashes can vary on a clean rebuild; the table applies to the exact final artifact above. No release/deployment is authorized.
+Stable GUI/storage, ESP Info and ESP diagnostics checksums match builds/preserved-v1-start/checksums.json. The preceding unified development artifact and stable FAPs are also preserved under builds/preserved-0564846. No device data was accessed or rewritten. All seeded fuzz, counter/capacity, RXOFF and no-SD/stop-framing tests pass. Local sanitizer leak detection is disabled; ASan/UBSan ran. Public dependency findings are in DEPENDENCY_REVIEW.md. Packaging hashes can vary; this evidence applies to the exact file above, not another rebuild. No deployment/Release is authorized.
