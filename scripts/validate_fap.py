@@ -13,7 +13,7 @@ def metadata(data):
     if len(data) < 52 or data[:7] != b'\x7fELF\x01\x01\x01':
         raise ValueError('expected little-endian ELF32')
     kind, machine = struct.unpack_from('<HH', data, 16)
-    if kind != 1 or machine != 40:
+    if kind != 1 or machine != 40 or struct.unpack_from('<I', data, 36)[0] != 0x05000000:
         raise ValueError('expected relocatable ARM ELF')
     offset = struct.unpack_from('<I', data, 32)[0]
     width, count, names_index = struct.unpack_from('<HHH', data, 46)
@@ -32,12 +32,22 @@ def metadata(data):
             raise ValueError('invalid section name')
         if names[start:].split(b'\0', 1)[0] == b'.fapmeta':
             matches.append(contents(section))
-    if len(matches) != 1 or len(matches[0]) < 16:
+    if len(matches) != 1 or len(matches[0]) != 86:
         raise ValueError('missing/duplicate FAP metadata')
     magic, version, minor, major, target, stack = struct.unpack_from('<IIHHHH', matches[0])
     if magic != 0x52474448 or version != 1 or (major, minor, target) != (87, 1, 7) or stack != 8192:
         raise ValueError('unexpected FAP API/target/stack metadata')
-    return {'api': f'{major}.{minor}', 'target': target, 'stack': stack}
+    manifest = matches[0]
+    app_version = struct.unpack_from('<I', manifest, 16)[0]
+    name = manifest[20:52]
+    if b'\0' not in name:
+        raise ValueError('unterminated application name')
+    raw_name, padding = name.split(b'\0', 1)
+    allowed = (b'NetSentinel Ultra', b'NetSentinel ESP Info', b'ESP Diagnostics v0.2', b'NetSentinel Ultra Dev')
+    if raw_name not in allowed or any(padding) or app_version != 0x00010000 or any(manifest[52:]):
+        raise ValueError('unexpected name/app version/icon/flags metadata')
+    return {'api': f'{major}.{minor}', 'target': target, 'stack': stack,
+            'app_version': '1.0 development', 'name': raw_name.decode('ascii'), 'icon': False, 'flags': 0}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -56,6 +66,11 @@ def main():
     nm = Path.home()/'.ufbt/toolchain/x86_64-linux/bin/arm-none-eabi-nm'
     listing = subprocess.check_output([str(nm), '--undefined-only', '--format=posix', str(artifact)], text=True)
     required, weak = sdk_preflight.read_undefined(listing)
+    defined = subprocess.check_output([str(nm), '--defined-only', '--format=posix', str(artifact)], text=True)
+    entry = [line.split() for line in defined.splitlines() if line.split() and line.split()[0] == 'netsentinel_app']
+    if len(entry) != 1 or len(entry[0]) != 4 or entry[0][1] != 'T' or \
+       (int(entry[0][2], 16) | 1) != struct.unpack_from('<I', data, 24)[0]:
+        raise ValueError('entry point does not match netsentinel_app Thumb function')
     if weak or required-exports:
         raise ValueError('unresolved or weak firmware imports')
     blocked = ('furi_hal_spi', 'furi_hal_subghz', 'furi_hal_power', 'furi_hal_gpio', 'furi_hal_usb', 'subghz_devices_')

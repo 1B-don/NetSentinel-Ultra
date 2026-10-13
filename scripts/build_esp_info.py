@@ -65,22 +65,23 @@ def main():
     if (stage/"application.fam").is_symlink():
         raise RuntimeError("Staged manifest must not be a symlink")
     (stage/"application.fam").write_text(manifest)
-    baseline = ROOT/"dist/netsentinel.fap"
-    before = digest(baseline)
+    stable = [ROOT/"dist"/name for name in ("netsentinel.fap", "netsentinel_esp_info.fap", "netsentinel_esp_diagnostics.fap")
+              if name != appid+".fap" and (ROOT/"dist"/name).exists()]
+    before = {path: digest(path) for path in stable}
     env = dict(os.environ, UFBT_HOME=str(SDK_HOME), FBT_TOOLCHAIN_PATH=str(Path.home()/".ufbt"))
     logs = ROOT/"logs"; logs.mkdir(exist_ok=True)
     for name, args in (("live-info-clean.log", ["-c"]), ("live-info-build.log", [])):
         with (logs/name).open("w") as log:
             subprocess.run([str(UFBT), *args], cwd=stage, env=env,
                 stdout=log, stderr=subprocess.STDOUT, check=True)
-    if digest(baseline) != before:
-        raise RuntimeError("Default FAP unexpectedly changed")
+    if any(digest(path) != expected for path, expected in before.items()):
+        raise RuntimeError("Preserved stable FAP unexpectedly changed")
     src = stage/"dist"/(appid+".fap")
     dst = ROOT/"dist"/(appid+".fap")
     shutil.copy2(src, dst)
     print("Built separate info-only FAP:", dst.name)
     print("Bytes:", dst.stat().st_size, "SHA256:", digest(dst))
-    print("Default FAP unchanged; no device operation performed")
+    print("Stable FAPs unchanged; no device operation performed")
 
 if __name__ == "__main__":
     main()

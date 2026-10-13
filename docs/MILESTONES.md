@@ -151,3 +151,7 @@ Implemented the observation/storage milestone described in V1_READINESS.md and U
 ## Deterministic stress and consistent diagnostics
 
 Added deterministic parser/UART/radio/UI stress coverage, explicit UART line-buffer clearing, pixel-width-bounded GUI rendering and storage/USART/radio diagnostic views. Twelve host suites and all sanitizer/short-enum/preflight/publication checks pass. Matching SDK build/APPCHK and actual FAP imports pass; no deployment. Candidate external APIs inventoried from permitted SDK-only headers without creating speculative pin bindings. Hardware/passivity dependencies remain recorded in V1_READINESS.md. GitHub DNS still prevents normal publication.
+
+## Unified development package and reproducible verification
+
+Completed the permitted SDK-only full development workflow, strict complete-manifest/entry/import checks, preserved-artifact safeguards, user guide and final hardware procedure. Exact final package and all test results are recorded in V1_BUILD.md; status matrix and dependencies in V1_READINESS.md. Twelve C suites and 17 Python checks pass, including short enums and ASan/UBSan. No new radio capability is represented as physically working. Full three-radio v1.0 remains blocked by permitted hardware/passivity inputs. GitHub independently reports master at 0b84e05; commits after that are local because normal shell publication fails DNS. No Releases or device operations performed.

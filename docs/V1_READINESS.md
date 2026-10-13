@@ -49,3 +49,22 @@ Twelve C suites now pass, including deterministic 20,000 parser mutations, 2,000
 Observed vs implemented status remains separate: ESP info has owner-reported repeated success and restored original app functionality; Back cancellation is still pending. NRF/CC processing is implemented and simulated, compiled into the development FAP, but physical adapters remain disabled. Wi-Fi channel/AP processing and filtering are implemented/simulated; installed initialization/receive/stop TX exclusion remains unresolved. BLE remains unsupported because no verified passive protocol exists. No complete three-radio v1.0 claim is justified.
 
 Permitted SDK headers/export table provide SPI and SubGhzDevice APIs (see SDK_INTERFACES.md). Transfer deadlines exist, but SPI bus acquisition has no deadline parameter. External plugin implementation, exact device identity, pin routes and ownership semantics are still required. Manufacturer guides contain no netlist; no inferred binding was created.
+
+## Updated passive-protocol investigation
+
+Read-only [upstream v1.11.0 WiFiScan.cpp](https://raw.githubusercontent.com/justcallmekoko/ESP32Marauder/v1.11.0/esp32_marauder/WiFiScan.cpp) review finds receive modes calling setWiFiMode with WIFI_MODE_NULL, a promising passive configuration. It does not establish the exact installed binary/options or complete initialization/stop path. RunAPScan also starts PCAP handling; its default storage effects need review before privacy-safe live integration. The upstream Bluetooth scan path explicitly enables active scan (setActiveScan(true)), so it cannot be treated as passive discovery. No commands were sent or upstream code copied. These are source facts; installed-build correspondence and side effects remain unresolved.
+
+## Current readiness summary
+
+| Area | Implemented / simulated | SDK build | Physical / blocked |
+|---|---|---|---|
+| Dashboard, lifecycle, GUI width/recovery | Implemented; navigation/fault/stress mocks pass | Pass | Prior dashboard/exit pass; new full navigation pending |
+| ESP info/diagnostics | Implemented; bounded transport/parser/cancellation mocks pass | Pass | Prior three queries/exit/interop/privacy pass; new diagnostics and cancellation pending |
+| Filters/history/settings/private exports | Implemented; torn-write/export/filter mocks pass | Pass | Prior settings/privacy pass; new workflows pending |
+| NRF RPD sampling, graphical/statistical analysis, CSV | Implemented; receive-only SPI mocks pass | Compiled; no physical SPI imports | Board routing/ownership port blocked |
+| CC status/RSSI trace/tune/CSV | Implemented; simulated responses pass | Compiled; no external device imports | External plugin/routing/preset/calibration and RF verification blocked |
+| Wi-Fi AP/channel/baseline/signal processing | Implemented with synthetic observations | Compiled; live scan gate off | Exact installed passive/privacy lifecycle blocked |
+| BLE discovery | Unsupported; no guessed parser/commands | Disabled | Upstream active scan unsuitable for receive-only requirement |
+| Software verification pipeline | Implemented; strict metadata/import/privacy checks pass | Pass | Full hardware release gate remains open |
+
+Smallest authorized next input is documentation/source, not another experimental deployment: manufacturer Ultra V3 SPI/CE/CS/GDO netlist and switch circuitry, permitted external CC1101 plugin implementation/identity and receive preset, and installed Marauder build correspondence/options plus receive/stop/PCAP-default evidence. No additional radio binding can responsibly be completed without those facts. Inputs must be independently permitted and outside the restricted checkout. No firmware replacement is proposed. Security information is currently absent in the reviewed AP fixtures; arbitrary new field formats are not guessed.

@@ -1,4 +1,4 @@
-# Candidate external-app manifest; real SDK compilation/ABI verification pending.
+# SDK-validated GUI/storage baseline manifest; development helper stages a separate app.
 # Initial SDK build: GUI/navigation/storage only; all hardware ports disabled.
 App(
     appid="netsentinel",
@@ -9,7 +9,7 @@ App(
     cdefines=["NS_GUI_STORAGE_ONLY"],
     fap_version="1.0",
     fap_category="GPIO",
-    fap_description="Receive-only diagnostics; v1.0 development, unverified SDK integration",
+    fap_description="Receive-only diagnostics; v1.0 development; physical adapters gated",
     fap_author="Brandon Midgette",
     sources=["ap_parser.c", "ns_analysis.c", "src/core/*.c", "src/flipper/*.c"],
 )
