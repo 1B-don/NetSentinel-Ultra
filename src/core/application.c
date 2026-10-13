@@ -128,11 +128,24 @@ NsResult ns_app_cc_tune(NsApplication* a, uint32_t frequency, uint32_t now) {
     }
     return a->status = r;
 }
+static void info_finished(NsApplication* a, uint32_t now) {
+    if(!a->capabilities.esp_info_only || !a->info_timing) return;
+    a->info_elapsed_ms = now - a->session.started_ms;
+    if(!a->info_cancelled && a->session.error == NS_OK &&
+       a->session.marauder.info_complete && a->session.marauder.identity_matches) {
+        a->info_validated = true;
+        a->info_sd_connected = a->session.marauder.sd_connected;
+        a->info_success_id = a->session.id;
+    }
+}
 NsResult ns_app_device_info(NsApplication* a, uint32_t now) {
     if(!a) return NS_INVALID;
     if(a->session.active != NS_RADIO_NONE || a->info_pending) return a->status = NS_BUSY;
     a->session.wifi_request = false;
-    return start_session(a, NS_RADIO_ESP, false, false, now);
+    a->info_timing = false; a->info_cancelled = false;
+    NsResult r = start_session(a, NS_RADIO_ESP, false, false, now);
+    if(r == NS_OK) { a->info_timing = true; a->info_elapsed_ms = 0; }
+    return r;
 }
 void ns_app_baseline(NsApplication* a) {
     if(!a) return;
@@ -141,11 +154,14 @@ void ns_app_baseline(NsApplication* a) {
 }
 NsResult ns_app_stop(NsApplication* a, uint32_t now) {
     if(!a) return NS_INVALID;
+    if(a->info_pending && a->capabilities.esp_info_only) a->info_cancelled = true;
     a->info_pending = 0;
     if(a->session.active == NS_RADIO_NONE && !a->history_dirty) return a->status;
     NsResult session_result = NS_OK;
     if(a->session.active != NS_RADIO_NONE) {
+        a->info_cancelled = a->capabilities.esp_info_only;
         NsResult cancelled = ns_session_cancel(&a->session, now);
+        info_finished(a, now);
         if(cancelled == NS_BUSY) return a->status = NS_BUSY;
         a->history_dirty = true;
         session_result = a->session.error;
@@ -161,6 +177,7 @@ NsResult ns_app_step(NsApplication* a, uint32_t now) {
     }
     if(a->session.active == NS_RADIO_NONE) return NS_OK;
     NsResult r = NS_OK;
+    if(a->capabilities.esp_info_only) a->info_elapsed_ms = now - a->session.started_ms;
     if(a->session.active == NS_RADIO_ESP && a->session.io->uart_read) {
         uint8_t bytes[128];
         for(unsigned batch = 0; batch < 8 && a->session.active == NS_RADIO_ESP; batch++) {
@@ -177,6 +194,7 @@ NsResult ns_app_step(NsApplication* a, uint32_t now) {
     }
     if(r == NS_OK && a->session.active != NS_RADIO_NONE) r = ns_session_tick(&a->session, now);
     if(a->session.active == NS_RADIO_NONE) {
+        info_finished(a, now);
         a->history_dirty = true;
         NsResult stored = persist_history(a);
         if(stored != NS_OK) r = stored;
@@ -189,6 +207,7 @@ NsResult ns_app_feed(NsApplication* a, const uint8_t* bytes, size_t n, uint32_t 
     bool active = a->session.active != NS_RADIO_NONE;
     NsResult r = ns_session_feed(&a->session, bytes, n, now);
     if(active && a->session.active == NS_RADIO_NONE) {
+        info_finished(a, now);
         a->history_dirty = true;
         NsResult saved = persist_history(a); if(saved != NS_OK) r = saved;
     }
@@ -233,6 +252,8 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
     } else if(a->page == NS_PAGE_SELECTOR && key == NS_KEY_OK) {
         return ns_app_start(a, a->selected, a->ble, true, now);
     } else if(a->page == NS_PAGE_RADIO && key == NS_KEY_OK) {
+        if(a->capabilities.esp_info_only && a->selected == NS_RADIO_ESP &&
+           (a->info_pending || a->session.active != NS_RADIO_NONE)) return NS_BUSY;
         if(a->session.active != NS_RADIO_NONE) return ns_app_stop(a, now);
         if(a->selected == NS_RADIO_ESP) {
             if(a->capabilities.esp_info_only && !a->ble) {
@@ -254,6 +275,8 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
                 return ns_app_device_info(a, now);
             }
         }
+        if(a->capabilities.esp_info_only && (key == NS_KEY_UP || key == NS_KEY_DOWN))
+            a->info_view = (a->info_view + (key == NS_KEY_DOWN ? 1 : 2)) % 3;
         if(key == NS_KEY_LEFT) ns_app_baseline(a);
         if(key == NS_KEY_UP && a->ap_index) a->ap_index--;
         if(key == NS_KEY_DOWN && a->ap_index+1 < a->session.ap_count) a->ap_index++;
@@ -337,9 +360,18 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 if(a->capabilities.esp_info_only) {
                     snprintf(f->rows[1], sizeof(f->rows[1]), "ESP32 info-only USART");
                     /* Only known matched constants reach diagnostics, never untrusted identity text. */
-                    snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->session.marauder.identity_matches ? "v1.11.0" : "Identity not validated");
-                    snprintf(f->rows[3], sizeof(f->rows[3]), "%s", a->session.marauder.identity_matches ? "Marauder v4" : "");
-                    snprintf(f->rows[4], sizeof(f->rows[4]), "OK/Right: info  Back: cancel");
+                    snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->info_validated ? "Marauder v1.11.0 (last success)" : "Identity not validated");
+                    snprintf(f->rows[3], sizeof(f->rows[3]), "%s", a->info_validated ? "Marauder v4 (last success)" : "");
+                    if(a->info_view == 1) {
+                        snprintf(f->rows[1], sizeof(f->rows[1]), "ESP-IDF (validated reply)");
+                        snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->info_validated ? "v5.5.1-710-g8410210c9a" : "Not validated");
+                        snprintf(f->rows[3], sizeof(f->rows[3]), "%s", a->info_validated ? (a->info_sd_connected ? "SD: Connected (last success)" : "SD: Disconnected (last success)") : "SD: unknown");
+                    } else if(a->info_view == 2) {
+                        snprintf(f->rows[1], sizeof(f->rows[1]), "Last success: %lu (session)", (unsigned long)a->info_success_id);
+                        snprintf(f->rows[2], sizeof(f->rows[2]), "Elapsed: %lu ms%s", (unsigned long)a->info_elapsed_ms, a->session.active == NS_RADIO_ESP ? " (running)" : "");
+                        snprintf(f->rows[3], sizeof(f->rows[3]), "Timeout: %lu ms", (unsigned long)a->session.timeout_ms);
+                    }
+                    snprintf(f->rows[4], sizeof(f->rows[4]), "%s", a->info_pending || a->session.active != NS_RADIO_NONE ? "Retry disabled; Back: cancel" : "OK: Retry  Up/Down: details");
                     if(a->info_pending) state = "Connecting: USART requested";
                     else if(a->session.active == NS_RADIO_ESP) state = "Waiting: info response";
                     else if(a->status == NS_TIMEOUT) state = "Timeout: link unconfirmed";
@@ -349,6 +381,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                     else if(a->status == NS_IO) state = "Error: serial or SD I/O";
                     else if(a->status == NS_UNSUPPORTED) state = "Error: USART configuration";
                     else if(a->status != NS_OK && a->status != NS_ABSENT) state = "Error: operation failed";
+                    else if(a->info_cancelled) state = "Cancelled: USART closed";
                     else if(a->session.marauder.stage == NS_M_DONE && a->session.marauder.info_complete)
                         state = a->session.marauder.identity_matches ? "Connected: query passed" : "Error: identity mismatch";
                     else if(a->session.marauder.stage == NS_M_DONE && a->session.marauder.info_fields) state = "Error: incomplete reply";

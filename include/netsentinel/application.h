@@ -15,7 +15,10 @@ typedef struct {
     unsigned menu, setting, history_index;
     NsRadio selected;
     bool ble, running, history_dirty, exit_requested, wifi_details, cc_details;
-    unsigned ap_index, info_pending;
+    unsigned ap_index, info_pending, info_view;
+    /* Volatile bounded diagnostics; never serialized or copied from raw UART. */
+    bool info_timing, info_validated, info_cancelled, info_sd_connected;
+    uint32_t info_elapsed_ms, info_success_id;
     NsAccessPoint baseline[NS_AP_LIMIT];
     size_t baseline_count;
     NsResult status;

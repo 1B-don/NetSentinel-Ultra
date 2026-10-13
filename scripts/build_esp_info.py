@@ -53,8 +53,8 @@ def main():
     manifest = (ROOT/"application.fam").read_text()
     if 'cdefines=["NS_GUI_STORAGE_ONLY"]' not in manifest:
         raise RuntimeError("Default manifest gate changed; inspect before building")
-    manifest = manifest.replace('appid="netsentinel"', 'appid="netsentinel_esp_info"')
-    manifest = manifest.replace('name="NetSentinel Ultra"', 'name="NetSentinel ESP Info"')
+    manifest = manifest.replace('appid="netsentinel"', 'appid="netsentinel_esp_diagnostics"')
+    manifest = manifest.replace('name="NetSentinel Ultra"', 'name="ESP Diagnostics v0.2"')
     manifest = manifest.replace('cdefines=["NS_GUI_STORAGE_ONLY"]', 'cdefines=["NS_ESP_INFO_ONLY"]')
     if (stage/"application.fam").is_symlink():
         raise RuntimeError("Staged manifest must not be a symlink")
@@ -69,8 +69,8 @@ def main():
                 stdout=log, stderr=subprocess.STDOUT, check=True)
     if digest(baseline) != before:
         raise RuntimeError("Default FAP unexpectedly changed")
-    src = stage/"dist/netsentinel_esp_info.fap"
-    dst = ROOT/"dist/netsentinel_esp_info.fap"
+    src = stage/"dist/netsentinel_esp_diagnostics.fap"
+    dst = ROOT/"dist/netsentinel_esp_diagnostics.fap"
     shutil.copy2(src, dst)
     print("Built separate info-only FAP:", dst.name)
     print("Bytes:", dst.stat().st_size, "SHA256:", digest(dst))

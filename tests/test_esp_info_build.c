@@ -55,7 +55,7 @@ int main(void) {
     assert(f.platform.acquire(&f, NS_RADIO_ESP) == NS_UNSUPPORTED && !f.serial);
     mock_serial_pin_mismatch(false);
     assert(f.platform.acquire(&f, NS_RADIO_ESP) == NS_OK);
-    const char* denied[] = {"help\n","stopscan\n","sniffbeacon\n","info -a 0\n","reboot\n","info\nhelp\n"};
+    const char* denied[] = {"help\n","stopscan\n","sniffbeacon\n","info -a 0\n","reboot\n","info\nhelp\n","scanap\n","deauth\n","inject\n","reset\n","update\n","flash\n"};
     f.capabilities.esp_wifi_verified = true; /* transport gate must still prevail */
     for(size_t i=0; i<sizeof(denied)/sizeof(denied[0]); i++)
         assert(f.platform.uart_write(&f, (const uint8_t*)denied[i], strlen(denied[i])) == NS_UNSUPPORTED);
@@ -77,6 +77,14 @@ int main(void) {
     assert(ns_app_step(&a, 3) == NS_OK && !f.serial && f.owner == NS_RADIO_NONE);
     check_frame(&a, "Connected: query passed");
     assert(a.session.marauder.identity_matches && a.saved.history_count == 1);
+    assert(a.info_success_id == 1 && a.info_elapsed_ms == 1 && a.info_validated);
+    NsFrame details;
+    assert(ns_app_key(&a,NS_KEY_DOWN,3)==NS_OK); ns_app_frame(&a,&details);
+    assert(!strcmp(details.rows[2],"v5.5.1-710-g8410210c9a"));
+    assert(strstr(details.rows[3],"Connected"));
+    assert(ns_app_key(&a,NS_KEY_DOWN,3)==NS_OK); ns_app_frame(&a,&details);
+    assert(strstr(details.rows[1],"Last success: 1") && strstr(details.rows[2],"1 ms"));
+    a.info_view=0;
     for(size_t i=0; i<sizeof(f.rx); i++) assert(f.rx[i] == 0);
     assert(!atomic_load(&f.rx_head) && !atomic_load(&f.rx_tail) && !f.rx_total && !f.info_sent);
     /* History snapshots and closed CSV contain no arbitrary serial identifiers. */
@@ -117,7 +125,16 @@ int main(void) {
     check_frame(&a, "Error: USART/session busy");
     furi_hal_serial_control_release(other);
     assert(ns_app_device_info(&a, 5012) == NS_OK);
-    assert(ns_app_stop(&a, 5013) == NS_OK && !f.serial);
+    const char* fragment="#info\nVersion: v1.";
+    mock_serial_feed((const uint8_t*)fragment,strlen(fragment));
+    assert(ns_app_step(&a,5012)==NS_OK);
+    assert(ns_app_key(&a,NS_KEY_OK,5012)==NS_BUSY && f.serial);
+    assert(ns_app_key(&a,NS_KEY_BACK,5013)==NS_OK && !f.serial && !a.info_pending);
+    a.page=NS_PAGE_RADIO; check_frame(&a,"Cancelled: USART closed");
+    assert(a.info_success_id==1 && a.info_elapsed_ms==1);
+    size_t late_count=99; uint8_t late_byte;
+    assert(f.platform.uart_read(&f,&late_byte,1,&late_count)==NS_INVALID && !late_count);
+    assert(ns_app_step(&a,5013)==NS_OK && !f.serial);
     assert(ns_app_device_info(&a, 5014) == NS_OK);
     /* Overall reply budget also applies when the worker drains the ring. */
     uint8_t bytes[128]; memset(bytes, 'x', sizeof(bytes)); size_t n;
