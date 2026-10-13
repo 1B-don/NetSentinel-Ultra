@@ -4,7 +4,7 @@ NetSentinel now compiles and packages a real GUI/storage-only FAP using the perm
 
 Current rebuilt artifact: `dist/netsentinel.fap` (34,148 bytes; not physically tested). See [Momentum build evidence and reproducible commands](docs/MOMENTUM_BUILD.md). The earlier official SDK artifact/evidence are preserved separately.
 
-[ESP32 preparation](docs/ESP32_PREPARATION.md) records UART topology/protocol blockers, deadline fixes and meaningful status UI.
+[ESP32 preparation](docs/ESP32_PREPARATION.md) records UART topology/protocol blockers, deadline fixes and meaningful status UI. [The bridge connection procedure](docs/ESP32_CONNECTION_TEST.md) incorporates owner-confirmed photographs and remains blocked on exact board nets/circuitry and explicit hardware approval.
 
 The earlier API 89.1 report is superseded by the owner’s direct USB CLI result. All radio adapters remain disabled. [First on-device test](docs/FIRST_DEVICE_TEST.md) requires explicit approval before installation or execution.
 

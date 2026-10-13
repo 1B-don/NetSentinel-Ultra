@@ -136,4 +136,34 @@ static void test_input_failures(void) {
     mock_sdk_reset(); mock_sdk_fail_mutex(1);
     assert(netsentinel_app(NULL) == 1 && !mock_sdk_live() && !mock_sdk_records());
 }
-int main(void) { test_input_failures(); test_adapter(); test_shell(); test_uart(); puts("PASS: Flipper shell/storage contract shims, exclusive CSV, GUI lifecycle and allocation unwind (not SDK ABI)"); }
+/* Synthetic info transport faults: controller must release HAL ownership,
+ * preserve error history and emit no scan/stop commands during info. */
+static void test_info_transport_faults(void) {
+    unsigned events[] = {FuriHalSerialRxEventFrameError, FuriHalSerialRxEventNoiseError,
+        FuriHalSerialRxEventOverrunError, FuriHalSerialRxEventParityError};
+    for(size_t i = 0; i < sizeof(events)/sizeof(events[0]); i++) {
+        mock_sdk_reset(); NsFlipper f; NsApplication app;
+        assert(ns_flipper_init(&f));
+        assert(ns_app_init(&app, &f.platform, &f.store, f.capabilities) == NS_ABSENT);
+        assert(ns_app_device_info(&app, 0) == NS_OK);
+        mock_serial_feed((const uint8_t*)"#info\nVersion: v1.11.0\n", 23);
+        mock_serial_error(events[i]);
+        assert(ns_app_step(&app, 1) == NS_IO);
+        assert(!f.serial && f.owner == NS_RADIO_NONE && !app.history_dirty);
+        assert(app.saved.history_count == 1 && app.saved.history[0].result == NS_IO);
+        assert(!strcmp(mock_serial_commands(), "info\n"));
+        assert(ns_app_device_info(&app, 2) == NS_OK);
+        assert(ns_app_stop(&app, 3) == NS_OK && !f.serial);
+        assert(!strcmp(mock_serial_commands(), "info\n")); /* mock capture resets on reacquire */
+        ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
+    }
+    mock_sdk_reset(); NsFlipper f; NsApplication app;
+    assert(ns_flipper_init(&f));
+    assert(ns_app_init(&app, &f.platform, &f.store, f.capabilities) == NS_ABSENT);
+    assert(ns_app_device_info(&app, UINT32_MAX-499) == NS_OK);
+    assert(ns_app_step(&app, 4499) == NS_OK && f.serial);
+    assert(ns_app_step(&app, 4500) == NS_TIMEOUT && !f.serial);
+    assert(!strcmp(mock_serial_commands(), "info\n"));
+    ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
+}
+int main(void) { test_input_failures(); test_adapter(); test_shell(); test_uart(); test_info_transport_faults(); puts("PASS: Flipper shell/storage contract shims, exclusive CSV, GUI lifecycle and allocation unwind (not SDK ABI)"); }
