@@ -1,5 +1,7 @@
 # External CC1101 registry integration readiness
 
+The narrower [metadata-only discovery review](CC1101_DISCOVERY_READINESS.md) identifies registry lifetime and unverified load effects as the immediate blocker even when no hardware/provider method is called. No standalone discovery FAP is justified by the current permitted contracts.
+
 Source baseline: `86c9771ce89b4e6c70da1437143fa313f826a40b`. Reviewed target: permitted Momentum d3f89dfe SDK, API 87.1, hardware target 7. Outcome: named external discovery is an available API pattern; a safe bounded physical receive adapter is not yet justified. All physical CC1101 gates remain disabled. No experimental FAP was installed or launched.
 
 ## Discovery without the external entrypoint import

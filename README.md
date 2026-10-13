@@ -12,7 +12,7 @@ From this project directory:
 scripts/verify_development.sh rc
 ```
 
-The pipeline runs **15 C suites and 24 Python checks**, short-enum builds, ASan/UBSan, clean uFBT compilation/link/packaging/APPCHK, complete FAP metadata/entry/import checks and publication audit. Local sanitizer leak detection defaults off; address/undefined-behavior checks remain enabled. Host peripherals are mocks, not hardware evidence. See [build instructions](docs/V1_BUILD.md) for permitted SDK inputs, isolated cache and local build evidence.
+The pipeline runs **15 C suites and 25 Python checks**, short-enum builds, ASan/UBSan, clean uFBT compilation/link/packaging/APPCHK, complete FAP metadata/entry/import checks and publication audit. Local sanitizer leak detection defaults off; address/undefined-behavior checks remain enabled. Host peripherals are mocks, not hardware evidence. See [build instructions](docs/V1_BUILD.md) for permitted SDK inputs, isolated cache and local build evidence.
 
 Candidate output: `dist/netsentinel_ultra_v1_0_rc1.fap`. Root manifest remains GUI/storage-only; candidate manifest uses the info-only USART gate. Live USART is fixed TX13/PB6, RX14/PB7, 115200/8N1 and accepts one info command per acquisition. NRF24/CC1101/Wi-Fi/BLE physical workflows stay disabled. No device access or firmware operation occurs in the pipeline. Validate each generated checksum; packaging is not claimed byte-for-byte deterministic.
 
@@ -23,6 +23,8 @@ Hardware Diagnostics now reports radio interface availability, route verificatio
 The supplied seven-FAP static-analysis report is now cross-checked against Momentum API 87.1: the Sniffer and Channel Scanner's listed SPI/GPIO imports are all enabled exports. The SDK maps Momentum's NRF24 `SpiDefault`/`SpiExtra` setting to generic CS PA4/PC3, but that does not verify Ultra V3 wiring or prove the reference FAPs' runtime path. The source-level Channel Scanner init/teardown comparison remains incomplete; the physical adapter is still gated on bounded acquisition and board routing. See the NRF24 review for details.
 
 ## Implemented boundaries
+
+The [provider-discovery decision](docs/CC1101_DISCOVERY_READINESS.md) finds no supported safe registry initialization/borrowing lifecycle for a metadata-only diagnostic. No discovery FAP is generated and no registry calls are made. Source preflight now inventories Sub-GHz/plugin-manager calls so future changes cannot omit them from names-only checks.
 
 The [CC1101 registry readiness report](docs/CC1101_REGISTRY_READINESS.md) confirms an exported named-discovery path independent of the disabled external entrypoint import. Registered, initialized, connected, RX and received-data states remain distinct. Registry lifetime and provider deadlines/passivity are unverified, so physical access stays disabled; deterministic future-provider mocks exercise missing/wrong-name devices and cleanup.
 

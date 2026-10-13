@@ -59,6 +59,26 @@ class SdkPreflightTests(unittest.TestCase):
             finally:
                 link.unlink(missing_ok=True)
 
+    def test_registry_and_plugin_calls_are_inventoried(self):
+        # Synthetic source only; never initializes a real registry/provider.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'src/flipper').mkdir(parents=True)
+            (root / 'src/flipper/app.c').write_text(
+                '/* subghz_devices_begin(device); */\n'
+                '"subghz_devices_set_rx(device)";\n'
+                'subghz_devices_init();\n'
+                'subghz_devices_get_by_name("cc1101_ext");\n'
+                'subghz_devices_get_name(device);\n'
+                'subghz_devices_deinit();\n'
+                'plugin_manager_load_single(manager, path);\n')
+            self.assertEqual(sdk.required_functions(root), {
+                'subghz_devices_init', 'subghz_devices_get_by_name',
+                'subghz_devices_get_name', 'subghz_devices_deinit',
+                'plugin_manager_load_single'})
+        self.assertFalse(any(name.startswith(('subghz_', 'plugin_manager_'))
+                             for name in sdk.required_functions()))
+
     def test_import_listing(self):
         required, weak = sdk.read_undefined('__aeabi_uldivmod U\nfuri_hal_spi_bus_handle_external U\noptional_hook w\noptional_data v\n')
         self.assertEqual(required, {'__aeabi_uldivmod', 'furi_hal_spi_bus_handle_external'})

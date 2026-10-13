@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 INPUT = ROOT / 'builds' / 'sdk-input'
 # Discover calls, not declarations. Exclude comments/string literals first.
 C_TEXT = re.compile(r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.S)
-CALL = re.compile(r'\b((?:furi_|gui_|view_port_|canvas_|storage_)[A-Za-z0-9_]+)\s*\(')
+CALL = re.compile(r'\b((?:furi_|gui_|view_port_|canvas_|storage_|subghz_|plugin_manager_)[A-Za-z0-9_]+)\s*\(')
 
 def required_functions(root=ROOT, gui_storage_only=False):
     names = set()
