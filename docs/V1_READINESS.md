@@ -39,6 +39,8 @@ Target: permitted Momentum Dev d3f89dfe SDK, API 87.1, hardware target 7. No new
 
 ## Exact remaining inputs
 
+The separate [ESP Status candidate](ESP32_STATUS_DIAGNOSTICS.md) is software/SDK validated with six typed connection states, four redacted detail views and info-only commands. Its exact new FAP is physically untested; field/cancellation/restoration checks remain pending. Parser deadlines do not bound void HAL TX, and full late stale replies have no protocol nonce. NRF/CC and Wi-Fi/BLE gates remain unchanged.
+
 The [CC1101 registry readiness report](CC1101_REGISTRY_READINESS.md) confirms named discovery need not import the disabled external entrypoint, while installed provider availability, shared registry lifetime and finite passive callbacks remain unverified. No live adapter was enabled. New finite mocks distinguish absent/wrong-name/initialized/connected/tuned/sampled states and test cleanup; they are not physical evidence.
 
 The [hardware architecture decision](HARDWARE_ARCHITECTURE.md) evaluates registry/plugin services, direct diagnostics, RPC brokers and bridges. No existing exported interface establishes finite shared ownership for NRF24 or a bounded external CC provider lifecycle. The physical gates remain open; new typed-board contention/cancellation tests verify software cleanup only.

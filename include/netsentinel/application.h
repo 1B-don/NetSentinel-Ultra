@@ -7,6 +7,9 @@ typedef enum { NS_PAGE_HOME, NS_PAGE_RADIO, NS_PAGE_SELECTOR, NS_PAGE_SETTINGS, 
 #define NS_MENU_COUNT 11u
 typedef enum { NS_MODE_MONITOR, NS_MODE_LAB, NS_MODE_SIMULATION, NS_MODE_HARDWARE_DIAGNOSTICS, NS_MODE_COUNT } NsOperatingMode;
 typedef struct { bool nrf, cc, esp_uart, esp_wifi_verified, esp_info_only; } NsCapabilities;
+typedef enum { NS_ESP_DISCONNECTED, NS_ESP_CONNECTING, NS_ESP_CONNECTED,
+    NS_ESP_TIMEOUT, NS_ESP_PROTOCOL_ERROR, NS_ESP_CANCELLED } NsEspConnectionState;
+#define NS_ESP_INFO_VIEWS 4u
 typedef enum { NS_CAP_SUPPORTED, NS_CAP_SIMULATED, NS_CAP_UNAVAILABLE, NS_CAP_UNVERIFIED } NsCapabilityState;
 typedef enum { NS_IF_NONE, NS_IF_UART, NS_IF_SPI, NS_IF_SUBGHZ_REGISTRY } NsCapabilityInterface;
 enum {
@@ -51,6 +54,10 @@ typedef struct {
     /* Volatile bounded diagnostics; never serialized or copied from raw UART. */
     bool info_timing, info_validated, info_cancelled, info_sd_connected;
     uint32_t info_elapsed_ms, info_success_id;
+    /* Latest info outcome is independent of unrelated UI/storage actions. */
+    NsEspConnectionState info_state;
+    NsResult info_result;
+    bool info_attempted, info_reply_complete;
     NsAccessPoint baseline[NS_AP_LIMIT];
     size_t baseline_count;
     NsResult status, storage_status;

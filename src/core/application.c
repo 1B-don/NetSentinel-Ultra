@@ -168,6 +168,12 @@ NsResult ns_app_cc_tune(NsApplication* a, uint32_t frequency, uint32_t now) {
 static void info_finished(NsApplication* a, uint32_t now) {
     if(!a->capabilities.esp_info_only || !a->info_timing) return;
     a->info_elapsed_ms = now - a->session.started_ms;
+    a->info_result = a->info_cancelled && a->session.error == NS_OK ? NS_CANCELLED : a->session.error;
+    a->info_reply_complete = a->session.marauder.info_complete;
+    a->info_state = a->info_cancelled ? NS_ESP_CANCELLED :
+        a->info_result == NS_TIMEOUT ? NS_ESP_TIMEOUT :
+        (a->info_result == NS_INVALID || a->info_result == NS_UNSUPPORTED || a->info_result == NS_FULL) ? NS_ESP_PROTOCOL_ERROR :
+        (a->info_result == NS_OK && a->session.marauder.info_complete && a->session.marauder.identity_matches) ? NS_ESP_CONNECTED : NS_ESP_DISCONNECTED;
     if(!a->info_cancelled && a->session.error == NS_OK &&
        a->session.marauder.info_complete && a->session.marauder.identity_matches) {
         a->info_validated = true;
@@ -180,8 +186,11 @@ NsResult ns_app_device_info(NsApplication* a, uint32_t now) {
     if(a->session.active != NS_RADIO_NONE || a->info_pending) return a->status = NS_BUSY;
     a->session.wifi_request = false;
     a->info_timing = false; a->info_cancelled = false;
+    a->info_attempted = true; a->info_reply_complete = false;
+    a->info_result = NS_OK; a->info_state = NS_ESP_CONNECTING; a->info_elapsed_ms = 0;
     NsResult r = start_session(a, NS_RADIO_ESP, false, false, now);
     if(r == NS_OK) { a->info_timing = true; a->info_elapsed_ms = 0; }
+    else { a->info_result = r; a->info_state = NS_ESP_DISCONNECTED; }
     return r;
 }
 void ns_app_baseline(NsApplication* a) {
@@ -192,7 +201,10 @@ void ns_app_baseline(NsApplication* a) {
 NsResult ns_app_stop(NsApplication* a, uint32_t now) {
     if(!a) return NS_INVALID;
     bool queued = a->info_pending != 0;
-    if(a->info_pending && a->capabilities.esp_info_only) a->info_cancelled = true;
+    if(a->info_pending && a->capabilities.esp_info_only) {
+        a->info_cancelled = true; a->info_state = NS_ESP_CANCELLED;
+        a->info_result = NS_CANCELLED;
+    }
     a->info_pending = 0;
     if(a->session.active == NS_RADIO_NONE && !a->history_dirty)
         return queued ? (a->status = NS_OK) : a->status;
@@ -346,7 +358,9 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
         if(a->selected == NS_RADIO_ESP) {
             if(a->capabilities.esp_info_only && !a->ble) {
                 if(a->info_pending) return a->status = NS_BUSY;
-                a->info_pending = 2; return a->status = NS_OK;
+                a->info_pending = 2; a->info_state = NS_ESP_CONNECTING;
+                a->info_attempted = true; a->info_reply_complete = false; a->info_result = NS_OK;
+                return a->status = NS_OK;
             }
             return ns_app_start(a, NS_RADIO_ESP, a->ble, false, now);
         }
@@ -358,13 +372,15 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
             else {
                 if(a->capabilities.esp_info_only) {
                     if(a->info_pending || a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
-                    a->info_pending = 2; return a->status = NS_OK;
+                    a->info_pending = 2; a->info_state = NS_ESP_CONNECTING;
+                    a->info_attempted = true; a->info_reply_complete = false; a->info_result = NS_OK;
+                    return a->status = NS_OK;
                 }
                 return ns_app_device_info(a, now);
             }
         }
         if(a->capabilities.esp_info_only && (key == NS_KEY_UP || key == NS_KEY_DOWN))
-            a->info_view = (a->info_view + (key == NS_KEY_DOWN ? 1 : 2)) % 3;
+            a->info_view = (a->info_view + (key == NS_KEY_DOWN ? 1 : NS_ESP_INFO_VIEWS - 1)) % NS_ESP_INFO_VIEWS;
         if(key == NS_KEY_LEFT) ns_app_baseline(a);
         if(key == NS_KEY_UP && a->ap_index) a->ap_index--;
         if(key == NS_KEY_DOWN && !a->capabilities.esp_info_only) {
@@ -521,21 +537,25 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                         snprintf(f->rows[1], sizeof(f->rows[1]), "Last success: %lu (session)", (unsigned long)a->info_success_id);
                         snprintf(f->rows[2], sizeof(f->rows[2]), "Elapsed: %lu ms%s", (unsigned long)a->info_elapsed_ms, a->session.active == NS_RADIO_ESP ? " (running)" : "");
                         snprintf(f->rows[3], sizeof(f->rows[3]), "Timeout: %lu ms", (unsigned long)a->session.timeout_ms);
+                    } else if(a->info_view == 3) {
+                        snprintf(f->rows[1], sizeof(f->rows[1]), "Last info outcome (redacted)");
+                        snprintf(f->rows[2], sizeof(f->rows[2]), "%s", !a->info_attempted ? "No completed attempt" :
+                            a->info_state == NS_ESP_CONNECTING ? "Response pending" :
+                            a->info_reply_complete ? "Complete framed reply" : "No complete framed reply");
+                        snprintf(f->rows[3], sizeof(f->rows[3]), "Result: %s", !a->info_attempted ? "not requested" :
+                            a->info_state == NS_ESP_CONNECTING ? "pending" : ns_result_name(a->info_result));
                     }
                     snprintf(f->rows[4], sizeof(f->rows[4]), "%s", a->info_pending || a->session.active != NS_RADIO_NONE ? "Retry disabled; Back cancels" : "OK retry; Up/Down views");
                     if(a->info_pending) state = "Connecting: USART requested";
-                    else if(a->session.active == NS_RADIO_ESP) state = "Waiting: info response";
-                    else if(a->status == NS_TIMEOUT) state = "Timeout: link unconfirmed";
-                    else if(a->status == NS_BUSY) state = "Error: USART/session busy";
-                    else if(a->status == NS_FULL) state = "Error: response/storage full";
-                    else if(a->status == NS_INVALID) state = "Error: reply/state invalid";
-                    else if(a->status == NS_IO) state = "Error: serial or SD I/O";
-                    else if(a->status == NS_UNSUPPORTED) state = "Error: USART configuration";
-                    else if(a->status != NS_OK && a->status != NS_ABSENT) state = "Error: operation failed";
-                    else if(a->info_cancelled) state = "Cancelled: USART closed";
-                    else if(a->session.marauder.stage == NS_M_DONE && a->session.marauder.info_complete)
-                        state = a->session.marauder.identity_matches ? "Connected: query passed" : "Error: identity mismatch";
-                    else if(a->session.marauder.stage == NS_M_DONE && a->session.marauder.info_fields) state = "Error: incomplete reply";
+                    else if(a->info_state == NS_ESP_CONNECTING) state = "Connecting: waiting for info";
+                    else if(a->info_state == NS_ESP_TIMEOUT) state = "Timeout: link unconfirmed";
+                    else if(a->info_state == NS_ESP_PROTOCOL_ERROR) state = "Protocol Error: query rejected";
+                    else if(a->info_state == NS_ESP_CANCELLED) state = "Cancelled: USART closed";
+                    else if(a->info_state == NS_ESP_CONNECTED) state = "Connected: query passed";
+                    else if(a->info_result == NS_BUSY) state = "Disconnected: USART busy";
+                    else if(a->info_result == NS_IO) state = "Disconnected: serial or SD I/O";
+                    else if(a->info_result == NS_UNSUPPORTED) state = "Disconnected: unsupported config";
+                    else if(a->info_result == NS_FULL) state = "Disconnected: storage full";
                     else state = "Disconnected: USART closed";
                 }
                 if(state) snprintf(f->rows[5], sizeof(f->rows[5]), "%s", state);

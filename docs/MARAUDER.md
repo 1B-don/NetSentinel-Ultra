@@ -6,6 +6,8 @@ Current development FAP uses NS_ESP_INFO_ONLY: one exact info+LF per acquisition
 
 ## Implemented information path
 
+The [ESP status milestone](ESP32_STATUS_DIAGNOSTICS.md) isolates typed connection/result state from unrelated UI actions, adds a fourth redacted outcome view, discards pre-dispatch buffered bytes and rejects duplicate echoes. Whole delayed responses have no nonce and cannot be authenticated as fresh. Prior stable FAPs remain preserved; the separate status candidate is software/SDK tested and undeployed.
+
 USART ownership is exclusive, TX/RX direction and supported baud are checked before initialization, framing is explicit 8N1. RX ISR uses a bounded lock-free ring and poisons responses on overflow/serial error; worker parsing has fixed deadlines across tick wrap. Repeated/queued requests are excluded. Cancellation sends no additional command. Teardown stops callback reception, disables UART, clears staging/ring data and releases ownership before context destruction. HAL's five-byte TX call is semi-blocking with no error/deadline return; hardware timing/restoration remains a separate gate.
 
 Parser requires correlated echo/prompt, bounded nonempty fields and no duplicates. Complete status and matched identity are distinct flags. It recognizes the owner-observed info fields and upstream-documented WSL disabled / SD Not Connected / size zero variants. SD state and capacity must agree. Unknown identifier-labelled fields are ignored, never retained/logged. Public UI uses fixed matched constants and typed metadata, not untrusted serial strings. SD/last-success snapshots are volatile and labelled historical; no raw data or identity is persisted.

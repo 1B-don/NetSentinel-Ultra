@@ -102,6 +102,12 @@ NsResult ns_flipper_uart_write(void* ctx, const uint8_t* bytes, size_t count) {
 #endif
 #endif
     if(!permitted) return NS_UNSUPPORTED;
+    /* Discard bytes already queued before dispatch. Late stale replies lack a
+     * nonce in this protocol and cannot be authenticated as a new response. */
+    if(count == 5 && !memcmp(bytes, "info\n", 5)) {
+        unsigned head = atomic_load_explicit(&f->rx_head, memory_order_acquire);
+        atomic_store_explicit(&f->rx_tail, head, memory_order_release);
+    }
     /* HAL has no deadline/error return. These short fixed commands avoid its
      * unbounded tx_wait_complete API; real SDK/hardware timing remains a gate. */
     if(count == 5 && !memcmp(bytes, "info\n", 5)) f->info_sent = true;

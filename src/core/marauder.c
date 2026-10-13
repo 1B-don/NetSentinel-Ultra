@@ -88,7 +88,10 @@ NsResult ns_marauder_line(NsMarauder* m, const char* line, uint32_t now) {
     while(*line == ' ') line++;
     const char* echo = m->stage == NS_M_INFO ? "#info" : m->stage == NS_M_HELP ? "#help" :
         m->stage == NS_M_START ? "#sniffbeacon" : m->stage == NS_M_STOP ? "#stopscan" : NULL;
-    if(echo && !strcmp(line, echo)) { m->command_echo = true; return NS_OK; }
+    if(echo && !strcmp(line, echo)) {
+        if(m->command_echo) return fail(m, NS_INVALID); /* Never merge two replies. */
+        m->command_echo = true; return NS_OK;
+    }
     if(echo && !m->command_echo) return NS_OK; /* ignore stale/startup chatter */
     if(m->stage == NS_M_INFO) {
         NsResult r = info_line(m, line);

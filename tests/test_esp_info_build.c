@@ -17,6 +17,57 @@ static void fixture(char* out) {
     assert(!ferror(file)); fclose(file); strcat(out, "> ");
 }
 int32_t netsentinel_app(void*);
+static void diagnostic_state_cases(void) {
+    mock_sdk_reset(); NsFlipper f; NsApplication a;
+    assert(ns_flipper_init(&f));
+    assert(ns_app_init(&a,&f.platform,&f.store,f.capabilities)==NS_ABSENT);
+    a.page=NS_PAGE_RADIO; a.selected=NS_RADIO_ESP;
+    assert(a.info_state==NS_ESP_DISCONNECTED && !a.info_attempted);
+    char reply[1024]; fixture(reply);
+    assert(ns_app_device_info(&a,0)==NS_OK && a.info_state==NS_ESP_CONNECTING);
+    /* Fields/prompt without echo cannot complete a transaction. */
+    const char* stale=strchr(reply,'\n')+1;
+    mock_serial_feed((const uint8_t*)stale,strlen(stale));
+    assert(ns_app_step(&a,1)==NS_OK && f.serial && !a.info_validated);
+    for(size_t i=0;i<strlen(reply);i++) {
+        mock_serial_feed((const uint8_t*)reply+i,1);
+        assert(ns_app_step(&a,(uint32_t)i+2)==NS_OK);
+    }
+    assert(a.info_state==NS_ESP_CONNECTED && a.info_reply_complete && !f.serial);
+    a.info_view=3; NsFrame frame; ns_app_frame(&a,&frame);
+    assert(!strcmp(frame.rows[2],"Complete framed reply") && !strcmp(frame.rows[3],"Result: OK"));
+    assert(ns_app_key(&a,NS_KEY_DOWN,500)==NS_OK && a.info_view==0);
+    assert(ns_app_key(&a,NS_KEY_UP,500)==NS_OK && a.info_view==3);
+    a.status=NS_IO; check_frame(&a,"Connected: query passed");
+    assert(ns_app_device_info(&a,600)==NS_OK);
+    const char* duplicate="#info\nFirmware: Marauder\n#info\n";
+    mock_serial_feed((const uint8_t*)duplicate,strlen(duplicate));
+    assert(ns_app_step(&a,601)==NS_INVALID && !f.serial);
+    assert(a.info_state==NS_ESP_PROTOCOL_ERROR && a.info_result==NS_INVALID);
+    ns_app_frame(&a,&frame);
+    assert(!strcmp(frame.rows[2],"No complete framed reply") && !strcmp(frame.rows[3],"Result: Invalid"));
+    assert(a.info_validated && !a.info_reply_complete); /* Historical identity survives. */
+    assert(ns_app_device_info(&a,700)==NS_OK);
+    assert(ns_app_step(&a,5700)==NS_TIMEOUT && a.info_state==NS_ESP_TIMEOUT && !f.serial);
+    assert(ns_app_device_info(&a,5800)==NS_OK);
+    assert(ns_app_stop(&a,5801)==NS_OK && a.info_state==NS_ESP_CANCELLED && a.info_result==NS_CANCELLED);
+    assert(!f.serial && !f.owner);
+    assert(ns_app_device_info(&a,5900)==NS_OK);
+    mock_sdk_fail_storage(true);
+    assert(ns_app_stop(&a,5901)==NS_IO && !f.serial && !f.owner);
+    assert(a.info_state==NS_ESP_CANCELLED && a.info_result==NS_IO);
+    mock_sdk_fail_storage(false);
+    assert(ns_app_stop(&a,5902)==NS_OK && !a.history_dirty);
+    assert(a.info_result==NS_IO); /* Recovery must not hide the failed cleanup. */
+    /* Bytes buffered before dispatch cannot act as its reply. */
+    assert(f.platform.acquire(&f,NS_RADIO_ESP)==NS_OK);
+    mock_serial_feed((const uint8_t*)reply,strlen(reply));
+    assert(f.platform.uart_write(&f,(const uint8_t*)"info\n",5)==NS_OK);
+    uint8_t bytes[16];size_t count=99;
+    assert(f.platform.uart_read(&f,bytes,sizeof(bytes),&count)==NS_OK && !count);
+    f.platform.release(&f,NS_RADIO_ESP);
+    ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
+}
 static void repeated(void) {
     mock_sdk_reset(); NsFlipper f; NsApplication a; assert(ns_flipper_init(&f));
     assert(ns_app_init(&a,&f.platform,&f.store,f.capabilities)==NS_ABSENT);
@@ -74,7 +125,7 @@ int main(void) {
     check_frame(&a, "Connecting: USART requested");
     assert(ns_app_step(&a, 1) == NS_OK && !f.serial);
     assert(ns_app_step(&a, 2) == NS_OK && f.serial);
-    check_frame(&a, "Waiting: info response");
+    check_frame(&a, "Connecting: waiting for info");
     const char* private_line = "Serial Number: PRIVATE_TEST_ID\n";
     mock_serial_feed((const uint8_t*)private_line, strlen(private_line));
     char reply[1024]; fixture(reply); mock_serial_feed((const uint8_t*)reply, strlen(reply));
@@ -112,10 +163,11 @@ int main(void) {
     strcpy(a.session.marauder.hardware, "PRIVATE_TEST_ID");
     NsFrame redacted; ns_app_frame(&a, &redacted);
     for(unsigned row=0; row<6; row++) assert(!strstr(redacted.rows[row], "PRIVATE_TEST"));
-    a.status=NS_INVALID; check_frame(&a, "Error: reply/state invalid");
-    a.status=NS_IO; check_frame(&a, "Error: serial or SD I/O");
-    a.status=NS_FULL; check_frame(&a, "Error: response/storage full");
-    a.status=NS_UNSUPPORTED; check_frame(&a, "Error: USART configuration");
+    /* Unrelated UI/storage outcomes cannot overwrite the last info result. */
+    a.status=NS_INVALID; check_frame(&a, "Connected: query passed");
+    a.status=NS_IO; check_frame(&a, "Connected: query passed");
+    a.status=NS_FULL; check_frame(&a, "Connected: query passed");
+    a.status=NS_UNSUPPORTED; check_frame(&a, "Connected: query passed");
     a.status=NS_OK;
     assert(!strcmp(mock_serial_commands(), "info\n"));
     assert(ns_app_key(&a, NS_KEY_OK, 4) == NS_OK);
@@ -126,7 +178,7 @@ int main(void) {
     check_frame(&a, "Timeout: link unconfirmed");
     FuriHalSerialHandle* other = furi_hal_serial_control_acquire(FuriHalSerialIdUsart);
     assert(other && ns_app_device_info(&a, 5011) == NS_BUSY);
-    check_frame(&a, "Error: USART/session busy");
+    check_frame(&a, "Disconnected: USART busy");
     furi_hal_serial_control_release(other);
     assert(ns_app_device_info(&a, 5012) == NS_OK);
     const char* fragment="#info\nVersion: v1.";
@@ -191,6 +243,7 @@ int main(void) {
     assert(a.saved.history[a.saved.history_count-1].result==NS_INVALID);
     ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
     repeated();
+    diagnostic_state_cases();
     puts("PASS: info-only USART mapping/framing, command exclusion, state UI, response budget and cleanup (MOCK)");
     return 0;
 }

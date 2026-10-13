@@ -83,7 +83,7 @@ static void radio_and_navigation(void) {
     for(unsigned i=0;i<10000;i++) {
         a.running=true;(void)ns_app_key(&a,(NsKey)(next()%10),next());
         NsFrame frame;ns_app_frame(&a,&frame);
-        assert(a.menu<NS_MENU_COUNT&&a.filter_setting<3&&a.info_view<3);
+        assert(a.menu<NS_MENU_COUNT&&a.filter_setting<3&&a.info_view<NS_ESP_INFO_VIEWS);
         for(unsigned row=0;row<6;row++) assert(memchr(frame.rows[row],0,sizeof(frame.rows[row])));
     }
 }

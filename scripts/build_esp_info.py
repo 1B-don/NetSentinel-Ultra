@@ -18,6 +18,7 @@ VARIANTS = {
     "gui": ("netsentinel", "NetSentinel Ultra", "NS_GUI_STORAGE_ONLY"),
     "info": ("netsentinel_esp_info", "NetSentinel ESP Info", "NS_ESP_INFO_ONLY"),
     "diagnostics": ("netsentinel_esp_diagnostics", "ESP Diagnostics v0.2", "NS_ESP_INFO_ONLY"),
+    "esp-status": ("netsentinel_esp_status", "NetSentinel ESP Status", "NS_ESP_INFO_ONLY"),
     "development": ("netsentinel_development", "NetSentinel Ultra Dev", "NS_ESP_INFO_ONLY"),
     "lab-sim": ("netsentinel_lab_sim", "NetSentinel Ultra Lab Sim", "NS_ESP_INFO_ONLY"),
     "rc": ("netsentinel_ultra_v1_0_rc1", "NetSentinel Ultra v1.0 RC1", "NS_ESP_INFO_ONLY"),

@@ -23,6 +23,10 @@ def elf():
     return b
 
 class FapMetadataTests(unittest.TestCase):
+    def test_esp_status_metadata(self):
+        b=elf(); b[220:252]=b'NetSentinel ESP Status'.ljust(32,b'\0')
+        b[252]=1; b[253:285]=EXPECTED_ICON
+        self.assertEqual(metadata(b)['name'],'NetSentinel ESP Status')
     def test_expected(self):
         self.assertEqual(metadata(elf()),dict(api='87.1',target=7,stack=8192,app_version='1.0 development',name='NetSentinel Ultra Dev',icon=False,flags=0))
     def test_bundled_icon(self):
