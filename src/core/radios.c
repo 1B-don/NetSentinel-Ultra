@@ -6,7 +6,7 @@
 static NsResult nrf_reg(NsNrf* n, bool write, uint8_t reg, uint8_t* value) {
     uint8_t tx[2] = {(uint8_t)(reg | (write ? 0x20 : 0)), write ? *value : 0xff};
     uint8_t rx[2] = {0};
-    NsResult r = n->io->spi(n->io->ctx, tx, rx, 2);
+    NsResult r = n->io->spi(n->io->ctx, tx, rx, 2, NS_NRF_SPI_TIMEOUT_MS);
     if(r == NS_OK && !write) *value = rx[1];
     return r;
 }

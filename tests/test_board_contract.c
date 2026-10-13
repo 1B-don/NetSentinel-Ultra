@@ -31,7 +31,7 @@ static void port_lifecycle(void) {
     assert(f.platform.acquire(&f, NS_RADIO_ESP) == NS_BUSY);
     assert(f.platform.acquire(&f, NS_RADIO_NRF) == NS_BUSY);
     assert(f.platform.cc_receive(&f, 433920000) == NS_OK);
-    uint8_t tx[] = {0, 0}, rx[2]; assert(f.platform.spi(&f, tx, rx, 2) == NS_INVALID);
+    uint8_t tx[] = {0, 0}, rx[2]; assert(f.platform.spi(&f, tx, rx, 2, NS_NRF_SPI_TIMEOUT_MS) == NS_INVALID);
     f.platform.release(&f, NS_RADIO_NRF); assert(board.owner == NS_RADIO_CC);
     ns_flipper_deinit(&f); assert(!board.owner && !board.frequency && binds == unbinds);
     assert(!mock_sdk_live() && !mock_sdk_records());
@@ -58,13 +58,13 @@ static void receive_only_boundary(void) {
                 (command == 0x20 && (value == 1 || value == 3)) ||
                 ((command == 0x21 || command == 0x22 || command == 0x24 || command == 0x26) && value == 0) ||
                 (command == 0x25 && value < NS_NRF_CHANNELS);
-            if(!allowed) assert(f.platform.spi(&f, tx, rx, 2) == NS_UNSUPPORTED);
+            if(!allowed) assert(f.platform.spi(&f, tx, rx, 2, NS_NRF_SPI_TIMEOUT_MS) == NS_UNSUPPORTED);
         }
     }
-    assert(f.platform.spi(&f, NULL, rx, 2) == NS_INVALID);
-    assert(f.platform.spi(&f, tx, NULL, 2) == NS_INVALID);
-    assert(f.platform.spi(&f, tx, rx, 1) == NS_INVALID);
-    assert(f.platform.spi(&f, tx, rx, 3) == NS_INVALID);
+    assert(f.platform.spi(&f, NULL, rx, 2, NS_NRF_SPI_TIMEOUT_MS) == NS_INVALID);
+    assert(f.platform.spi(&f, tx, NULL, 2, NS_NRF_SPI_TIMEOUT_MS) == NS_INVALID);
+    assert(f.platform.spi(&f, tx, rx, 1, NS_NRF_SPI_TIMEOUT_MS) == NS_INVALID);
+    assert(f.platform.spi(&f, tx, rx, 3, NS_NRF_SPI_TIMEOUT_MS) == NS_INVALID);
     assert(board.transfers == 0); /* rejected transfers never reached SPI */
     /* The real portable RX driver must still run through the guarded port. */
     f.platform.release(&f, NS_RADIO_NRF);

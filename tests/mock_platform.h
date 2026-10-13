@@ -6,8 +6,8 @@
 typedef struct {
     NsRadio owner;
     uint8_t regs[32];
-    bool ce, fail_spi, absent, fail_write, fail_sync, fail_uart, fail_idle, fail_close;
-    unsigned acquired, released, transfers, delay, ce_high, closes, writes, uart_calls, fail_at;
+    bool ce, fail_spi, timeout_spi, absent, fail_write, fail_sync, fail_uart, fail_idle, fail_close;
+    unsigned acquired, released, transfers, delay, ce_high, closes, writes, uart_calls, fail_at, spi_timeout_ms;
     int16_t rssi;
     uint32_t frequency;
     char file[8192]; size_t size;
@@ -21,10 +21,13 @@ static void release(void* ctx, NsRadio r) {
     Mock* m = ctx; assert(m->owner == r); assert(!m->ce);
     m->owner = NS_RADIO_NONE; m->released++;
 }
-static NsResult spi(void* ctx, const uint8_t* tx, uint8_t* rx, size_t n) {
+static NsResult spi(void* ctx, const uint8_t* tx, uint8_t* rx, size_t n, uint32_t timeout_ms) {
     Mock* m = ctx; assert(m->owner == NS_RADIO_NRF); assert(n == 2);
+    assert(timeout_ms > 0 && timeout_ms <= NS_NRF_SPI_TIMEOUT_MS);
+    m->spi_timeout_ms = timeout_ms;
     assert(tx[0] < 0x40); /* no TX payload/commands */
-    m->transfers++; if(m->fail_spi || m->transfers == m->fail_at) return NS_IO;
+    m->transfers++; if(m->timeout_spi) return NS_TIMEOUT;
+    if(m->fail_spi || m->transfers == m->fail_at) return NS_IO;
     unsigned reg = tx[0] & 31;
     if(tx[0] & 0x20) {
         if(reg == 0) assert(tx[1] & 1); /* always PRX */

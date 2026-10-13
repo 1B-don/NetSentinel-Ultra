@@ -4,7 +4,7 @@ Imported NetSentinel Ultra v0.2 from the owner-provided Downloads directory. Ori
 
 ## Independently authored integration sources
 
-`src/core`, `include/netsentinel` and the mock tests were independently written for this project; no standalone NRF24 code was imported because the available local reference is in the restricted checkout. The owner must resolve distribution licensing for imported v0.2 code before publishing a release.
+`src/core`, `include/netsentinel` and the mock tests were independently written for this project; no standalone NRF24 implementation was copied or imported. This milestone inspected the public [`mothball187/flipperzero-nrf24` Sniffer](https://github.com/mothball187/flipperzero-nrf24/blob/main/nrfsniff/nrfsniff.c) and companion [driver](https://github.com/mothball187/flipperzero-nrf24/blob/main/lib/nrf24.c) for behavior and generic pin selection only. Its sniff-stop channel-finder path can transmit; NetSentinel does not use that code. The GitHub tree inspected did not expose a license file, so no reuse permission is assumed. The owner must resolve distribution licensing for imported v0.2 code before publishing a release.
 
 Hardware/interface references (documentation consulted, no code copied):
 

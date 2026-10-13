@@ -47,11 +47,11 @@ static bool nrf_receive_transfer(const uint8_t* tx, size_t n) {
     default: return false;
     }
 }
-static NsResult board_spi(void* ctx, const uint8_t* tx, uint8_t* rx, size_t n) {
+static NsResult board_spi(void* ctx, const uint8_t* tx, uint8_t* rx, size_t n, uint32_t timeout_ms) {
     NsFlipper* f = ctx;
-    if(f->owner != NS_RADIO_NRF || !rx || !tx || n != 2) return NS_INVALID;
+    if(f->owner != NS_RADIO_NRF || !rx || !tx || n != 2 || !timeout_ms || timeout_ms > NS_NRF_SPI_TIMEOUT_MS) return NS_INVALID;
     if(!nrf_receive_transfer(tx, n)) return NS_UNSUPPORTED;
-    return f->board.io.spi(f->board.io.ctx, tx, rx, n);
+    return f->board.io.spi(f->board.io.ctx, tx, rx, n, timeout_ms);
 }
 static void board_ce(void* ctx, bool high) {
     NsFlipper* f = ctx; if(f->owner == NS_RADIO_NRF) f->board.io.ce(f->board.io.ctx, high);

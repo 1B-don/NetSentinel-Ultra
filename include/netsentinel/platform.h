@@ -9,17 +9,17 @@ typedef struct {
     uint8_t part, version, state, rssi_raw;
     uint32_t transactions;
 } NsCcDiagnostics;
-/* Adapter owns exclusive bus locking, finite transfer timeouts, CS and pin
- * restoration. The current callback ABI does not carry a deadline argument:
- * every future physical implementation must enforce a documented finite bound
- * internally and return NS_TIMEOUT. The host/core can cancel between calls,
- * not preempt a blocked callback. release must lower CE, idle the peripheral
- * and restore pins. CC must be external-only; never fall back internally. */
+/* Adapter owns exclusive bus locking, bounded transfers, CS and pin
+ * restoration. acquire must be nonblocking or have a finite bound and report
+ * NS_BUSY/NS_TIMEOUT. SPI receives an explicit finite deadline in ms. The
+ * core can cancel between calls, not preempt a blocked callback. release must
+ * lower CE, idle the peripheral and restore pins. CC must be external-only. */
+#define NS_NRF_SPI_TIMEOUT_MS 20u
 typedef struct {
     void* ctx;
     NsResult (*acquire)(void*, NsRadio);
     void (*release)(void*, NsRadio);
-    NsResult (*spi)(void*, const uint8_t*, uint8_t*, size_t);
+    NsResult (*spi)(void*, const uint8_t*, uint8_t*, size_t, uint32_t timeout_ms);
     void (*ce)(void*, bool);
     void (*delay_us)(void*, uint32_t);
     NsResult (*uart_write)(void*, const uint8_t*, size_t);

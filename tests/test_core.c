@@ -37,6 +37,35 @@ static void test_spi_fault_matrix(void) {
         assert(!m.owner && !m.ce && !n.samples[5]);
     }
 }
+static void test_nrf_repeated_cancel_and_deadline(void) {
+    Mock m = {0}; NsPlatform io = platform(&m); NsNrf n = {0};
+    for(unsigned i = 0; i < 12; i++) {
+        assert(ns_nrf_open(&n, &io, true) == NS_OK);
+        assert(ns_nrf_sample(&n, (uint8_t)(i % NS_NRF_CHANNELS), 170) == NS_OK);
+        assert(ns_nrf_close(&n) == NS_OK);
+        assert(!m.owner && !m.ce && !n.owned && !n.ready);
+    }
+    assert(m.acquired == 12 && m.released == 12);
+    assert(m.spi_timeout_ms == NS_NRF_SPI_TIMEOUT_MS);
+
+    /* Session stop is the cancellation boundary between bounded calls. */
+    NsSession session; ns_session_init(&session, &io, NULL);
+    assert(ns_session_start(&session, NS_RADIO_NRF, false, true, 10) == NS_OK);
+    assert(m.owner == NS_RADIO_NRF && session.active == NS_RADIO_NRF);
+    ns_session_stop(&session, 11);
+    assert(!m.owner && !m.ce && session.active == NS_RADIO_NONE);
+
+    /* A transfer timeout during init or sampling closes CE and ownership. */
+    m.timeout_spi = true;
+    assert(ns_nrf_open(&n, &io, true) == NS_TIMEOUT);
+    assert(!m.owner && !m.ce && !n.owned && !n.ready);
+    m.timeout_spi = false;
+    assert(ns_nrf_open(&n, &io, true) == NS_OK);
+    m.timeout_spi = true;
+    assert(ns_nrf_sample(&n, 5, 170) == NS_TIMEOUT);
+    assert(!m.owner && !m.ce && !n.owned && !n.ready);
+    assert(m.acquired == m.released);
+}
 static void test_cc(void) {
     Mock m = {.rssi = -74}; NsPlatform io = platform(&m); NsCc c = {0};
     assert(!ns_cc_frequency_valid(350000000)); assert(ns_cc_frequency_valid(433920000));
@@ -127,4 +156,4 @@ static void test_settings(void) {
     assert(ns_graph_height(UINT32_MAX, UINT32_MAX, 40) == 40);
     assert(ns_graph_height(1, 0, 40) == 0);
 }
-int main(void) { test_observation_counter_limits(); test_settings(); test_spi_fault_matrix(); test_nrf(); test_cc(); test_session(); puts("PASS: receive safety, SPI/UART/storage failures, bounds, session cleanup and recovery"); }
+int main(void) { test_observation_counter_limits(); test_settings(); test_spi_fault_matrix(); test_nrf_repeated_cancel_and_deadline(); test_nrf(); test_cc(); test_session(); puts("PASS: receive safety, SPI/UART/storage failures, bounds, session cleanup and recovery"); }
