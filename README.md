@@ -10,6 +10,8 @@ The earlier API 89.1 report is superseded by the owner’s direct USB CLI result
 
 UART logs now contain fixed redacted telemetry rather than raw serial bytes; owner MACs and other identifiers are excluded. USB-C communication does not verify Flipper GPIO routing.
 
+A separate **ESP32 information-only** test FAP now compiles with `NS_ESP_INFO_ONLY`; it permits only one info query and keeps NRF24/CC1101/scanning disabled. The owner confirmed the intended Flipper USART path; [test-build evidence and approval boundary](docs/ESP32_LIVE_INFO.md) describe the supported API, exact artifact and remaining physical checks. It has not been deployed or launched. The default FAP remains unchanged.
+
 ## Build and tests
 
 ```sh
@@ -18,7 +20,7 @@ make test
 make sanitize
 ```
 
-In this traced sandbox use `ASAN_OPTIONS=detect_leaks=0 make sanitize`. Address/undefined-behavior checks run; leak detection is unavailable. Nine C suites plus eight SDK-preflight and four publication cases cover the imported parser/analysis, portable radio/session core, application/persistence integration, and Flipper GUI/storage contract shims. Shims are independent test doubles and cannot validate actual SDK declarations or ABI. Remote CI is configured but not run here.
+In this traced sandbox use `ASAN_OPTIONS=detect_leaks=0 make sanitize`. Address/undefined-behavior checks run; leak detection is unavailable. Ten C suites (the prior nine plus the exact info-only configuration) plus eight SDK-preflight and four publication cases cover the imported parser/analysis, portable radio/session core, application/persistence integration, and Flipper GUI/storage contract shims. Shims are independent test doubles and cannot validate actual SDK declarations or ABI. Remote CI is configured but not run here.
 
 ## Implemented in source
 

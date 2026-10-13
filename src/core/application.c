@@ -111,6 +111,7 @@ static NsResult start_session(NsApplication* a, NsRadio radio, bool ble, bool co
 NsResult ns_app_start(NsApplication* a, NsRadio radio, bool ble, bool confirmed, uint32_t now) {
     if(!a) return NS_INVALID;
     if(a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
+    if(a->capabilities.esp_info_only && radio == NS_RADIO_ESP && !ble) return ns_app_device_info(a, now);
     a->session.wifi_request = radio == NS_RADIO_ESP;
     return start_session(a, radio, ble, confirmed, now);
 }
@@ -140,6 +141,7 @@ void ns_app_baseline(NsApplication* a) {
 }
 NsResult ns_app_stop(NsApplication* a, uint32_t now) {
     if(!a) return NS_INVALID;
+    a->info_pending = 0;
     if(a->session.active == NS_RADIO_NONE && !a->history_dirty) return a->status;
     NsResult session_result = NS_OK;
     if(a->session.active != NS_RADIO_NONE) {
@@ -153,6 +155,10 @@ NsResult ns_app_stop(NsApplication* a, uint32_t now) {
 }
 NsResult ns_app_step(NsApplication* a, uint32_t now) {
     if(!a || !a->running) return NS_INVALID;
+    if(a->info_pending) {
+        if(--a->info_pending) return NS_OK; /* publish connecting before hardware */
+        return ns_app_device_info(a, now);
+    }
     if(a->session.active == NS_RADIO_NONE) return NS_OK;
     NsResult r = NS_OK;
     if(a->session.active == NS_RADIO_ESP && a->session.io->uart_read) {
@@ -229,6 +235,10 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
     } else if(a->page == NS_PAGE_RADIO && key == NS_KEY_OK) {
         if(a->session.active != NS_RADIO_NONE) return ns_app_stop(a, now);
         if(a->selected == NS_RADIO_ESP) {
+            if(a->capabilities.esp_info_only && !a->ble) {
+                if(a->info_pending) return a->status = NS_BUSY;
+                a->info_pending = 2; return a->status = NS_OK;
+            }
             return ns_app_start(a, NS_RADIO_ESP, a->ble, false, now);
         }
         if(!(a->selected == NS_RADIO_NRF ? a->capabilities.nrf : a->capabilities.cc)) return a->status = NS_UNSUPPORTED;
@@ -236,7 +246,13 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
     } else if(a->page == NS_PAGE_RADIO && a->selected == NS_RADIO_ESP && !a->ble) {
         if(key == NS_KEY_RIGHT) {
             if(a->session.ap_count) a->wifi_details = !a->wifi_details;
-            else return ns_app_device_info(a, now);
+            else {
+                if(a->capabilities.esp_info_only) {
+                    if(a->info_pending || a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
+                    a->info_pending = 2; return a->status = NS_OK;
+                }
+                return ns_app_device_info(a, now);
+            }
         }
         if(key == NS_KEY_LEFT) ns_app_baseline(a);
         if(key == NS_KEY_UP && a->ap_index) a->ap_index--;
@@ -318,6 +334,19 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 else if(a->status == NS_UNSUPPORTED) state = "Scan not yet verified";
                 else if(a->session.marauder.stage == NS_M_DONE && a->status == NS_OK) state = a->session.marauder.info_complete ? "Info reply received" : "Incomplete info status";
                 else if(a->status == NS_OK) state = "Right queries device info";
+                if(a->capabilities.esp_info_only) {
+                    snprintf(f->rows[1], sizeof(f->rows[1]), "ESP32 info-only USART");
+                    snprintf(f->rows[4], sizeof(f->rows[4]), "OK/Right: info  Back: cancel");
+                    if(a->info_pending) state = "Connecting: USART requested";
+                    else if(a->session.active == NS_RADIO_ESP) state = "Waiting: info response";
+                    else if(a->status == NS_TIMEOUT) state = "Timeout: link unconfirmed";
+                    else if(a->status == NS_BUSY) state = "Error: USART/session busy";
+                    else if(a->status != NS_OK && a->status != NS_ABSENT) state = "Error: UART/interface/SD";
+                    else if(a->session.marauder.stage == NS_M_DONE && a->session.marauder.info_complete)
+                        state = a->session.marauder.identity_matches ? "Connected: query passed" : "Error: identity mismatch";
+                    else if(a->session.marauder.stage == NS_M_DONE && a->session.marauder.info_fields) state = "Error: incomplete reply";
+                    else state = "Disconnected: USART closed";
+                }
                 if(state) snprintf(f->rows[5], sizeof(f->rows[5]), "%s", state);
             }
         } else if(a->selected == NS_RADIO_NRF) {

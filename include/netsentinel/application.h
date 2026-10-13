@@ -3,7 +3,7 @@
 #include "persistence.h"
 typedef enum { NS_KEY_UP, NS_KEY_DOWN, NS_KEY_LEFT, NS_KEY_RIGHT, NS_KEY_OK, NS_KEY_BACK } NsKey;
 typedef enum { NS_PAGE_HOME, NS_PAGE_RADIO, NS_PAGE_SELECTOR, NS_PAGE_SETTINGS, NS_PAGE_HISTORY, NS_PAGE_DIAGNOSTICS } NsPage;
-typedef struct { bool nrf, cc, esp_uart, esp_wifi_verified; } NsCapabilities;
+typedef struct { bool nrf, cc, esp_uart, esp_wifi_verified, esp_info_only; } NsCapabilities;
 /* Wi-Fi requires installed-build command/output verification in addition to
  * a UART port. BLE is unsupported. Information queries do not scan. */
 typedef struct {
@@ -15,7 +15,7 @@ typedef struct {
     unsigned menu, setting, history_index;
     NsRadio selected;
     bool ble, running, history_dirty, exit_requested, wifi_details, cc_details;
-    unsigned ap_index;
+    unsigned ap_index, info_pending;
     NsAccessPoint baseline[NS_AP_LIMIT];
     size_t baseline_count;
     NsResult status;

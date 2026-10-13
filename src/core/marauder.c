@@ -67,6 +67,9 @@ static NsResult info_line(NsMarauder* m, const char* line) {
 }
 NsResult ns_marauder_begin(NsMarauder* m, const NsPlatform* io, bool wifi, bool verified, uint32_t timeout, uint32_t now) {
     if(!m || !io || !io->uart_write || timeout < 1000 || timeout > 60000) return NS_INVALID;
+#ifdef NS_ESP_INFO_ONLY
+    if(wifi) return NS_UNSUPPORTED;
+#endif
     if(wifi && !verified) return NS_UNSUPPORTED;
     memset(m, 0, sizeof(*m)); m->io = io; m->wifi = wifi; m->installed_verified = verified;
     m->timeout_ms = timeout; m->stage_ms = now; m->stage = NS_M_INFO;

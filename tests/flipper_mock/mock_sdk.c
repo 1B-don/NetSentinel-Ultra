@@ -139,3 +139,19 @@ void furi_hal_serial_tx(FuriHalSerialHandle* s, const uint8_t* data, size_t coun
 void mock_serial_feed(const uint8_t* data, size_t count) { assert(serial.callback); for(size_t i=0; i<count; i++) { serial.byte=data[i]; serial.available=true; serial.callback(&serial, FuriHalSerialRxEventData, serial.context); } }
 void mock_serial_error(FuriHalSerialRxEvent e) { assert(serial.callback); serial.callback(&serial, e, serial.context); }
 const char* mock_serial_commands(void) { return commands; }
+
+static bool wrong_pins;
+void mock_serial_pin_mismatch(bool wrong) { wrong_pins = wrong; }
+const GpioPin* furi_hal_serial_get_gpio_pin(FuriHalSerialHandle* s, FuriHalSerialDirection d) {
+    assert(s->owned && !s->initialized);
+    static const GpioPin tx = {13}, rx = {14};
+    return (d == FuriHalSerialDirectionTx) != wrong_pins ? &tx : &rx;
+}
+int32_t furi_hal_resources_get_ext_pin_number(const GpioPin* pin) { return pin ? pin->connector : -1; }
+bool furi_hal_serial_is_baud_rate_supported(FuriHalSerialHandle* s, uint32_t baud) {
+    assert(s->owned); return baud == 115200;
+}
+void furi_hal_serial_configure_framing(FuriHalSerialHandle* s, FuriHalSerialDataBits bits,
+    FuriHalSerialParity parity, FuriHalSerialStopBits stop) {
+    assert(s->initialized && bits == FuriHalSerialDataBits8 && parity == FuriHalSerialParityNone && stop == FuriHalSerialStopBits1);
+}

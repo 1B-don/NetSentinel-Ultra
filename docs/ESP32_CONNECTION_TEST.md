@@ -1,5 +1,7 @@
 # ESP32 information-only connection test — not authorized to execute
 
+**Current milestone:** owner confirms the Ultra V3 works with Momentum's existing Marauder app on Default USART13/14,115200/8N1. Permitted SDK direction mapping verifies TX13/PB6 and RX14/PB7; runtime guard checks it before init. A separate NS_ESP_INFO_ONLY FAP compiles/API87.1/target7/all62 imports validated; only one info query is permitted. Default GUI/storage FAP and first-device baseline are unchanged. No new deployment/execution; exact-artifact approval still required. [USART test-build details](ESP32_LIVE_INFO.md). Earlier wiring-only preparation gates below are historical; circuit-level details/physical NetSentinel timing remain unverified.
+
 **Owner update:** USB-C/CH340 communication at115200 succeeds with Marauder v1.11.0/v4 and IDF v5.5.1-710-g8410210c9a; see ESP32_PREPARATION.md. This satisfies direct USB status evidence only. Exact header wiring and bridge test approval remain unresolved. The agent did not perform this connection. Raw identity-address fields must not be retained in future logs or fixtures; use sanitized field/framing observations only.
 
 ## Evidence and unresolved wiring

@@ -1,5 +1,7 @@
 # Ultra V3 ESP32 preparation — UART hardware test pending
 
+**Current milestone:** owner confirms the Ultra V3 works with Momentum's existing Marauder app on Default USART13/14,115200/8N1. Permitted SDK direction mapping verifies TX13/PB6 and RX14/PB7; runtime guard checks it before init. A separate NS_ESP_INFO_ONLY FAP compiles/API87.1/target7/all62 imports validated; only one info query is permitted. Default GUI/storage FAP and first-device baseline are unchanged. No new deployment/execution; exact-artifact approval still required. [USART test-build details](ESP32_LIVE_INFO.md). Earlier wiring-only preparation gates below are historical; circuit-level details/physical NetSentinel timing remain unverified.
+
 ## Latest owner USB-C verification
 
 Owner communicated directly with the Ultra V3 through its CH340 USB serial converter at115200 baud (Linux enumerated `/dev/ttyUSB0`; this is an observation, not a fixed port setting). This is actual owner-performed USB-C evidence, not a NetSentinel/GPIO UART test. Observed identity: firmware Marauder, version v1.11.0, hardware Marauder v4, **ESP-IDF v5.5.1-710-g8410210c9a**. This corrects the earlier g840210c9a report. Other observed fields: WSL Bypass enabled, SD Card Connected, SD Card Size30436MB, Battery Monitor not supported. Station/AP MAC values were omitted by the owner and are not retained or published. Echo and exact prompt whitespace/line ending were not supplied; tests retain strict source-derived framing rather than inventing hardware evidence.

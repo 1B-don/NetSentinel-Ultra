@@ -13,6 +13,9 @@ bool ns_flipper_board_valid(const NsBoardPort* b) {
 }
 static NsResult ns_flipper_radio_acquire(void* ctx, NsRadio radio) {
     NsFlipper* f = ctx;
+#ifdef NS_ESP_INFO_ONLY
+    if(radio != NS_RADIO_ESP) return NS_UNSUPPORTED;
+#endif
     if(f->owner != NS_RADIO_NONE || f->serial) return NS_BUSY;
     NsResult r = NS_UNSUPPORTED;
     if(radio == NS_RADIO_ESP) r = ns_flipper_uart_acquire(f, radio);
@@ -137,6 +140,9 @@ bool ns_flipper_init(NsFlipper* f) {
     atomic_init(&f->rx_head, 0); atomic_init(&f->rx_tail, 0); atomic_init(&f->rx_error, NS_OK);
 #ifndef NS_GUI_STORAGE_ONLY
     f->capabilities.esp_uart = true; /* command-capture gate remains false */
+#ifdef NS_ESP_INFO_ONLY
+    f->capabilities.esp_info_only = true;
+#endif
 #endif
     f->storage = furi_record_open(RECORD_STORAGE);
     if(!f->storage) return false;

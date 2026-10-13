@@ -5,7 +5,8 @@
 #ifndef NS_GUI_STORAGE_ONLY
 #include <furi_hal_serial.h>
 #endif
-#if defined(NS_GUI_STORAGE_ONLY) && defined(NS_ENABLE_BOARD_PORT)
+#if (defined(NS_GUI_STORAGE_ONLY) && defined(NS_ENABLE_BOARD_PORT)) || \
+    (defined(NS_ESP_INFO_ONLY) && (defined(NS_GUI_STORAGE_ONLY) || defined(NS_ENABLE_BOARD_PORT)))
 #error "GUI/storage build cannot enable hardware board ports"
 #endif
 #include <stdatomic.h>
@@ -24,7 +25,8 @@ typedef struct {
     atomic_uint rx_head, rx_tail, rx_error;
     Storage* storage;
     File* log;
-    bool log_open;
+    bool log_open, info_sent;
+    unsigned rx_total; /* ISR-owned during each acquired transaction */
     NsBoardPort board;
     NsRadio owner;
     NsPlatform platform;
