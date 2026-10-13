@@ -45,3 +45,5 @@ The application now isolates the optional board port from GUI/storage/UART, vali
 Milestone `ab8e708` was published by the owner and independently verified on GitHub. Automatic normal pushes remain enabled; shell Git still cannot resolve GitHub in this execution environment as of the current check.
 
 The NRF SPI adapter now rejects payload/TX commands, carrier mode, auto-ACK/retries and unsupported register operations before board callbacks. Exhaustive command/value rejection checks and a complete 126-channel scan pass against mocks. This guard does not establish physical SPI operation or firmware ABI compatibility.
+
+Build readiness now includes `make sdk-preflight` for a permitted owner-provided target export table, before the manual SDK compile/link stage. No target export input is currently available. GUI shutdown clears draw/input callbacks and detaches the viewport before session/storage teardown; existing mock lifecycle and failure tests enforce cleared callbacks at viewport free.

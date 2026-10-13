@@ -94,6 +94,16 @@ int32_t netsentinel_app(void* context) {
     }
     result = g->app.status == NS_OK ? 0 : 1;
 cleanup:
+    /* Remove callbacks before session/storage teardown. Do not hold the frame
+     * mutex across viewport calls: the GUI can acquire it from draw(). */
+    if(g->viewport) {
+        view_port_input_callback_set(g->viewport, NULL, NULL);
+        view_port_draw_callback_set(g->viewport, NULL, NULL);
+        if(attached) {
+            view_port_enabled_set(g->viewport, false);
+            gui_remove_view_port(g->gui, g->viewport);
+        }
+    }
     if(app_ready) {
         /* Abnormal worker failure cannot await a GUI-driven handshake. Force
          * bounded best-effort stop/release, then persist completed history. */
@@ -102,7 +112,6 @@ cleanup:
         }
         (void)ns_app_stop(&g->app, now_ms);
     }
-    if(attached) { view_port_input_callback_set(g->viewport, NULL, NULL); view_port_enabled_set(g->viewport, false); gui_remove_view_port(g->gui, g->viewport); }
     if(g->gui) furi_record_close(RECORD_GUI);
     if(g->viewport) view_port_free(g->viewport);
     if(port_ready) ns_flipper_deinit(&g->port);

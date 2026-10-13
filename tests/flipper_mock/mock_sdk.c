@@ -68,7 +68,7 @@ void furi_record_close(const char* name) { (void)name; assert(records); records-
 uint32_t furi_get_tick(void) { return ticks; }
 uint32_t furi_ms_to_ticks(uint32_t ms) { return ms; }
 ViewPort* view_port_alloc(void) { ViewPort* p = allocate(sizeof(*p)); if(p) p->enabled = true; return p; }
-void view_port_free(ViewPort* p) { assert(!p->attached); dispose(p); }
+void view_port_free(ViewPort* p) { assert(!p->attached && !p->draw && !p->input); dispose(p); }
 void view_port_draw_callback_set(ViewPort* p, void (*cb)(Canvas*, void*), void* ctx) { p->draw = cb; p->draw_ctx = ctx; }
 void view_port_input_callback_set(ViewPort* p, void (*cb)(InputEvent*, void*), void* ctx) { p->input = cb; p->input_ctx = ctx; }
 void view_port_update(ViewPort* p) { if(p->enabled && p->draw) { Canvas c = {0}; p->draw(&c, p->draw_ctx); draws++; } }

@@ -3,8 +3,8 @@ BUILD := builds/host
 CPPFLAGS := -Iinclude -I.
 CFLAGS := -std=c11 -Wall -Wextra -Werror -pedantic -g
 CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/cc_spi.c src/core/marauder.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c
-.PHONY: test clean sanitize audit-test
-test: audit-test $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
+.PHONY: test clean sanitize audit-test sdk-test sdk-preflight
+test: audit-test sdk-test $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
 	$(BUILD)/test_board_contract
 	$(BUILD)/test_cc
 	$(BUILD)/test_marauder
@@ -44,3 +44,10 @@ $(BUILD)/test_board_contract: $(CORE) $(FLIPPER) src/flipper/ns_flipper.h tests/
 
 audit-test:
 	python3 -m unittest discover -s tests -p test_publication.py
+
+sdk-test:
+	python3 -m unittest discover -s tests -p test_sdk_preflight.py
+
+# Owner must supply a permitted export table and confirm its provenance first.
+sdk-preflight:
+	python3 scripts/sdk_preflight.py builds/sdk-input/api_symbols.csv --firmware-revision d3f89dfe2ef6b01839201598e9be1590cba80322
