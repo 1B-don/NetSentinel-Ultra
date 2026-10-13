@@ -21,6 +21,23 @@ The local authorized SDK-only `furi_hal_spi_config.h` documents `furi_hal_spi_bu
 
 These SDK artifacts establish which Flipper HAL contracts an application may call. They do not provide the Ultra V3 netlist, runtime value of the “Default 4” configuration, safe interaction with the board's selector, chip presence, or packet-reception proof. The lack of a bounded acquire operation is a concrete adapter-contract gap; until ownership can be guaranteed without an uninterruptible wait, the physical adapter remains off.
 
+### Owner-supplied FAP import cross-check
+
+The owner-supplied [static-analysis report](NetSentinel_FAP_Static_Analysis.md) lists the following direct SPI/GPIO dependencies for the two requested binaries. Every listed symbol is present as `+` (enabled) in the permitted API 87.1 / target 7 `api_symbols.csv`:
+
+| FAP | SPI handle variables | SPI functions | GPIO references / functions | Other selection reference |
+|---|---|---|---|---|
+| `nrf24sniff.fap` | `furi_hal_spi_bus_handle_external`, `furi_hal_spi_bus_handle_external_extra` | `furi_hal_spi_bus_handle_init/deinit`, `furi_hal_spi_acquire/release`, `furi_hal_spi_bus_trx` | `gpio_ext_pa4`, `gpio_ext_pb2`, `gpio_ext_pc3`, `furi_hal_gpio_init`, `furi_hal_gpio_init_simple` | `momentum_settings` |
+| `nrf24channelscanner.fap` | `furi_hal_spi_bus_handle_external` only | `furi_hal_spi_bus_handle_init/deinit`, `furi_hal_spi_acquire/release`, `furi_hal_spi_bus_trx` | `gpio_ext_pb2`, `gpio_ext_pc3`, `furi_hal_gpio_init`, `furi_hal_gpio_init_simple` | None listed |
+
+The report also lists `furi_hal_power_enable_otg`, `furi_hal_power_disable_otg`, and `furi_hal_power_is_otg_enabled` in both FAPs. Their import presence is not proof that a particular control-flow path toggles power; NetSentinel does not import or use them.
+
+The SDK-only Momentum settings header refines the API-level mapping: `SpiDefault` is documented as CS on PA4, `SpiExtra` as CS on PC3, and `MomentumSettings` contains `spi_nrf24_handle`. The external handle declarations match those CS choices while sharing MISO PA6, MOSI PA7 and SCK PB3. Thus the SDK supplies an API-supported way for an application to select a handle from the Momentum NRF24 setting. `nrf24sniff.fap`'s imports of both handles and `momentum_settings` are consistent with such selection, but imports alone do not prove the setting is read, which branch is taken, or how `gpio_ext_pc3`/`gpio_ext_pa4` are used. `nrf24channelscanner.fap`'s standard-handle import together with PC3 GPIO import likewise does not identify runtime CS behavior. No binary was executed or disassembled in this review.
+
+This resolves the **SDK setting-to-generic-CS association**, not the Ultra V3 electrical routing: the owner's “Default 4” selection is consistent with the SDK's `SpiDefault`/PA4 designation, but does not prove the onboard module is connected to PA4 (or PB2 CE), or explain any selector/switching circuitry. The report's imported helper names and internal function names are static dependency evidence only, not proof of call order, receive behavior, teardown restoration, or packet reception.
+
+All two binaries' listed SPI/GPIO/API names are enabled exports; there is no missing SPI symbol blocker for compiling against this API table. The actual safety blocker remains semantic: the API's `furi_hal_spi_acquire()` is a void, blocking call with no timeout. `furi_hal_spi_bus_trx()` has a per-transfer timeout and boolean result, which starts only after acquisition. An application mutex can serialize NetSentinel's own requests but cannot bound wait time against other users of the shared HAL bus. Do not substitute a detached worker, elapsed-time check after acquire, or transfer timeout for bounded acquisition.
+
 ## NetSentinel receive-only candidate contract
 
 The existing portable `ns_nrf_open/sample/close` core is the candidate driver behind an injected `NsPlatform` interface. It writes only CONFIG/channel/receive-register configuration, verifies register readback, keeps `PRIM_RX=1`, clears auto-ack and retry registers, samples the RPD register, and exposes no payload, TX, ACK-payload, carrier, or retry operation. The Flipper SPI guard allows only this register envelope. This is software behavior under a mock peripheral, not a board-specific adapter or RF test.
@@ -61,7 +78,7 @@ Until those items are available, physical NRF24 access remains disabled. The sta
 
 ## Reference-app comparison update — 2026-10-13
 
-The requested `NetSentinel_FAP_Static_Analysis.md` was not present in the project, Downloads, home directory, or `/tmp` in the development environment. Consequently, no claim in this review is attributed to its seven-binary symbol list. The report (or its exact symbol table) is required before comparing imports extracted from those specific FAPs.
+At the time of the prior review, `NetSentinel_FAP_Static_Analysis.md` was not available in the development workspace, so that earlier comparison was pending. The owner has since supplied it at [the project report](NetSentinel_FAP_Static_Analysis.md); the exact Sniffer and Channel Scanner imports are cross-checked below against the API 87.1 table.
 
 The public [NRF24 Channel Scanner README](https://raw.githubusercontent.com/htotoo/NRF24ChannelScanner/main/README.md) documents generic Flipper expansion wiring: external SPI on pins 2/A7 MOSI, 3/A6 MISO, and 5/B3 SCK, with 4/A4 CSN and 6/B2 CE; it says IRQ is unconnected. This agrees with the generic HAL signals and the Sniffer's selected CE/CS choices at the Flipper connector level. It does not identify Ultra V3 onboard nets or Momentum's runtime “Default 4” route. The catalog pins the scanner source to [`6bd1a9362a22d580a3ec1e2490cea4eab1103d6b`](https://raw.githubusercontent.com/flipperdevices/flipper-application-catalog/main/applications/GPIO/nrf24channelscanner/manifest.yml), but its source files were not retrievable through the permitted public source view in this session. Therefore scanner C-level acquisition, initialization and teardown cannot be compared reliably here; README pinout text is not treated as proof of the implementation.
 
