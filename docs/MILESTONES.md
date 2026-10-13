@@ -1,5 +1,11 @@
 # Development milestones and limitations
 
+## Bounded NRF24 acquisition investigation — 2026-10-13
+
+Reviewed all SPI ownership declarations/exports in the permitted Momentum API 87.1 / target 7 SDK, including bus/handle structures, event callbacks and mutex interfaces. No timed/nonblocking SPI acquire or shared-lock accessor is exported. Timed application mutexes cannot reserve the firmware's bus; current_handle snapshots race; event callbacks supply no deadline/result; worker deadlines cannot interrupt ownership waits or guarantee cleanup. Exact alternatives and requirements are recorded in NRF24_SPI_ACQUISITION.md. No physical transport was added. SpiDefault/PA4 and SpiExtra/PC3 remain distinct generic routes, not verified Ultra V3 wiring.
+
+Expanded probe mocks cover acquisition I/O/cancellation failures, another client's retained ownership, acquisition timeout and complete-budget exhaustion, cancellation during acquisition, and recovery/reuse. All 15 C suites and 24 Python checks pass, including warnings-as-errors, short enums, ASan/UBSan, matching SDK compile/link/package/APPCHK, strict metadata/icon validation, all 63 imports and publication audit. The undeployed development artifact is 49,528 bytes, SHA-256 `42120186156638b94ee47d839bfe6420a18f7327657bdf018a062f02ba47c797`, API 87.1 / target 7 / stack 8192, zero weak imports and no SPI imports. Prior binaries are preserved by the build helper; runtime source, ESP32, CC1101 and UI are unchanged. No device, settings, firmware or RF operation occurred. Initial sandbox build was blocked by the read-only isolated cache; the approved build-only rerun passed. Publication is attempted after the tested source/documentation commit.
+
 These are sanitized source/test summaries, not runtime logs or device captures. Raw compiler/runtime outputs stay local. Synthetic fixtures are invented protocol examples and are labeled separately.
 
 - Initial owner-provided v0.2 import and portable radio core: parser/analysis tests, receive-only NRF register logic, CC callback boundary, UART/session mocks. Import licensing remains unresolved for distribution.

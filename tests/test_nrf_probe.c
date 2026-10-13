@@ -7,7 +7,7 @@ typedef struct {
     uint32_t now;
     uint8_t regs[8];
     NsResult acquire_result, transfer_result;
-    bool owned, cancelled;
+    bool owned, cancelled, cancel_on_acquire;
     unsigned acquired, released, transfers, cancel_after;
     uint32_t last_acquire_timeout, last_transfer_timeout, step_ms, acquire_advance_ms, release_advance_ms;
     bool ce_changed, register_written;
@@ -17,6 +17,7 @@ static NsResult probe_acquire(void* ctx, uint32_t timeout_ms) {
     ProbeMock* m = ctx;
     assert(timeout_ms && timeout_ms <= NS_NRF_PROBE_BUDGET_MS);
     m->last_acquire_timeout = timeout_ms;
+    if(m->cancel_on_acquire) m->cancelled = true;
     if(m->owned) return NS_BUSY;
     if(m->acquire_result != NS_OK) return m->acquire_result;
     if(m->acquire_advance_ms > timeout_ms) { m->now += timeout_ms; return NS_TIMEOUT; }
@@ -143,10 +144,50 @@ static void test_invalid_contracts(void) {
     assert(ns_nrf_probe_readonly(&io, &out) == NS_INVALID && !m.acquired);
 }
 
+static void test_acquisition_failure_and_recovery(void) {
+    ProbeMock m;
+    const NsResult failures[] = {NS_BUSY, NS_TIMEOUT, NS_IO, NS_CANCELLED};
+    for(size_t i = 0; i < sizeof(failures) / sizeof(failures[0]); i++) {
+        reset(&m);
+        NsNrfProbeIo io = probe_io(&m);
+        NsNrfProbeResult out;
+        m.acquire_result = failures[i];
+        assert(ns_nrf_probe_readonly(&io, &out) == failures[i]);
+        assert(!m.owned && !m.acquired && !m.released && !m.transfers);
+        assert(!out.status && !out.config && !out.rf_channel && !out.rf_setup && !out.elapsed_ms);
+        m.acquire_result = NS_OK;
+        assert(ns_nrf_probe_readonly(&io, &out) == NS_OK);
+        assert(m.acquired == 1 && m.released == 1 && !m.owned);
+    }
+
+    reset(&m);
+    NsNrfProbeIo io = probe_io(&m);
+    NsNrfProbeResult out;
+    m.owned = true; /* Another client owns the mock bus. Never release its lock. */
+    assert(ns_nrf_probe_readonly(&io, &out) == NS_BUSY);
+    assert(m.owned && !m.acquired && !m.released && !m.transfers);
+    m.owned = false;
+    m.acquire_advance_ms = NS_NRF_PROBE_BUDGET_MS + 1u;
+    assert(ns_nrf_probe_readonly(&io, &out) == NS_TIMEOUT);
+    assert(!m.owned && !m.acquired && !m.released && !m.transfers);
+
+    reset(&m); m.acquire_advance_ms = NS_NRF_PROBE_BUDGET_MS;
+    assert(ns_nrf_probe_readonly(&io, &out) == NS_TIMEOUT);
+    assert(m.acquired == 1 && m.released == 1 && !m.transfers && !m.owned);
+
+    reset(&m); m.cancel_on_acquire = true;
+    assert(ns_nrf_probe_readonly(&io, &out) == NS_CANCELLED);
+    assert(m.acquired == 1 && m.released == 1 && !m.transfers && !m.owned);
+    m.cancel_on_acquire = false; m.cancelled = false;
+    assert(ns_nrf_probe_readonly(&io, &out) == NS_OK);
+    assert(m.acquired == 2 && m.released == 2 && !m.owned);
+}
+
 int main(void) {
     test_read_only_success_and_repeat();
     test_missing_invalid_values_and_cleanup();
     test_timeout_contention_cancel_and_wrap();
     test_invalid_contracts();
+    test_acquisition_failure_and_recovery();
     puts("PASS: NRF24 read-only probe budget, validation, cancellation and ownership");
 }

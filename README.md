@@ -24,6 +24,8 @@ The supplied seven-FAP static-analysis report is now cross-checked against Momen
 
 ## Implemented boundaries
 
+The [API 87.1 acquisition review](docs/NRF24_SPI_ACQUISITION.md) found no exported bounded SPI ownership mechanism: timed mutex calls lack access to the shared SPI lock, and bus event callbacks have no timeout/result contract. Physical NRF24 stays disabled. Expanded probe mocks cover acquisition failure/cancellation and recovery without releasing another client's ownership.
+
 - GUI/controller own I/O on one worker; drawing reads bounded frames, Back is latched, queued/active queries cannot overlap, errors support safe retry and cleanup.
 - Protocol/parser/transport separation provides strict echo/prompt validation, bounded lines/ISR buffers, malformed-response handling, timeout/cancellation and identifier redaction.
 - NRF24 primary RX disables auto-ACK/retries; measured-channel activity summaries, plots and numeric CSV are implemented with SPI mocks.

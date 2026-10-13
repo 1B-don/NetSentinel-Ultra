@@ -2,6 +2,8 @@
 
 Status: receive-only sampling core and deterministic adapter mocks are software-tested. The Ultra V3 physical adapter remains disabled. This review uses only the permitted Momentum API 87.1 / target 7 SDK-only headers/export table and public application references; it does not inspect the restricted firmware checkout or import third-party implementation code.
 
+The complete [bounded acquisition review](NRF24_SPI_ACQUISITION.md) examines exposed bus fields, mutex APIs, callbacks, contention, workers and cancellation. No safe finite ownership strategy is established by the exported API contracts. Physical access remains disabled; the portable probe is unchanged.
+
 ## Owner-confirmed observations
 
 - Board: Sacred Labs FlipMods Ultra V3 with EBYTE E01-2G4M27SX module.
