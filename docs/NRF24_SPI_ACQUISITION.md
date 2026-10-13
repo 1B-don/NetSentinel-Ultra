@@ -4,6 +4,8 @@ Scope: permitted Momentum d3f89dfe SDK-only headers and export table, API 87.1, 
 
 ## Finding
 
+The later [public CC provider/SPI implementation review](CC1101_PROVIDER_IMPLEMENTATION.md) also found upstream 1.4.3 polled transfer/drain loops without enforced deadlines. A transfer timeout parameter in API 87.1 is a declared interface, not installed-target proof of a finite whole-call bound. This does not establish Momentum implementation behavior and does not change the disabled probe gate.
+
 No safe bounded acquisition strategy is established by these exported APIs. Physical NRF24 remains disabled; no Flipper transport is added for `ns_nrf_probe_readonly()`.
 
 The inspected SDK files are `targets/furi_hal_include/furi_hal_spi.h`, `targets/f7/furi_hal/furi_hal_spi_types.h`, `targets/f7/furi_hal/furi_hal_spi_config.h`, `furi/core/mutex.h`, `lib/momentum/settings.h`, and the checksum-verified API table described in MOMENTUM_BUILD.md. All SPI acquisition-related declarations and table entries were examined.

@@ -24,6 +24,8 @@ The supplied seven-FAP static-analysis report is now cross-checked against Momen
 
 ## Implemented boundaries
 
+The [public external-provider implementation decision](docs/CC1101_PROVIDER_IMPLEMENTATION.md) compares the upstream lifecycle with API 87.1. It identifies unbounded calibration, fatal transitions and unverified SPI transfer bounds; no physical adapter or additional radio mock is added. An app-owned metadata loader is a conditional discovery alternative, pending exact plugin/loader provenance and safe finite lifecycle evidence.
+
 The [provider-discovery decision](docs/CC1101_DISCOVERY_READINESS.md) finds no supported safe registry initialization/borrowing lifecycle for a metadata-only diagnostic. No discovery FAP is generated and no registry calls are made. Source preflight now inventories Sub-GHz/plugin-manager calls so future changes cannot omit them from names-only checks.
 
 The [CC1101 registry readiness report](docs/CC1101_REGISTRY_READINESS.md) confirms an exported named-discovery path independent of the disabled external entrypoint import. Registered, initialized, connected, RX and received-data states remain distinct. Registry lifetime and provider deadlines/passivity are unverified, so physical access stays disabled; deterministic future-provider mocks exercise missing/wrong-name devices and cleanup.
