@@ -42,4 +42,6 @@ See [adapter contract](adapters/README.md), [manual compilation](docs/MANUAL_BUI
 
 The application now isolates the optional board port from GUI/storage/UART, validates advertised callbacks, enforces shared radio ownership, routes tests through actual GUI input callbacks and preserves Back cancellation when the input queue is full. Both default and board-enabled Flipper source variants compile against mocks; real SDK compilation remains pending.
 
-Current publication blocker: shell Git DNS is unavailable and the installed GitHub connector has read access but rejects Git tree creation with HTTP 403. The tested source milestone is committed locally; no successful push is claimed.
+Milestone `ab8e708` was published by the owner and independently verified on GitHub. Automatic normal pushes remain enabled; shell Git still cannot resolve GitHub in this execution environment as of the current check.
+
+The NRF SPI adapter now rejects payload/TX commands, carrier mode, auto-ACK/retries and unsupported register operations before board callbacks. Exhaustive command/value rejection checks and a complete 126-channel scan pass against mocks. This guard does not establish physical SPI operation or firmware ABI compatibility.

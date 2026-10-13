@@ -31,9 +31,24 @@ void ns_flipper_radio_release(void* ctx, NsRadio radio) {
     }
     f->owner = NS_RADIO_NONE;
 }
+/* Restrict the board boundary to the register operations used by our RX
+ * scanner. Never forward payload, TX/carrier, auto-ACK or retry commands. */
+static bool nrf_receive_transfer(const uint8_t* tx, size_t n) {
+    if(!tx || n != 2) return false;
+    switch(tx[0]) {
+    case 0x00: case 0x01: case 0x02: case 0x04: case 0x05: case 0x06: case 0x09:
+        return true;
+    case 0x20: return tx[1] == 0x01 || tx[1] == 0x03; /* PRIM_RX, power down/up */
+    case 0x21: case 0x22: case 0x24: case 0x26: return tx[1] == 0;
+    case 0x25: return tx[1] < NS_NRF_CHANNELS;
+    default: return false;
+    }
+}
 static NsResult board_spi(void* ctx, const uint8_t* tx, uint8_t* rx, size_t n) {
     NsFlipper* f = ctx;
-    return f->owner == NS_RADIO_NRF ? f->board.io.spi(f->board.io.ctx, tx, rx, n) : NS_INVALID;
+    if(f->owner != NS_RADIO_NRF || !rx || !tx || n != 2) return NS_INVALID;
+    if(!nrf_receive_transfer(tx, n)) return NS_UNSUPPORTED;
+    return f->board.io.spi(f->board.io.ctx, tx, rx, n);
 }
 static void board_ce(void* ctx, bool high) {
     NsFlipper* f = ctx; if(f->owner == NS_RADIO_NRF) f->board.io.ce(f->board.io.ctx, high);

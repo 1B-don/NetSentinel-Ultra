@@ -45,6 +45,37 @@ static void port_lifecycle(void) {
     reset(); fail_bind = true; assert(!ns_flipper_init(&f));
     assert(binds == 1 && unbinds == 1 && !mock_sdk_live() && !mock_sdk_records());
 }
+static void receive_only_boundary(void) {
+    reset(); NsFlipper f; assert(ns_flipper_init(&f));
+    assert(f.platform.acquire(&f, NS_RADIO_NRF) == NS_OK);
+    uint8_t tx[2], rx[2];
+    /* Exhaustively reject every command/value outside the scanner envelope. */
+    for(unsigned command = 0; command < 256; command++) {
+        for(unsigned value = 0; value < 256; value++) {
+            tx[0] = (uint8_t)command; tx[1] = (uint8_t)value;
+            bool allowed = command == 0 || command == 1 || command == 2 ||
+                command == 4 || command == 5 || command == 6 || command == 9 ||
+                (command == 0x20 && (value == 1 || value == 3)) ||
+                ((command == 0x21 || command == 0x22 || command == 0x24 || command == 0x26) && value == 0) ||
+                (command == 0x25 && value < NS_NRF_CHANNELS);
+            if(!allowed) assert(f.platform.spi(&f, tx, rx, 2) == NS_UNSUPPORTED);
+        }
+    }
+    assert(f.platform.spi(&f, NULL, rx, 2) == NS_INVALID);
+    assert(f.platform.spi(&f, tx, NULL, 2) == NS_INVALID);
+    assert(f.platform.spi(&f, tx, rx, 1) == NS_INVALID);
+    assert(f.platform.spi(&f, tx, rx, 3) == NS_INVALID);
+    assert(board.transfers == 0); /* rejected transfers never reached SPI */
+    /* The real portable RX driver must still run through the guarded port. */
+    f.platform.release(&f, NS_RADIO_NRF);
+    NsNrf scanner = {0};
+    assert(ns_nrf_open(&scanner, &f.platform, true) == NS_OK);
+    for(unsigned ch = 0; ch < NS_NRF_CHANNELS; ch++)
+        assert(ns_nrf_sample(&scanner, (uint8_t)ch, 200) == NS_OK);
+    assert(ns_nrf_close(&scanner) == NS_OK);
+    ns_flipper_deinit(&f);
+    assert(!board.owner && !board.ce && !mock_sdk_live() && !mock_sdk_records());
+}
 static void shell_radio_lifecycle(void) {
     reset(); InputEvent cc[] = {
         {InputKeyDown, InputTypeShort}, {InputKeyDown, InputTypeShort}, {InputKeyDown, InputTypeShort},
@@ -65,4 +96,4 @@ static void shell_radio_lifecycle(void) {
     assert(netsentinel_app(NULL) == 1 && board.acquired == board.released && !board.frequency);
     assert(binds == unbinds && !mock_sdk_live() && !mock_sdk_records());
 }
-int main(void) { port_lifecycle(); shell_radio_lifecycle(); puts("PASS: typed Flipper board bind, shared ownership, partial init, real GUI callback cancellation and forced cleanup (MOCK API)"); }
+int main(void) { port_lifecycle(); receive_only_boundary(); shell_radio_lifecycle(); puts("PASS: typed Flipper board bind, shared ownership, partial init, real GUI callback cancellation and forced cleanup (MOCK API)"); }

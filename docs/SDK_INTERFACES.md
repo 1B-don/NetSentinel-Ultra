@@ -37,3 +37,5 @@ The parent adapter dispatches acquisition/release and checks a single owner acro
 ## Next permitted compilation step
 
 Obtain the compatible SDK's permitted exported headers/API table and supported external-app build instructions. Review its instructions before using it. Compile with the candidate manifest through its supported build-only workflow, retain compiler/linker output locally, and fix concrete mismatches here. No deployment/launch without explicit approval. No FAP, hardware verification or release is claimed from the host builds.
+
+The Flipper NRF dispatch validates each two-byte transfer before forwarding to the board: only scanner register reads/writes, primary RX configuration and channel values 0–125 are accepted. The guard adds no firmware symbols. It complements external-port locking, CS handling and cleanup; it does not supply the missing external SPI/GPIO binding.
