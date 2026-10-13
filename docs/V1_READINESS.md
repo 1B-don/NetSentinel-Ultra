@@ -6,7 +6,8 @@ Target: permitted Momentum Dev d3f89dfe SDK, API 87.1, hardware target 7. No new
 
 - [x] Audit dbecb97 source, lifecycle and manifest against v1.0 scope; preserve stable artifacts and icon.
 - [x] Fix actionable query outcomes, serial corruption, CSV close-error propagation, cancellation queue handling, bounded capture sessions and storage recovery presentation.
-- [x] Complete dashboard, ten-menu navigation, diagnostics, settings, filters, history, session lifecycle and numeric CSV workflows.
+- [x] Complete dashboard, eleven-menu navigation, diagnostics, settings, filters, history, session lifecycle and numeric CSV workflows.
+- [x] Add volatile Monitor/Lab/Simulation/Hardware Diagnostics modes and bounded RAM-only synthetic event generation/local replay/offline overlap model. Modes never persist or enable hardware operations.
 - [x] Explicit legacy app-baud recovery to 115200 without firmware or expansion setting changes.
 - [x] Single unified RC1 manifest with info-only transport gate and approved embedded icon.
 - [x] Host/mock, malformed input, persistence recovery, repeated launch/navigation, fuzz/stress, short-enum, ASan/UBSan, publication tests.
@@ -31,9 +32,12 @@ Target: permitted Momentum Dev d3f89dfe SDK, API 87.1, hardware target 7. No new
 | NRF24 receive sampling, capability checks, plot/statistics/CSV | PRIM_RX, auto-ACK/retry off, readback, bounded 60-second sessions | SPI faults, counter/deadline cleanup, 25,200 PRX samples | Core compiled; no SPI imports | Blocked: Ultra SPI/CE/CSN routes, ownership/bounded provider and chip verification; standalone scanner owner success is not this adapter's evidence |
 | CC1101 receive diagnostics, tuning, RSSI/trace/CSV | Status reads, RXOFF guard, checked receive contract, cadence, bounded sessions | All 256 RXOFF values, identity/state/fault/RSSI/trace/deadline tests | Core compiled; no external registry/SPI imports | Blocked: exact routes/provider/preset, bounded calibration/init, RSSI calibration and formal RF reception |
 | Packaging/approved icon | One named RC1 with exact icon bytes, API/target/stack/name/entry/import checks | Manifest/icon mutation, all variant/source bundle tests | Pass; 63 imports, zero weak | This exact RC1 is undeployed and untested on device |
+| Operating modes and synthetic lab workflows | Four session-only modes; 64-frame cap; 16-frame batches; CRC-checked local replay/cancel; validated offline overlap classification | Navigation, persisted-settings/reboot mode reset, range, 10,000-round stress and ASan/UBSan | Momentum API 87.1 / target 7; 49,004-byte `netsentinel_lab_sim.fap`; 63 imports | Synthetic output only; no radio input or transmit interface; artifact not physically tested |
 
 ## Exact remaining inputs
 
 [Dependency review](DEPENDENCY_REVIEW.md) contains primary source references. Obtain an independently permitted manufacturer signal/net table for the actual Ultra V3 revision (SPI, NRF CE/CSN, CC CS/GDO, selector and voltage circuitry). A separately approved owner power-off continuity check is an alternative; none performed here. For CC, obtain a permitted installed external plugin/provider implementation and reviewed receive-only preset with recoverable bounded init/calibration/ownership behavior; generic SDK exports or official-driver pin expectations are insufficient. For Wi-Fi, obtain installed-build/source correspondence and sanitized capture/association/background-state facts; do not provide credentials, complete settings dumps or packets.
 
 Nothing in software can establish unknown PCB routing, guarantee an opaque blocking driver deadline, prove installed RF silence or exercise physical cancellation without those inputs and separate approval. No guessed bindings, internal-radio fallback, firmware replacement, attack commands or synthetic live measurements were added. See SOFTWARE_COMPLETION.md for implemented audit fixes and V1_LIMITATIONS.md for release gates.
+
+`docs/OPERATING_MODES.md` defines the new session-local mode and synthetic-only semantics. The hardware-dependent gates above remain open.

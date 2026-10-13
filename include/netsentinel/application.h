@@ -1,9 +1,11 @@
 #ifndef NS_APPLICATION_H
 #define NS_APPLICATION_H
 #include "observation.h"
+#include "simulation.h"
 typedef enum { NS_KEY_UP, NS_KEY_DOWN, NS_KEY_LEFT, NS_KEY_RIGHT, NS_KEY_OK, NS_KEY_BACK } NsKey;
-typedef enum { NS_PAGE_HOME, NS_PAGE_RADIO, NS_PAGE_SELECTOR, NS_PAGE_SETTINGS, NS_PAGE_HISTORY, NS_PAGE_DIAGNOSTICS, NS_PAGE_FILTERS, NS_PAGE_EXPORTS, NS_PAGE_WIFI_OVERVIEW } NsPage;
-#define NS_MENU_COUNT 10u
+typedef enum { NS_PAGE_HOME, NS_PAGE_RADIO, NS_PAGE_SELECTOR, NS_PAGE_SETTINGS, NS_PAGE_HISTORY, NS_PAGE_DIAGNOSTICS, NS_PAGE_FILTERS, NS_PAGE_EXPORTS, NS_PAGE_WIFI_OVERVIEW, NS_PAGE_MODES, NS_PAGE_SIMULATION } NsPage;
+#define NS_MENU_COUNT 11u
+typedef enum { NS_MODE_MONITOR, NS_MODE_LAB, NS_MODE_SIMULATION, NS_MODE_HARDWARE_DIAGNOSTICS, NS_MODE_COUNT } NsOperatingMode;
 typedef struct { bool nrf, cc, esp_uart, esp_wifi_verified, esp_info_only; } NsCapabilities;
 /* Wi-Fi requires installed-build command/output verification in addition to
  * a UART port. BLE is unsupported. Information queries do not scan. */
@@ -12,8 +14,11 @@ typedef struct {
     NsSavedState saved;
     NsPersistence persistence;
     NsCapabilities capabilities;
+    /* Volatile by design: restored settings can never enable a mode or radio. */
+    NsOperatingMode mode;
+    NsSimulation simulation;
     NsPage page;
-    unsigned menu, setting, history_index, filter_setting, diagnostic_view;
+    unsigned menu, setting, history_index, filter_setting, diagnostic_view, mode_selection, simulation_action;
     NsObservationFilter observation_filter;
     NsHistoryFilter history_filter;
     uint32_t now_ms, export_id;

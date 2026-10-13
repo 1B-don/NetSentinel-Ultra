@@ -19,6 +19,7 @@ VARIANTS = {
     "info": ("netsentinel_esp_info", "NetSentinel ESP Info", "NS_ESP_INFO_ONLY"),
     "diagnostics": ("netsentinel_esp_diagnostics", "ESP Diagnostics v0.2", "NS_ESP_INFO_ONLY"),
     "development": ("netsentinel_development", "NetSentinel Ultra Dev", "NS_ESP_INFO_ONLY"),
+    "lab-sim": ("netsentinel_lab_sim", "NetSentinel Ultra Lab Sim", "NS_ESP_INFO_ONLY"),
     "rc": ("netsentinel_ultra_v1_0_rc1", "NetSentinel Ultra v1.0 RC1", "NS_ESP_INFO_ONLY"),
 }
 
@@ -50,7 +51,7 @@ def digest(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--variant", choices=tuple(VARIANTS), help="explicit build variant; default remains diagnostics; rc is the unified hardware-gated candidate")
+    parser.add_argument("--variant", choices=tuple(VARIANTS), help="explicit build variant; lab-sim contains offline synthetic workflows and retains the ESP information-only hardware gate")
     parser.add_argument("--development", action="store_true", help="build the unified v1 development app with pending radios disabled")
     args = parser.parse_args()
     if args.development and args.variant:

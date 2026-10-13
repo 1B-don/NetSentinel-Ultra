@@ -2,7 +2,8 @@
 #include "../../ns_analysis.h"
 #include <stdio.h>
 #include <string.h>
-static const char* const menu[] = {"Wi-Fi", "BLE (blocked)", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics", "Filters", "CSV exports", "Wi-Fi readiness"};
+static const char* const menu[] = {"Wi-Fi", "BLE (blocked)", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics", "Filters", "CSV exports", "Wi-Fi readiness", "Operating modes"};
+static const char* const mode_name[] = {"Monitor", "Lab/offline", "Simulation", "HW diagnostics"};
 _Static_assert(sizeof(menu)/sizeof(*menu) == NS_MENU_COUNT, "menu count must match navigation");
 static const char* radio_name(NsRadio r) {
     switch(r) {
@@ -31,6 +32,8 @@ static void apply_settings(NsApplication* a) {
 NsResult ns_app_init(NsApplication* a, const NsPlatform* io, const NsStore* store, NsCapabilities caps) {
     if(!a || !io || !store) return NS_INVALID;
     memset(a, 0, sizeof(*a)); a->observation_filter = ns_observation_filter_default(); a->capabilities = caps; a->running = true;
+    a->mode = NS_MODE_MONITOR; /* never restored from persistent user settings */
+    ns_simulation_init(&a->simulation);
     ns_saved_defaults(&a->saved);
     NsResult r = ns_persistence_load(&a->persistence, store, &a->saved);
     ns_session_init(&a->session, io, NULL);
@@ -193,6 +196,10 @@ NsResult ns_app_stop(NsApplication* a, uint32_t now) {
 NsResult ns_app_step(NsApplication* a, uint32_t now) {
     if(!a || !a->running) return NS_INVALID;
     a->now_ms = now; /* Age filters advance even without input or active hardware. */
+    if(a->page == NS_PAGE_SIMULATION && a->simulation.replay_active) {
+        NsSyntheticFrame frame;
+        (void)ns_simulation_replay_step(&a->simulation, now, &frame);
+    }
     if(a->info_pending) {
         if(--a->info_pending) return NS_OK; /* publish connecting before hardware */
         return ns_app_device_info(a, now);
@@ -256,6 +263,10 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
     if(!a || !a->running || (unsigned)key > NS_KEY_BACK) return NS_INVALID;
     a->now_ms = now;
     if(key == NS_KEY_BACK) {
+        if(a->page == NS_PAGE_SIMULATION && a->simulation.replay_active) {
+            ns_simulation_replay_cancel(&a->simulation);
+            a->status = NS_OK;
+        }
         NsResult r = ns_app_stop(a, now);
         if(a->page == NS_PAGE_HOME) {
             if(a->session.active != NS_RADIO_NONE) a->exit_requested = true;
@@ -272,7 +283,44 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
             if(a->menu < 4) {
                 a->selected = a->menu < 2 ? NS_RADIO_ESP : (a->menu == 2 ? NS_RADIO_NRF : NS_RADIO_CC);
                 a->ble = a->menu == 1; a->page = NS_PAGE_RADIO;
+            } else if(a->menu == 10) {
+                a->mode_selection = (unsigned)a->mode;
+                a->page = NS_PAGE_MODES;
             } else a->page = a->menu == 4 ? NS_PAGE_SETTINGS : (a->menu == 5 ? NS_PAGE_HISTORY : (a->menu == 6 ? NS_PAGE_DIAGNOSTICS : (a->menu == 7 ? NS_PAGE_FILTERS : (a->menu == 8 ? NS_PAGE_EXPORTS : NS_PAGE_WIFI_OVERVIEW))));
+        }
+    } else if(a->page == NS_PAGE_MODES) {
+        if(key == NS_KEY_UP) a->mode_selection = (a->mode_selection + NS_MODE_COUNT - 1u) % NS_MODE_COUNT;
+        if(key == NS_KEY_DOWN) a->mode_selection = (a->mode_selection + 1u) % NS_MODE_COUNT;
+        if(key == NS_KEY_OK) {
+            if(a->mode_selection >= NS_MODE_COUNT) return a->status = NS_INVALID;
+            a->mode = (NsOperatingMode)a->mode_selection;
+            if(a->mode == NS_MODE_LAB || a->mode == NS_MODE_SIMULATION) {
+                a->simulation_action = 0;
+                a->page = NS_PAGE_SIMULATION;
+            } else if(a->mode == NS_MODE_HARDWARE_DIAGNOSTICS) {
+                a->diagnostic_view = 0;
+                a->page = NS_PAGE_DIAGNOSTICS;
+            } else a->page = NS_PAGE_HOME;
+        }
+    } else if(a->page == NS_PAGE_SIMULATION) {
+        if(a->simulation.replay_active) {
+            if(key == NS_KEY_OK) return a->status = NS_BUSY;
+            return NS_OK; /* Back is the only action while replay owns the RAM cursor. */
+        }
+        if(key == NS_KEY_UP && a->simulation_action) a->simulation_action--;
+        if(key == NS_KEY_DOWN && a->simulation_action < 3) a->simulation_action++;
+        if(key == NS_KEY_OK) {
+            if(a->simulation_action == 0) {
+                size_t n = ns_simulation_generate(&a->simulation, now ^ 0x4e53554cu, NS_SIM_BATCH_LIMIT);
+                a->status = n ? NS_OK : NS_FULL;
+            } else if(a->simulation_action == 1) {
+                a->status = ns_simulation_replay_begin(&a->simulation, now) ? NS_OK : NS_ABSENT;
+            } else if(a->simulation_action == 2) {
+                static const uint8_t scenario[NS_SIM_CHANNEL_LIMIT] = {12,24,70,85,43,16,31,62,91,38,17,53,28,9};
+                a->status = ns_simulation_model(&a->simulation, scenario) ? NS_OK : NS_INVALID;
+            } else {
+                ns_simulation_init(&a->simulation); a->status = NS_OK;
+            }
         }
     } else if(a->page == NS_PAGE_SELECTOR && key == NS_KEY_OK) {
         return ns_app_start(a, a->selected, a->ble, true, now);
@@ -377,7 +425,25 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
         unsigned first = a->menu < 4 ? 0 : a->menu-3;
         for(unsigned i = 0; i < 4; i++) snprintf(f->rows[i+1], sizeof(f->rows[i+1]), "%c %s", a->menu == first+i ? '>' : ' ', a->capabilities.esp_info_only && first+i == 0 ? "ESP32 diagnostics" : menu[first+i]);
         if(a->storage_status != NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "SD: %s; Diagnostics retries", ns_result_name(a->storage_status));
-        else if(a->status == NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "OK opens; Back exits");
+        else if(a->status == NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "%s | OK opens; Back exits", mode_name[(unsigned)a->mode < NS_MODE_COUNT ? a->mode : NS_MODE_MONITOR]);
+    } else if(a->page == NS_PAGE_MODES) {
+        snprintf(f->rows[0], sizeof(f->rows[0]), "Operating mode (session only)");
+        unsigned first = a->mode_selection < 2 ? 0 : a->mode_selection - 1;
+        for(unsigned i = 0; i < 4; i++) {
+            unsigned mode = (first + i) % NS_MODE_COUNT;
+            snprintf(f->rows[i+1], sizeof(f->rows[i+1]), "%c %s", a->mode_selection == mode ? '>' : ' ', mode_name[mode]);
+        }
+        snprintf(f->rows[5], sizeof(f->rows[5]), "No TX controls are available");
+    } else if(a->page == NS_PAGE_SIMULATION) {
+        snprintf(f->rows[0], sizeof(f->rows[0]), "%s | offline simulation", a->mode == NS_MODE_LAB ? "Lab" : "Simulation");
+        const char* actions[] = {"Generate synthetic events", "Replay locally in RAM", "Model channel overlap", "Clear volatile dataset"};
+        snprintf(f->rows[1], sizeof(f->rows[1]), "%c %s", a->simulation_action == 0 ? '>' : ' ', actions[0]);
+        snprintf(f->rows[2], sizeof(f->rows[2]), "%c %s", a->simulation_action == 1 ? '>' : ' ', actions[1]);
+        snprintf(f->rows[3], sizeof(f->rows[3]), "%c %s", a->simulation_action == 2 ? '>' : ' ', actions[2]);
+        snprintf(f->rows[4], sizeof(f->rows[4]), "%c %s", a->simulation_action == 3 ? '>' : ' ', actions[3]);
+        if(a->simulation.replay_active) snprintf(f->rows[5], sizeof(f->rows[5]), "Replay %lu/%lu; Back cancels", (unsigned long)a->simulation.replayed, (unsigned long)a->simulation.count);
+        else if(a->simulation.model_valid) snprintf(f->rows[5], sizeof(f->rows[5]), "MODEL %s I%u Q%u no RF", a->simulation.model_high_overlap ? "overlap" : "clear", a->simulation.model_interference, a->simulation.model_quality);
+        else snprintf(f->rows[5], sizeof(f->rows[5]), "RAM only: %lu/%u; no RF I/O", (unsigned long)a->simulation.count, NS_SIM_FRAME_LIMIT);
     } else if(a->page == NS_PAGE_SELECTOR) {
         snprintf(f->rows[1], sizeof(f->rows[1]), "Set selector to %s", a->selected == NS_RADIO_NRF ? "NRF24" : "CC1101");
         snprintf(f->rows[2], sizeof(f->rows[2]), "Stop before changing it");

@@ -87,7 +87,27 @@ static void radio_and_navigation(void) {
         for(unsigned row=0;row<6;row++) assert(memchr(frame.rows[row],0,sizeof(frame.rows[row])));
     }
 }
+static void offline_simulation_stress(void) {
+    NsSimulation s; ns_simulation_init(&s);
+    for(unsigned round=0;round<10000;round++) {
+        if(s.count==NS_SIM_FRAME_LIMIT) ns_simulation_init(&s);
+        size_t n=ns_simulation_generate(&s,next(),next()%128u);
+        assert(n<=NS_SIM_BATCH_LIMIT&&s.count<=NS_SIM_FRAME_LIMIT);
+        if(s.count && !s.replay_active) assert(ns_simulation_replay_begin(&s,next()));
+        if(s.replay_active) {
+            NsSyntheticFrame frame;
+            assert(ns_simulation_replay_step(&s,next(),&frame));
+            assert(frame.sequence && frame.payload_length<=NS_SIM_PAYLOAD_MAX && ns_simulation_frame_valid(&frame));
+            NsSyntheticFrame damaged=frame; damaged.frame_bytes[next()%damaged.frame_size]^=(uint8_t)(next()|1u);
+            assert(!ns_simulation_frame_valid(&damaged));
+        }
+        uint8_t load[NS_SIM_CHANNEL_LIMIT];
+        for(size_t i=0;i<NS_SIM_CHANNEL_LIMIT;i++) load[i]=(uint8_t)(next()%101u);
+        assert(ns_simulation_model(&s,load));
+        assert(s.model_quality<=100&&s.model_interference<=100);
+    }
+}
 int main(void) {
-    strings();uart_stress();radio_and_navigation();
-    puts("PASS: 20000 parser mutations, 2000 interrupted/wrapped UART sessions, 25200 PRX samples and 10000 UI events (MOCK)");
+    strings();uart_stress();radio_and_navigation();offline_simulation_stress();
+    puts("PASS: 20000 parser mutations, 2000 UART sessions, 25200 PRX samples, 10000 UI/simulation iterations (MOCK)");
 }

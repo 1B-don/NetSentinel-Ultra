@@ -2,9 +2,9 @@ CC ?= cc
 BUILD := builds/host
 CPPFLAGS := -Iinclude -I.
 CFLAGS := -std=c11 -Wall -Wextra -Werror -pedantic -g
-CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/cc_spi.c src/core/marauder.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c src/core/observation.c src/core/export.c
+CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/cc_spi.c src/core/marauder.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c src/core/observation.c src/core/export.c src/core/simulation.c
 .PHONY: test clean sanitize audit-test sdk-test sdk-preflight short-enums
-test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD)/test_esp_info_build $(BUILD)/test_minimal_build $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_marauder_gate $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
+test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD)/test_esp_info_build $(BUILD)/test_minimal_build $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_marauder_gate $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract $(BUILD)/test_simulation
 	$(BUILD)/test_stress
 	$(BUILD)/test_observation
 	$(BUILD)/test_esp_info_build
@@ -18,12 +18,15 @@ test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD
 	$(BUILD)/test_core
 	$(BUILD)/test_application
 	$(BUILD)/test_flipper_contract
+	$(BUILD)/test_simulation
 $(BUILD):
 	mkdir -p $@
 $(BUILD)/test_parser: ap_parser.c tests/test_parser.c ap_parser.h | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) ap_parser.c tests/test_parser.c -o $@
 $(BUILD)/test_analysis: ns_analysis.c tests/test_analysis.c ns_analysis.h ap_parser.h | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) ns_analysis.c tests/test_analysis.c -o $@
+$(BUILD)/test_simulation: src/core/simulation.c tests/test_simulation.c include/netsentinel/simulation.h | $(BUILD)
+	$(CC) $(CPPFLAGS) $(CFLAGS) src/core/simulation.c tests/test_simulation.c -o $@
 $(BUILD)/test_core: $(CORE) tests/test_core.c tests/mock_platform.h $(wildcard include/netsentinel/*.h) ap_parser.h ns_analysis.h | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE) tests/test_core.c -o $@
 sanitize:

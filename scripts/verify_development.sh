@@ -5,8 +5,9 @@ cd -- "$(dirname -- "$0")/.."
 variant="${1:-development}"
 case "$variant" in
     development) artifact=netsentinel_development.fap ;;
+    lab-sim) artifact=netsentinel_lab_sim.fap ;;
     rc) artifact=netsentinel_ultra_v1_0_rc1.fap ;;
-    *) echo "Usage: $0 [development|rc]" >&2; exit 2 ;;
+    *) echo "Usage: $0 [development|lab-sim|rc]" >&2; exit 2 ;;
 esac
 mkdir -p logs
 make test > logs/v1-final-host.log 2>&1

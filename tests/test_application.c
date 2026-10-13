@@ -304,7 +304,7 @@ static void test_completion_navigation_and_recovery(void) {
     disk.fail_read=false; a.menu=6; assert(ns_app_key(&a,NS_KEY_OK,0)==NS_OK);
     assert(ns_app_key(&a,NS_KEY_OK,0)==NS_OK && a.persistence.loaded && a.storage_status==NS_OK);
     NsPage pages[]={NS_PAGE_RADIO,NS_PAGE_RADIO,NS_PAGE_RADIO,NS_PAGE_RADIO,
-        NS_PAGE_SETTINGS,NS_PAGE_HISTORY,NS_PAGE_DIAGNOSTICS,NS_PAGE_FILTERS,NS_PAGE_EXPORTS,NS_PAGE_WIFI_OVERVIEW};
+        NS_PAGE_SETTINGS,NS_PAGE_HISTORY,NS_PAGE_DIAGNOSTICS,NS_PAGE_FILTERS,NS_PAGE_EXPORTS,NS_PAGE_WIFI_OVERVIEW,NS_PAGE_MODES};
     for(unsigned i=0;i<NS_MENU_COUNT;i++) {
         a.page=NS_PAGE_HOME; a.menu=i;
         assert(ns_app_key(&a,NS_KEY_OK,10+i)==NS_OK && a.page==pages[i]);
@@ -316,6 +316,7 @@ static void test_completion_navigation_and_recovery(void) {
             unsigned acquired=m.acquired;
             assert(ns_app_key(&a,NS_KEY_OK,20)==NS_OK && a.page==NS_PAGE_RADIO && m.acquired==acquired);
         }
+        if(i==10) assert(strstr(frame.rows[0],"Operating mode") && strstr(frame.rows[5],"No TX"));
         assert(ns_app_key(&a,NS_KEY_BACK,30+i)==NS_OK && a.page==NS_PAGE_HOME && a.running);
     }
     assert(!m.owner && !m.uart_calls);
@@ -343,6 +344,42 @@ static void test_completion_navigation_and_recovery(void) {
     ns_app_frame(&a,&frame); assert(strstr(frame.rows[0],"ESP32 errors"));
     assert(ns_app_key(&a,NS_KEY_BACK,101)==NS_OK);
     assert(ns_app_key(&a,NS_KEY_BACK,102)==NS_OK && !a.running);
+}
+static void test_modes_and_offline_lab(void) {
+    Mock m={0}; StoreMock disk={0}; NsPlatform radio=platform(&m); NsStore io=store(&disk); NsApplication a;
+    assert(ns_app_init(&a,&radio,&io,(NsCapabilities){.nrf=true,.cc=true})==NS_ABSENT);
+    a.menu=10; assert(ns_app_key(&a,NS_KEY_OK,1)==NS_OK && a.page==NS_PAGE_MODES);
+    assert(ns_app_key(&a,NS_KEY_DOWN,2)==NS_OK && a.mode_selection==NS_MODE_LAB);
+    assert(ns_app_key(&a,NS_KEY_OK,3)==NS_OK && a.mode==NS_MODE_LAB && a.page==NS_PAGE_SIMULATION);
+    assert(ns_app_key(&a,NS_KEY_OK,4)==NS_OK && a.simulation.count==NS_SIM_BATCH_LIMIT);
+    for(unsigned i=0;i<3;i++) assert(ns_app_key(&a,NS_KEY_OK,5+i)==NS_OK);
+    assert(a.simulation.count==NS_SIM_FRAME_LIMIT);
+    assert(ns_app_key(&a,NS_KEY_OK,9)==NS_OK && a.status==NS_FULL && a.simulation.count==NS_SIM_FRAME_LIMIT);
+    a.simulation_action=1;
+    assert(ns_app_key(&a,NS_KEY_OK,10)==NS_OK && a.simulation.replay_active);
+    assert(ns_app_key(&a,NS_KEY_UP,10)==NS_OK && a.simulation_action==1);
+    assert(ns_app_key(&a,NS_KEY_OK,10)==NS_BUSY && a.simulation.replay_active);
+    for(uint32_t now=11;now<19;now++) assert(ns_app_step(&a,now)==NS_OK);
+    assert(a.simulation.replayed==8 && a.simulation.replay_active);
+    NsFrame frame; ns_app_frame(&a,&frame);
+    assert(strstr(frame.rows[0],"Lab") && strstr(frame.rows[5],"Replay 8/64"));
+    assert(ns_app_key(&a,NS_KEY_BACK,19)==NS_OK && !a.simulation.replay_active);
+    assert(a.page==NS_PAGE_HOME && a.mode==NS_MODE_LAB && !m.acquired && !m.uart_calls && disk.writes==0);
+    a.menu=10; assert(ns_app_key(&a,NS_KEY_OK,20)==NS_OK);
+    assert(ns_app_key(&a,NS_KEY_DOWN,21)==NS_OK && a.mode_selection==NS_MODE_SIMULATION);
+    assert(ns_app_key(&a,NS_KEY_OK,22)==NS_OK && a.mode==NS_MODE_SIMULATION);
+    a.simulation_action=2; assert(ns_app_key(&a,NS_KEY_OK,23)==NS_OK && a.simulation.model_valid);
+    ns_app_frame(&a,&frame); assert(strstr(frame.rows[5],"MODEL") && strstr(frame.rows[5],"no RF"));
+    a.menu=10; assert(ns_app_key(&a,NS_KEY_BACK,24)==NS_OK);
+    a.page=NS_PAGE_HOME; a.menu=10; assert(ns_app_key(&a,NS_KEY_OK,25)==NS_OK);
+    a.mode_selection=NS_MODE_HARDWARE_DIAGNOSTICS;
+    assert(ns_app_key(&a,NS_KEY_OK,26)==NS_OK && a.page==NS_PAGE_DIAGNOSTICS);
+    NsSettings saved_settings=a.saved.settings; saved_settings.timeout_ms+=1000;
+    assert(ns_app_save_settings(&a,&saved_settings)==NS_OK);
+    a.mode=NS_MODE_LAB; /* mode is deliberately absent from persisted settings */
+    NsApplication reboot; assert(ns_app_init(&reboot,&radio,&io,(NsCapabilities){0})==NS_OK);
+    assert(reboot.mode==NS_MODE_MONITOR && reboot.page==NS_PAGE_HOME && !reboot.simulation.count);
+    assert(!m.acquired && !m.uart_calls);
 }
 static void test_capture_deadlines(void) {
     for(unsigned kind=0;kind<2;kind++) for(unsigned failure=0;failure<2;failure++) {
@@ -384,7 +421,7 @@ int main(void) {
     NsApplication invalid_key_app = {0}; invalid_key_app.running = true;
     assert(ns_app_key(&invalid_key_app, (NsKey)-1, 0) == NS_INVALID);
     assert(ns_app_key(&invalid_key_app, (NsKey)(NS_KEY_BACK+1), 0) == NS_INVALID);
-    test_information_log_completion_errors(); test_completion_navigation_and_recovery(); test_capture_deadlines(); test_exports(); test_cc_explorer();
+    test_information_log_completion_errors(); test_completion_navigation_and_recovery(); test_modes_and_offline_lab(); test_capture_deadlines(); test_exports(); test_cc_explorer();
     test_persistence(); test_invalid_history_enums(); test_torn_writes(); test_app(); test_history_wrap_and_exhaustion(); test_recovery_and_cleanup(); test_readback_and_disabled();
     puts("PASS: application navigation, restart persistence, 420 torn writes, ID reservation and recovery");
 }

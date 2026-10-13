@@ -16,6 +16,8 @@ The pipeline runs **13 C suites and 23 Python checks**, short-enum builds, ASan/
 
 Candidate output: `dist/netsentinel_ultra_v1_0_rc1.fap`. Root manifest remains GUI/storage-only; candidate manifest uses the info-only USART gate. Live USART is fixed TX13/PB6, RX14/PB7, 115200/8N1 and accepts one info command per acquisition. NRF24/CC1101/Wi-Fi/BLE physical workflows stay disabled. No device access or firmware operation occurs in the pipeline. Validate each generated checksum; packaging is not claimed byte-for-byte deterministic.
 
+The current development milestone adds Monitor, Lab (offline), Simulation, and Hardware Diagnostics modes. Lab/Simulation can generate bounded abstract synthetic events, replay them in RAM, and run a toy channel-overlap model. These are explicitly not RF frames or live measurements. Build the separate development artifact with `scripts/verify_development.sh lab-sim`; details and boundaries are in [Operating Modes](docs/OPERATING_MODES.md). The tested owner-reported ESP32 `info` path is retained. No real transmit or packet replay adapter is included.
+
 ## Implemented boundaries
 
 - GUI/controller own I/O on one worker; drawing reads bounded frames, Back is latched, queued/active queries cannot overlap, errors support safe retry and cleanup.
