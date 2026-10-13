@@ -2,7 +2,16 @@
 #include "../../ns_analysis.h"
 #include <stdio.h>
 #include <string.h>
-static const char* const menu[] = {"Wi-Fi", "BLE", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics", "Filters", "CSV exports"};
+static const char* const menu[] = {"Wi-Fi", "BLE (blocked)", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics", "Filters", "CSV exports", "Wi-Fi readiness"};
+_Static_assert(sizeof(menu)/sizeof(*menu) == NS_MENU_COUNT, "menu count must match navigation");
+static const char* radio_name(NsRadio r) {
+    switch(r) {
+    case NS_RADIO_ESP: return "ESP32";
+    case NS_RADIO_NRF: return "NRF24";
+    case NS_RADIO_CC: return "CC1101";
+    default: return "All";
+    }
+}
 const char* ns_result_name(NsResult r) {
     static const char* const names[] = {"OK", "Invalid", "Busy", "Unsupported", "I/O failure", "Absent", "Timeout", "Full"};
     _Static_assert(sizeof(names)/sizeof(names[0]) == NS_FULL+1, "NsResult names must cover every result");
@@ -31,7 +40,7 @@ NsResult ns_app_init(NsApplication* a, const NsPlatform* io, const NsStore* stor
     a->session.history_count = a->saved.history_count;
     a->session.history_next = a->saved.history_count % NS_HISTORY_LIMIT;
     memcpy(a->session.history, a->saved.history, sizeof(a->saved.history));
-    apply_settings(a); a->status = r == NS_ABSENT ? NS_OK : r;
+    apply_settings(a); a->storage_status = a->status = r == NS_ABSENT ? NS_OK : r;
     return r;
 }
 NsResult ns_app_reload(NsApplication* a) {
@@ -47,7 +56,7 @@ NsResult ns_app_reload(NsApplication* a) {
         memcpy(a->session.history, next.history, sizeof(next.history));
         a->history_index = 0; apply_settings(a);
     }
-    return a->status = r == NS_ABSENT ? NS_OK : r;
+    return a->storage_status = a->status = r == NS_ABSENT ? NS_OK : r;
 }
 static NsResult persist_history(NsApplication* a) {
     if(!a->history_dirty) return NS_OK;
@@ -56,6 +65,7 @@ static NsResult persist_history(NsApplication* a) {
     size_t first = (a->session.history_next + NS_HISTORY_LIMIT - a->session.history_count) % NS_HISTORY_LIMIT;
     for(size_t i = 0; i < next.history_count; i++) next.history[i] = a->session.history[(first+i) % NS_HISTORY_LIMIT];
     NsResult r = ns_persistence_save(&a->persistence, &next);
+    a->storage_status = r;
     if(r == NS_OK) { a->saved = next; a->history_dirty = false; }
     return r;
 }
@@ -64,8 +74,15 @@ NsResult ns_app_save_settings(NsApplication* a, const NsSettings* settings) {
     if(a->session.active != NS_RADIO_NONE || a->info_pending) return a->status = NS_BUSY;
     NsResult r = persist_history(a);
     if(r != NS_OK) return a->status = r;
+    /* Held keys at bounds and identical saves must not wear the SD card. */
+    if(a->persistence.loaded && settings->baud == a->saved.settings.baud &&
+       settings->timeout_ms == a->saved.settings.timeout_ms &&
+       settings->dwell_us == a->saved.settings.dwell_us &&
+       settings->cc_frequency_hz == a->saved.settings.cc_frequency_hz)
+        return a->status = a->storage_status;
     NsSavedState next = a->saved; next.settings = *settings;
     r = ns_persistence_save(&a->persistence, &next);
+    a->storage_status = r;
     if(r == NS_OK) {
         if(a->saved.settings.cc_frequency_hz != next.settings.cc_frequency_hz) clear_cc_measurements(a);
         a->saved = next; apply_settings(a);
@@ -88,6 +105,7 @@ static NsResult start_session(NsApplication* a, NsRadio radio, bool ble, bool co
     if(a->saved.last_id == UINT32_MAX) return a->status = NS_FULL;
     NsSavedState reservation = a->saved; reservation.last_id++;
     r = ns_persistence_save(&a->persistence, &reservation);
+    a->storage_status = r;
     if(r != NS_OK) return a->status = r; /* no acquisition if ID cannot be durably reserved */
     a->saved = reservation;
     a->session.id = reservation.last_id - 1;
@@ -245,13 +263,13 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
     }
     if(a->page == NS_PAGE_HOME) {
         if(key == NS_KEY_UP && a->menu) a->menu--;
-        if(key == NS_KEY_DOWN && a->menu < 8) a->menu++;
+        if(key == NS_KEY_DOWN && a->menu+1 < NS_MENU_COUNT) a->menu++;
         if(key == NS_KEY_OK) {
             a->status = NS_OK;
             if(a->menu < 4) {
                 a->selected = a->menu < 2 ? NS_RADIO_ESP : (a->menu == 2 ? NS_RADIO_NRF : NS_RADIO_CC);
                 a->ble = a->menu == 1; a->page = NS_PAGE_RADIO;
-            } else a->page = a->menu == 4 ? NS_PAGE_SETTINGS : (a->menu == 5 ? NS_PAGE_HISTORY : (a->menu == 6 ? NS_PAGE_DIAGNOSTICS : (a->menu == 7 ? NS_PAGE_FILTERS : NS_PAGE_EXPORTS)));
+            } else a->page = a->menu == 4 ? NS_PAGE_SETTINGS : (a->menu == 5 ? NS_PAGE_HISTORY : (a->menu == 6 ? NS_PAGE_DIAGNOSTICS : (a->menu == 7 ? NS_PAGE_FILTERS : (a->menu == 8 ? NS_PAGE_EXPORTS : NS_PAGE_WIFI_OVERVIEW))));
         }
     } else if(a->page == NS_PAGE_SELECTOR && key == NS_KEY_OK) {
         return ns_app_start(a, a->selected, a->ble, true, now);
@@ -337,6 +355,9 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
             }
             a->ap_index = 0;
         }
+    } else if(a->page == NS_PAGE_WIFI_OVERVIEW && key == NS_KEY_OK) {
+        /* Readiness is an explanation, never a second route around the scan gate. */
+        a->selected = NS_RADIO_ESP; a->ble = false; a->page = NS_PAGE_RADIO;
     } else if(a->page == NS_PAGE_EXPORTS && key == NS_KEY_OK) return ns_app_export_history(a, now);
     else if(a->page == NS_PAGE_DIAGNOSTICS) {
         if(key == NS_KEY_UP || key == NS_KEY_DOWN) a->diagnostic_view = (a->diagnostic_view+(key == NS_KEY_DOWN ? 1 : 2))%3;
@@ -351,6 +372,8 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
     if(a->page == NS_PAGE_HOME) {
         unsigned first = a->menu < 4 ? 0 : a->menu-3;
         for(unsigned i = 0; i < 4; i++) snprintf(f->rows[i+1], sizeof(f->rows[i+1]), "%c %s", a->menu == first+i ? '>' : ' ', a->capabilities.esp_info_only && first+i == 0 ? "ESP32 diagnostics" : menu[first+i]);
+        if(a->storage_status != NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "SD: %s; Diagnostics retries", ns_result_name(a->storage_status));
+        else if(a->status == NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "OK opens; Back exits");
     } else if(a->page == NS_PAGE_SELECTOR) {
         snprintf(f->rows[1], sizeof(f->rows[1]), "Set selector to %s", a->selected == NS_RADIO_NRF ? "NRF24" : "CC1101");
         snprintf(f->rows[2], sizeof(f->rows[2]), "Stop before changing it");
@@ -383,8 +406,8 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 }
             } else {
                 snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi %s", a->capabilities.esp_wifi_verified ? "observation contract" : "command capture needed");
-                snprintf(f->rows[2], sizeof(f->rows[2]), "%.23s", a->session.marauder.version);
-                snprintf(f->rows[3], sizeof(f->rows[3]), "%.38s", a->session.marauder.hardware);
+                snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->session.marauder.identity_matches ? "v1.11.0 (validated)" : "Identity not validated");
+                snprintf(f->rows[3], sizeof(f->rows[3]), "%s", a->session.marauder.identity_matches ? "Marauder v4 (validated)" : "");
                 snprintf(f->rows[4], sizeof(f->rows[4]), "%s", a->capabilities.esp_uart ?
                     "Right: info  OK: discovery" : "UART disabled in this build");
                 const char* state = NULL;
@@ -398,7 +421,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 else if(a->status == NS_IO) state = "UART or SD I/O error";
                 else if(a->status == NS_BUSY) state = "Port/session busy";
                 else if(a->status == NS_UNSUPPORTED) state = "Scan not yet verified";
-                else if(a->session.marauder.stage == NS_M_DONE && a->status == NS_OK) state = a->session.marauder.info_complete ? "Info reply received" : "Incomplete info status";
+                else if(a->session.marauder.stage == NS_M_DONE && a->status == NS_OK) state = a->session.marauder.identity_matches ? "Info reply received" : "Incomplete info status";
                 else if(a->status == NS_OK) state = "Right queries device info";
                 if(a->capabilities.esp_info_only) {
                     snprintf(f->rows[1], sizeof(f->rows[1]), "ESP32 info-only USART");
@@ -449,6 +472,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 f->bar_count = 0;
                 snprintf(f->rows[2], sizeof(f->rows[2]), "SPI/CE routing unverified");
                 snprintf(f->rows[4], sizeof(f->rows[4]), "Physical adapter blocked");
+                if(a->status == NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "Unavailable: no hardware access");
             }
         } else {
             const NsCc* c = &a->session.cc;
@@ -472,6 +496,21 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 snprintf(f->rows[4], sizeof(f->rows[4]), "Up: preset Down: diagnostics");
             }
         }
+        if(a->ble) {
+            snprintf(f->rows[2], sizeof(f->rows[2]), "No verified passive BLE protocol");
+            snprintf(f->rows[4], sizeof(f->rows[4]), "Back returns; no commands sent");
+            if(a->status == NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "Unavailable: active scan excluded");
+        } else if(a->selected == NS_RADIO_CC && !a->capabilities.cc && a->status == NS_OK)
+            snprintf(f->rows[5], sizeof(f->rows[5]), "Unavailable: external port pending");
+        if((a->selected == NS_RADIO_NRF || a->selected == NS_RADIO_CC) &&
+           (a->selected == NS_RADIO_NRF ? a->capabilities.nrf : a->capabilities.cc) && a->status == NS_OK) {
+            if(a->session.active != NS_RADIO_NONE) {
+                uint32_t elapsed = a->now_ms-a->session.started_ms;
+                uint32_t left = elapsed < NS_CAPTURE_LIMIT_MS ? NS_CAPTURE_LIMIT_MS-elapsed : 0;
+                snprintf(f->rows[5], sizeof(f->rows[5]), "RX %lu s left; OK stops", (unsigned long)((left+999)/1000));
+            } else if(a->session.capture_complete)
+                snprintf(f->rows[5], sizeof(f->rows[5]), "Capture complete; OK restarts");
+        }
     } else if(a->page == NS_PAGE_SETTINGS) {
         snprintf(f->rows[1], sizeof(f->rows[1]), "%c Timeout %lu ms", a->setting == 0 ? '>' : ' ', (unsigned long)a->saved.settings.timeout_ms);
         snprintf(f->rows[2], sizeof(f->rows[2]), "%c NRF dwell %lu us", a->setting == 1 ? '>' : ' ', (unsigned long)a->saved.settings.dwell_us);
@@ -479,27 +518,36 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
         snprintf(f->rows[4], sizeof(f->rows[4]), "Left/Right: change + save");
     } else if(a->page == NS_PAGE_HISTORY) {
         const NsHistory* h = ns_history_select(&a->saved, &a->history_filter, a->history_index);
-        snprintf(f->rows[0], sizeof(f->rows[0]), "History R%u %s", (unsigned)a->history_filter.radio, a->history_filter.failures_only ? "errors" : "all");
+        snprintf(f->rows[0], sizeof(f->rows[0]), "History %s %s", radio_name(a->history_filter.radio), a->history_filter.failures_only ? "errors" : "all");
         if(h) {
-            snprintf(f->rows[1], sizeof(f->rows[1]), "Session %lu radio %u", (unsigned long)h->id, (unsigned)h->radio);
+            snprintf(f->rows[1], sizeof(f->rows[1]), "Session %lu %s", (unsigned long)h->id, radio_name(h->radio));
             snprintf(f->rows[2], sizeof(f->rows[2]), "%lu observations", (unsigned long)h->observations);
             snprintf(f->rows[3], sizeof(f->rows[3]), "Result: %s", ns_result_name(h->result));
             snprintf(f->rows[4], sizeof(f->rows[4]), "Duration %lu ms", (unsigned long)(h->ended_ms-h->started_ms));
         } else snprintf(f->rows[1], sizeof(f->rows[1]), "%s", a->saved.history_count ? "No matching sessions" : "No completed sessions");
+        if(a->status == NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "U/D session L/R radio OK errors");
     } else if(a->page == NS_PAGE_EXPORTS) {
         snprintf(f->rows[1], sizeof(f->rows[1]), "Filtered numeric history CSV");
         snprintf(f->rows[2], sizeof(f->rows[2]), "OK: export; no radio access");
         snprintf(f->rows[3], sizeof(f->rows[3]), "Last export ID: %lu", (unsigned long)a->export_id);
         snprintf(f->rows[4], sizeof(f->rows[4]), "SD apps_data/netsentinel");
+        if(a->status == NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "%s", a->export_id ? "Export saved; Back returns" : "Ready; Back returns");
     } else if(a->page == NS_PAGE_FILTERS) {
         snprintf(f->rows[1], sizeof(f->rows[1]), "%c Channel %u (0=all)", a->filter_setting == 0 ? '>' : ' ', a->observation_filter.channel);
         snprintf(f->rows[2], sizeof(f->rows[2]), "%c Min RSSI %d dBm", a->filter_setting == 1 ? '>' : ' ', a->observation_filter.minimum_rssi);
         snprintf(f->rows[3], sizeof(f->rows[3]), "%c Age %lu ms (0=all)", a->filter_setting == 2 ? '>' : ' ', (unsigned long)a->observation_filter.maximum_age_ms);
         snprintf(f->rows[4], sizeof(f->rows[4]), "L/R change; OK clears (RAM)");
+    } else if(a->page == NS_PAGE_WIFI_OVERVIEW) {
+        snprintf(f->rows[0], sizeof(f->rows[0]), "Wi-Fi observation readiness");
+        snprintf(f->rows[1], sizeof(f->rows[1]), "AP/channel analysis: host tested");
+        snprintf(f->rows[2], sizeof(f->rows[2]), "Live observation remains disabled");
+        snprintf(f->rows[3], sizeof(f->rows[3]), "Need installed passive + SD proof");
+        snprintf(f->rows[4], sizeof(f->rows[4]), "OK: ESP screen; Back: dashboard");
+        snprintf(f->rows[5], sizeof(f->rows[5]), "No discovery commands sent");
     } else {
         snprintf(f->rows[1], sizeof(f->rows[1]), "NRF:%s CC:%s", a->capabilities.nrf ? "port ready" : "no port", a->capabilities.cc ? "port ready" : "no port");
         snprintf(f->rows[2], sizeof(f->rows[2]), "CSV: %s", a->session.logging ? "open" : "closed");
-        snprintf(f->rows[3], sizeof(f->rows[3]), "History: %s", a->history_dirty ? "unsaved; OK retries" : "saved");
+        snprintf(f->rows[3], sizeof(f->rows[3]), "History: %s", !a->persistence.loaded ? "unreadable; writes blocked" : (a->history_dirty ? "unsaved; OK retries" : "saved"));
         snprintf(f->rows[4], sizeof(f->rows[4]), "Gen %lu  OK: retry SD", (unsigned long)a->persistence.generation);
         if(a->diagnostic_view == 1) {
             snprintf(f->rows[1], sizeof(f->rows[1]), "%s", a->capabilities.esp_uart ? "USART TX13 RX14 115200" : "USART adapter disabled");
@@ -512,5 +560,6 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
             snprintf(f->rows[3], sizeof(f->rows[3]), "CC external RX pending");
             snprintf(f->rows[4], sizeof(f->rows[4]), "BLE protocol unverified");
         }
+        if(a->storage_status != NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "SD state: %s; OK retries", ns_result_name(a->storage_status));
     }
 }

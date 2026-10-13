@@ -9,6 +9,7 @@ NsResult ns_app_export_history(NsApplication* a, uint32_t now) {
     if(a->saved.last_id == UINT32_MAX) return a->status = NS_FULL;
     NsSavedState next = a->saved; next.last_id++;
     NsResult r = ns_persistence_save(&a->persistence, &next);
+    a->storage_status = r;
     if(r != NS_OK) return a->status = r;
     a->saved = next; a->session.id = next.last_id; /* reserve before exclusive create */
     char path[100];

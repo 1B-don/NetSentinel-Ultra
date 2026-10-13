@@ -86,15 +86,15 @@ static void test_uart(void) {
     assert(!strcmp(frame.rows[5], "Waiting for info reply"));
     const char* info = "#info\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g8410210c9a\n> ";
     mock_serial_feed((const uint8_t*)info, strlen(info));
-    assert(ns_app_step(&app, 10) == NS_OK && !f.serial && !app.history_dirty);
-    ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "Incomplete info status"));
+    assert(ns_app_step(&app, 10) == NS_INVALID && !f.serial && !app.history_dirty);
+    ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "Reply/state invalid"));
     app.status = NS_TIMEOUT; ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "No reply: check UART"));
     app.status = NS_BUSY; ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "Port/session busy"));
     app.status = NS_FULL; ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[5], "UART buffer/log full"));
     app.status = NS_OK;
     assert(app.saved.history_count == 1 && app.saved.history[0].observations == 0);
     ns_app_frame(&app, &frame);
-    assert(!strcmp(frame.rows[2], "v1.11.0"));
+    assert(!strcmp(frame.rows[2], "Identity not validated"));
     assert(!strcmp(mock_serial_commands(), "info\n"));
     /* Explicit test-only verification: production initialization stays false. */
     f.capabilities.esp_wifi_verified = app.capabilities.esp_wifi_verified = app.session.installed_wifi_verified = true;
@@ -167,4 +167,24 @@ static void test_info_transport_faults(void) {
     assert(!strcmp(mock_serial_commands(), "info\n"));
     ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
 }
-int main(void) { test_input_failures(); test_adapter(); test_shell(); test_uart(); test_info_transport_faults(); puts("PASS: Flipper shell/storage contract shims, exclusive CSV, GUI lifecycle and allocation unwind (not SDK ABI)"); }
+static void test_all_screen_restarts(void) {
+    mock_sdk_reset();
+    for(unsigned cycle=0;cycle<3;cycle++) for(unsigned menu=0;menu<NS_MENU_COUNT;menu++) {
+        InputEvent events[24]; size_t n=0;
+        for(unsigned i=0;i<menu;i++) events[n++]=(InputEvent){InputKeyDown,InputTypeShort};
+        events[n++]=(InputEvent){InputKeyOk,InputTypeShort};
+        if(menu==4 || menu==5 || menu==6 || menu==7) {
+            events[n++]=(InputEvent){InputKeyDown,InputTypeRepeat};
+            events[n++]=(InputEvent){InputKeyRight,InputTypeShort};
+            events[n++]=(InputEvent){InputKeyLeft,InputTypeShort};
+        }
+        if(menu==8 || menu==9) events[n++]=(InputEvent){InputKeyOk,InputTypeShort};
+        events[n++]=(InputEvent){InputKeyBack,InputTypeShort};
+        events[n++]=(InputEvent){InputKeyBack,InputTypeLong};
+        mock_sdk_events(events,n);
+        assert(netsentinel_app(NULL)==0);
+        assert(!mock_sdk_live() && !mock_sdk_records());
+        assert(!strcmp(mock_serial_commands(),""));
+    }
+}
+int main(void) { test_all_screen_restarts(); test_input_failures(); test_adapter(); test_shell(); test_uart(); test_info_transport_faults(); puts("PASS: Flipper shell/storage contract shims, exclusive CSV, GUI lifecycle and allocation unwind (not SDK ABI)"); }

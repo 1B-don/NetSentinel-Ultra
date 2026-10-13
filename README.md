@@ -12,7 +12,7 @@ From this project directory:
 scripts/verify_development.sh
 ```
 
-The pipeline runs **12 C suites and 17 Python checks**, short-enum builds, ASan/UBSan, clean uFBT compilation/link/packaging/APPCHK, complete FAP metadata/entry/import checks and publication audit. Local sanitizer leak detection defaults off; address/undefined-behavior checks remain enabled. Host peripherals are mocks, not hardware evidence. See [build instructions](docs/V1_BUILD.md) for permitted SDK inputs, isolated cache and local build evidence.
+The pipeline runs **12 C suites and 19 Python checks**, short-enum builds, ASan/UBSan, clean uFBT compilation/link/packaging/APPCHK, complete FAP metadata/entry/import checks and publication audit. Local sanitizer leak detection defaults off; address/undefined-behavior checks remain enabled. Host peripherals are mocks, not hardware evidence. See [build instructions](docs/V1_BUILD.md) for permitted SDK inputs, isolated cache and local build evidence.
 
 Separate output: `dist/netsentinel_development.fap`. Root manifest remains GUI/storage-only; development manifest uses the info-only USART gate. Live USART is fixed TX13/PB6, RX14/PB7, 115200/8N1 and accepts one info command per acquisition. NRF24/CC1101/Wi-Fi/BLE physical workflows stay disabled. No device access or firmware operation occurs in the pipeline. Validate each generated checksum; packaging is not claimed byte-for-byte deterministic.
 
@@ -33,3 +33,5 @@ Use the [user guide](docs/USER_GUIDE.md), [current readiness matrix](docs/V1_REA
 [GitHub](https://github.com/1B-don/NetSentinel-Ultra) is the primary repository. [AGENTS.md](AGENTS.md) requires tested, privacy-audited commits and normal fast-forward pushes. If DNS prevents publication, commits remain local without repeated retries. Binaries, runtime logs, captures, SDK inputs and private editor configuration are never published; no GitHub Release precedes complete hardware verification and explicit approval.
 
 The application now bundles the owner-supplied 10x10 monochrome icon in GUI, ESP Info, ESP Diagnostics and development builds. See [build instructions](docs/V1_BUILD.md) for variant selection and preserved artifact evidence. Feature gates are unchanged; no new device deployment has occurred.
+
+The [software completion audit](docs/SOFTWARE_COMPLETION.md) records corrected query outcomes, capture deadlines, storage recovery presentation, queue cancellation and all-screen restart coverage.

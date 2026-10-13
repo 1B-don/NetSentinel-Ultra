@@ -175,3 +175,7 @@ Passed 12 C suites, 19 Python checks, short-enum and ASan/UBSan checks, Momentum
 - netsentinel.fap: 42060 bytes, 50 imports, SHA-256 `7da75cc47e8a40d0e9e329b30ae8046b9210ae6f4835644ff8e7a68d134ad9bf`.
 - netsentinel_esp_info.fap: 43796 bytes, 63 imports, SHA-256 `26acb974a432058d1c771a182f73652935c268bc17aecc7a595d6701c722e59c`.
 - netsentinel_esp_diagnostics.fap: 43804 bytes, 63 imports, SHA-256 `6d0f3199df8d23fcb12f033063e6e6e95e20f893a00db9772c07ed1b6d606a93`.
+
+## v1.0 controller and lifecycle completion — 2026-10-13
+
+Completed the actionable software audit in SOFTWARE_COMPLETION.md: strict query/history outcomes, serial corruption rejection, final CSV-error propagation, bounded receive sessions, persistent storage-health presentation, idempotent settings, queue draining and all ten screen paths. All 12 C / 19 Python checks, short enums, ASan/UBSan, preflight, publication and Momentum compile/APPCHK/import checks pass. Completion development artifact: 45608 bytes, SHA-256 `08b3818328e61b61b1e6652818852ebee15625122d2ee016e9f16ea48b8a5d72`, 63 imports, embedded icon. Hardware gates and known-good artifacts preserved; no deployment.

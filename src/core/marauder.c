@@ -112,7 +112,11 @@ NsResult ns_marauder_prompt(NsMarauder* m, uint32_t now) {
         m->info_complete = m->info_fields == INFO_ALL && !strcmp(m->firmware, "Marauder");
         m->identity_matches = m->info_complete && !strcmp(m->version, "v1.11.0") &&
             !strcmp(m->hardware, "Marauder v4") && !strcmp(m->idf, "v5.5.1-710-g8410210c9a");
-        if(!m->wifi) { m->stage = NS_M_DONE; return NS_OK; }
+        if(!m->wifi) {
+            if(!m->info_complete) return fail(m, NS_INVALID);
+            if(!m->identity_matches) return fail(m, NS_UNSUPPORTED);
+            m->stage = NS_M_DONE; return NS_OK;
+        }
         if(strcmp(m->version, "v1.11.0") || strcmp(m->hardware, "Marauder v4") ||
            strcmp(m->idf, "v5.5.1-710-g8410210c9a")) return fail(m, NS_UNSUPPORTED);
         if(!m->info_complete) return fail(m, NS_INVALID);

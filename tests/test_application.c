@@ -185,6 +185,8 @@ static void test_history_wrap_and_exhaustion(void) {
     assert(ns_app_start(&a, NS_RADIO_NRF, false, true, 3000) == NS_FULL && m.acquired == acquired);
     a.persistence.generation = UINT32_MAX;
     NsSettings settings = a.saved.settings;
+    assert(ns_app_save_settings(&a, &settings) == NS_OK); /* unchanged needs no generation */
+    settings.timeout_ms++;
     assert(ns_app_save_settings(&a, &settings) == NS_FULL);
 }
 static void test_recovery_and_cleanup(void) {
@@ -289,6 +291,82 @@ static void test_exports(void) {
     m.fail_sync=false;disk.fail_write=true;
     assert(ns_app_export_history(&a,104)==NS_IO && m.closes==3 && a.saved.last_id==6);
 }
+static void test_completion_navigation_and_recovery(void) {
+    Mock m={0}; StoreMock disk={.fail_read=true}; NsPlatform radio=platform(&m); NsStore io=store(&disk);
+    NsApplication a; NsFrame frame;
+    assert(ns_app_init(&a,&radio,&io,(NsCapabilities){0})==NS_IO);
+    /* Opening an unrelated menu must not falsely mark unreadable history saved. */
+    a.menu=6; assert(ns_app_key(&a,NS_KEY_OK,0)==NS_OK);
+    ns_app_frame(&a,&frame);
+    assert(strstr(frame.rows[3],"unreadable") && strstr(frame.rows[5],"I/O"));
+    assert(ns_app_key(&a,NS_KEY_BACK,0)==NS_OK);
+    ns_app_frame(&a,&frame); assert(strstr(frame.rows[5],"SD:"));
+    disk.fail_read=false; a.menu=6; assert(ns_app_key(&a,NS_KEY_OK,0)==NS_OK);
+    assert(ns_app_key(&a,NS_KEY_OK,0)==NS_OK && a.persistence.loaded && a.storage_status==NS_OK);
+    NsPage pages[]={NS_PAGE_RADIO,NS_PAGE_RADIO,NS_PAGE_RADIO,NS_PAGE_RADIO,
+        NS_PAGE_SETTINGS,NS_PAGE_HISTORY,NS_PAGE_DIAGNOSTICS,NS_PAGE_FILTERS,NS_PAGE_EXPORTS,NS_PAGE_WIFI_OVERVIEW};
+    for(unsigned i=0;i<NS_MENU_COUNT;i++) {
+        a.page=NS_PAGE_HOME; a.menu=i;
+        assert(ns_app_key(&a,NS_KEY_OK,10+i)==NS_OK && a.page==pages[i]);
+        ns_app_frame(&a,&frame);
+        if(i>=1 && i<=3) assert(strstr(frame.rows[5],"Unavailable"));
+        if(i==9) {
+            assert(strstr(frame.rows[2],"disabled"));
+            unsigned acquired=m.acquired;
+            assert(ns_app_key(&a,NS_KEY_OK,20)==NS_OK && a.page==NS_PAGE_RADIO && m.acquired==acquired);
+        }
+        assert(ns_app_key(&a,NS_KEY_BACK,30+i)==NS_OK && a.page==NS_PAGE_HOME && a.running);
+    }
+    assert(!m.owner && !m.uart_calls);
+    a.menu=NS_MENU_COUNT-1;
+    assert(ns_app_key(&a,NS_KEY_DOWN,40)==NS_OK && a.menu==NS_MENU_COUNT-1);
+    assert(ns_app_save_settings(&a,&a.saved.settings)==NS_OK && !disk.writes);
+    a.page=NS_PAGE_SETTINGS; a.setting=0;
+    NsSettings settings=a.saved.settings; settings.timeout_ms=60000;
+    assert(ns_app_save_settings(&a,&settings)==NS_OK);
+    unsigned writes=disk.writes;
+    for(unsigned i=0;i<50;i++) assert(ns_app_key(&a,NS_KEY_RIGHT,50+i)==NS_OK);
+    assert(disk.writes==writes); /* no writes from repeat at a setting boundary */
+    a.page=NS_PAGE_HISTORY;
+    assert(ns_app_key(&a,NS_KEY_RIGHT,100)==NS_OK && a.history_filter.radio==NS_RADIO_ESP);
+    assert(ns_app_key(&a,NS_KEY_OK,100)==NS_OK && a.history_filter.failures_only);
+    ns_app_frame(&a,&frame); assert(strstr(frame.rows[0],"ESP32 errors"));
+    assert(ns_app_key(&a,NS_KEY_BACK,101)==NS_OK);
+    assert(ns_app_key(&a,NS_KEY_BACK,102)==NS_OK && !a.running);
+}
+static void test_capture_deadlines(void) {
+    for(unsigned kind=0;kind<2;kind++) for(unsigned failure=0;failure<2;failure++) {
+        Mock m={0}; StoreMock disk={0}; NsPlatform radio=platform(&m); NsStore io=store(&disk); NsApplication a;
+        assert(ns_app_init(&a,&radio,&io,(NsCapabilities){.nrf=true,.cc=true})==NS_ABSENT);
+        NsRadio chosen=kind ? NS_RADIO_CC : NS_RADIO_NRF;
+        uint32_t start=UINT32_MAX-100;
+        assert(ns_app_start(&a,chosen,false,true,start)==NS_OK);
+        assert(ns_app_step(&a,start+NS_CAPTURE_LIMIT_MS-1)==NS_OK && m.owner==chosen);
+        unsigned observations=a.session.observations;
+        m.fail_idle=kind && failure; m.fail_spi=!kind && failure;
+        NsResult result=failure ? NS_IO : NS_OK;
+        assert(ns_app_step(&a,start+NS_CAPTURE_LIMIT_MS)==result);
+        assert(!m.owner && !m.ce && !a.session.logging && !a.history_dirty && a.session.capture_complete);
+        assert(a.saved.history_count==1 && a.saved.history[0].result==result && a.session.observations==observations);
+        assert(m.acquired==m.released && m.closes==1);
+        NsFrame f;ns_app_frame(&a,&f);
+        if(!failure) assert(strstr(f.rows[5],"Capture complete"));
+        assert(ns_app_step(&a,start+NS_CAPTURE_LIMIT_MS+1)==NS_OK && m.released==1);
+    }
+}
+static void test_information_log_completion_errors(void) {
+    const char* reply="#info\nFirmware: Marauder\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g8410210c9a\nWSL Bypass: disabled\nSD Card: Not Connected\nSD Card Size: 0\nBattery Monitor: not supported\n> ";
+    for(unsigned failure=0;failure<2;failure++) {
+        Mock m={0}; StoreMock disk={0}; NsPlatform radio=platform(&m); NsStore io=store(&disk); NsApplication a;
+        assert(ns_app_init(&a,&radio,&io,(NsCapabilities){.esp_uart=true,.esp_info_only=true})==NS_ABSENT);
+        assert(ns_app_device_info(&a,0)==NS_OK);
+        m.fail_sync=!failure; m.fail_close=failure;
+        assert(ns_app_feed(&a,(const uint8_t*)reply,strlen(reply),1)==NS_IO);
+        assert(!m.owner && m.closes==1 && !a.session.logging && !a.history_dirty && !a.info_validated);
+        assert(a.saved.history_count==1 && a.saved.history[0].result==NS_IO);
+        NsFrame f; ns_app_frame(&a,&f); assert(strstr(f.rows[5],"I/O") && !strstr(f.rows[5],"Connected"));
+    }
+}
 int main(void) {
     assert(!strcmp(ns_result_name((NsResult)-1), "Unknown"));
     assert(!strcmp(ns_result_name((NsResult)(NS_FULL+1)), "Unknown"));
@@ -296,7 +374,7 @@ int main(void) {
     NsApplication invalid_key_app = {0}; invalid_key_app.running = true;
     assert(ns_app_key(&invalid_key_app, (NsKey)-1, 0) == NS_INVALID);
     assert(ns_app_key(&invalid_key_app, (NsKey)(NS_KEY_BACK+1), 0) == NS_INVALID);
- test_exports(); test_cc_explorer();
+    test_information_log_completion_errors(); test_completion_navigation_and_recovery(); test_capture_deadlines(); test_exports(); test_cc_explorer();
     test_persistence(); test_invalid_history_enums(); test_torn_writes(); test_app(); test_history_wrap_and_exhaustion(); test_recovery_and_cleanup(); test_readback_and_disabled();
     puts("PASS: application navigation, restart persistence, 420 torn writes, ID reservation and recovery");
 }

@@ -4,6 +4,8 @@ Current target: Momentum Dev d3f89dfe, API 87.1, hardware target 7. No deploymen
 
 ## Current completion matrix
 
+The [software completion audit](SOFTWARE_COMPLETION.md) records actionable fixes and their tests; the next packaging milestone consolidates them into one hardware-gated release candidate.
+
 | Feature | Implemented | Simulated / tests | SDK validation | Physical validation / blocker |
 |---|---|---|---|---|
 | Dashboard/navigation/Back/GUI width | Yes | Allocation, queue, exit and navigation stress | Pass | Prior dashboard/exit; full new navigation pending |
@@ -20,7 +22,7 @@ Current target: Momentum Dev d3f89dfe, API 87.1, hardware target 7. No deploymen
 | Settings/state/history | Yes, NSP1 unchanged, CRC/readback/monotonic IDs | Torn writes, recovery, enum rejection | Pass | Prior settings pass; broader power-loss tests pending |
 | CSV exports/privacy | Yes, numeric/redacted, exclusive create | Write/sync/close/failure/ID reservation | Pass | Prior info record privacy; new exports pending |
 | Session lifecycle/resources | Yes, single owner, teardown, capacity stop | Interrupted transactions, overflow, exit and repeat | Pass | Exhaustive ISR/pin/heap restoration pending; HAL TX has no deadline return |
-| Fuzz/stress/build/imports | Yes, seeded valid/mutated/random paths | 12 C suites, 17 Python checks, short enums, ASan/UBSan | Complete ARM metadata/entry/63 imports pass | Development artifact undeployed |
+| Fuzz/stress/build/imports | Yes, seeded valid/mutated/random paths | 12 C suites, 19 Python checks, short enums, ASan/UBSan | Complete ARM metadata/entry/63 imports pass | Development artifact undeployed |
 
 ## Remaining authorized inputs
 

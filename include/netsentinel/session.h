@@ -8,6 +8,7 @@
 #define NS_HISTORY_LIMIT 16
 #define NS_CC_SAMPLE_MS 100
 #define NS_CC_THRESHOLD_DBM (-80)
+#define NS_CAPTURE_LIMIT_MS 60000u
 /* A profile may be enabled only after installed firmware is verified to issue
  * no over-air TX, including Wi-Fi probe requests and active BLE scan requests.
  * Commands are deliberately absent from the default profile. */
@@ -33,7 +34,7 @@ typedef struct {
     uint32_t ap_seen_ms[NS_AP_LIMIT];
     char line[NS_LINE_LIMIT];
     size_t line_len;
-    bool discard_line, ble, logging;
+    bool discard_line, ble, logging, capture_complete;
     uint32_t dropped_lines, lines, last_rx_ms, started_ms, id, observations;
     uint32_t timeout_ms, dwell_us;
     uint8_t nrf_channel;

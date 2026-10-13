@@ -92,7 +92,13 @@ int32_t netsentinel_app(void* context) {
         /* The application and all I/O belong to this worker. Draw only reads
          * the published frame, and never holds the mutex during I/O. */
         NsKey translated;
-        if(atomic_exchange(&g->back_requested, false)) (void)ns_app_key(&g->app, NS_KEY_BACK, now_ms);
+        if(atomic_exchange(&g->back_requested, false)) {
+            /* Discard pre-cancellation input. Otherwise queued OK events can
+             * open a new session immediately after Back released the port. */
+            for(unsigned i=0;i<16;i++)
+                if(furi_message_queue_get(g->inputs, &event, 0) != FuriStatusOk) break;
+            (void)ns_app_key(&g->app, NS_KEY_BACK, now_ms);
+        }
         else if(received && key(event.key, &translated)) (void)ns_app_key(&g->app, translated, now_ms);
         if(g->app.running) (void)ns_app_step(&g->app, now_ms);
         if(furi_mutex_acquire(g->mutex, FuriWaitForever) != FuriStatusOk) {

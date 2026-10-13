@@ -180,8 +180,8 @@ static void info_malformed_and_retry(void) {
     ns_session_init(&s, &io, NULL); s.use_marauder = true;
     assert(ns_session_start(&s, NS_RADIO_ESP, false, false, 0) == NS_OK);
     const uint8_t nul_line[] = {'#','i','n','f','o','\n','V',0,'x','\n'};
-    assert(ns_session_feed(&s, nul_line, sizeof(nul_line), 1) == NS_FULL);
-    assert(s.dropped_lines == 1 && !m.owner && m.released == 1);
+    assert(ns_session_feed(&s, nul_line, sizeof(nul_line), 1) == NS_INVALID);
+    assert(s.dropped_lines == 0 && !m.owner && m.released == 1);
     assert(ns_session_start(&s, NS_RADIO_ESP, false, false, 2) == NS_OK);
     uint8_t oversized[1024]; memset(oversized, 'x', sizeof(oversized));
     assert(ns_session_feed(&s, oversized, sizeof(oversized), 3) == NS_OK);
@@ -259,7 +259,7 @@ static void observed_info_status(void) {
         assert(ns_session_start(&s, NS_RADIO_ESP, false, false, 0) == NS_OK);
         feed(&s, "#info\n", 1); feed(&s, incomplete, 2);
         NsResult r = ns_session_feed(&s, (const uint8_t*)"> ", 2, 3);
-        assert(r == NS_OK || r == NS_INVALID);
+        assert(r == NS_INVALID && s.history[0].result == NS_INVALID);
         assert(!s.marauder.info_complete && !s.marauder.identity_matches && !s.active);
         NsApplication app = {0}; app.page = NS_PAGE_RADIO; app.selected = NS_RADIO_ESP;
         app.capabilities.esp_uart = true; app.session.marauder = s.marauder; app.status = r;

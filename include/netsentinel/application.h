@@ -2,7 +2,8 @@
 #define NS_APPLICATION_H
 #include "observation.h"
 typedef enum { NS_KEY_UP, NS_KEY_DOWN, NS_KEY_LEFT, NS_KEY_RIGHT, NS_KEY_OK, NS_KEY_BACK } NsKey;
-typedef enum { NS_PAGE_HOME, NS_PAGE_RADIO, NS_PAGE_SELECTOR, NS_PAGE_SETTINGS, NS_PAGE_HISTORY, NS_PAGE_DIAGNOSTICS, NS_PAGE_FILTERS, NS_PAGE_EXPORTS } NsPage;
+typedef enum { NS_PAGE_HOME, NS_PAGE_RADIO, NS_PAGE_SELECTOR, NS_PAGE_SETTINGS, NS_PAGE_HISTORY, NS_PAGE_DIAGNOSTICS, NS_PAGE_FILTERS, NS_PAGE_EXPORTS, NS_PAGE_WIFI_OVERVIEW } NsPage;
+#define NS_MENU_COUNT 10u
 typedef struct { bool nrf, cc, esp_uart, esp_wifi_verified, esp_info_only; } NsCapabilities;
 /* Wi-Fi requires installed-build command/output verification in addition to
  * a UART port. BLE is unsupported. Information queries do not scan. */
@@ -24,7 +25,7 @@ typedef struct {
     uint32_t info_elapsed_ms, info_success_id;
     NsAccessPoint baseline[NS_AP_LIMIT];
     size_t baseline_count;
-    NsResult status;
+    NsResult status, storage_status;
 } NsApplication;
 typedef struct {
     char rows[6][40];

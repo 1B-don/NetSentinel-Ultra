@@ -153,6 +153,30 @@ int main(void) {
     a.page=NS_PAGE_RADIO;a.info_view=1;NsFrame no_sd;ns_app_frame(&a,&no_sd);
     assert(strstr(no_sd.rows[3],"Disconnected") && !strstr(no_sd.rows[3],"PRIVATE"));
     check_frame(&a,"Connected: query passed");
+    /* An incomplete or mismatched framed reply must not be an OK history
+     * entry, even when the previous query had a valid historical snapshot. */
+    assert(ns_app_device_info(&a,5022)==NS_OK);
+    const char* partial="#info\nVersion: v1.11.0\nHardware: Marauder v4\nESP-IDF: v5.5.1-710-g8410210c9a\n> ";
+    mock_serial_feed((const uint8_t*)partial,strlen(partial));
+    assert(ns_app_step(&a,5023)==NS_INVALID && !f.serial && a.info_validated);
+    assert(a.saved.history[a.saved.history_count-1].result==NS_INVALID);
+    assert(a.info_success_id==a.saved.history[a.saved.history_count-2].id);
+    assert(ns_app_device_info(&a,5024)==NS_OK);
+    char mismatch[1024]; strcpy(mismatch,disconnected);
+    char* version=strstr(mismatch,"v1.11.0"); assert(version); version[6]='1';
+    mock_serial_feed((const uint8_t*)mismatch,strlen(mismatch));
+    assert(ns_app_step(&a,5025)==NS_UNSUPPORTED && !f.serial);
+    assert(a.saved.history[a.saved.history_count-1].result==NS_UNSUPPORTED);
+    assert(!a.session.marauder.identity_matches && a.info_validated);
+    for(unsigned bad=0;bad<3;bad++) {
+        assert(ns_app_device_info(&a,5030+bad*2)==NS_OK);
+        uint8_t malformed[]={'#','i','n','f','o','\n','X',0,'\n'};
+        malformed[7]=bad==0 ? 0 : (bad==1 ? 1 : 255);
+        mock_serial_feed(malformed,sizeof(malformed));
+        assert(ns_app_step(&a,5031+bad*2)==NS_INVALID && !f.serial);
+        assert(a.saved.history[a.saved.history_count-1].result==NS_INVALID);
+        assert(!strcmp(mock_serial_commands(),"info\n"));
+    }
     ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
     repeated();
     puts("PASS: info-only USART mapping/framing, command exclusion, state UI, response budget and cleanup (MOCK)");

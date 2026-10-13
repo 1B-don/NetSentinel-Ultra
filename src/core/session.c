@@ -78,6 +78,7 @@ NsResult ns_session_start(NsSession* s, NsRadio radio, bool ble, bool confirmed,
     } else return NS_INVALID;
     if(r != NS_OK) { s->error = r; return r; }
     s->active = radio; s->ble = ble; s->started_ms = s->last_rx_ms = now;
+    s->capture_complete = false;
     s->line_len = 0; s->discard_line = false; s->lines = s->dropped_lines = 0;
     s->ap_count = s->observations = 0; s->nrf_channel = 0; s->cc_sampled = false; s->error = NS_OK; s->id++;
     return NS_OK;
@@ -130,7 +131,7 @@ NsResult ns_session_feed(NsSession* s, const uint8_t* data, size_t count, uint32
             NsResult r = ns_marauder_prompt(&s->marauder, now);
             s->line_len = 0;
             if(r != NS_OK || s->marauder.stage == NS_M_DONE) {
-                s->error = r; ns_session_stop(s, now); return r;
+                s->error = r; ns_session_stop(s, now); return s->error;
             }
             continue;
         }
@@ -182,8 +183,14 @@ NsResult ns_session_feed(NsSession* s, const uint8_t* data, size_t count, uint32
                 }
             }
             s->line_len = 0; s->discard_line = false;
-        } else if(c == 0 || s->line_len + 1 >= sizeof(s->line)) s->discard_line = true;
-        else if(!s->discard_line) s->line[s->line_len++] = c >= 32 && c < 127 ? (char)c : '?';
+        } else if(c < 32 || c >= 127) {
+            /* Never repair corrupt information into a seemingly valid reply. */
+            if(s->use_marauder && s->marauder.stage != NS_M_SCAN) {
+                s->error = NS_INVALID; ns_session_stop(s, now); return NS_INVALID;
+            }
+            s->discard_line = true;
+        } else if(s->line_len + 1 >= sizeof(s->line)) s->discard_line = true;
+        else if(!s->discard_line) s->line[s->line_len++] = (char)c;
     }
     return NS_OK;
 }
@@ -225,6 +232,12 @@ NsResult ns_session_cc_tune(NsSession* s, uint32_t frequency, uint32_t now) {
 }
 NsResult ns_session_tick(NsSession* s, uint32_t now) {
     if(!s || s->active == NS_RADIO_NONE) return NS_INVALID;
+    if((s->active == NS_RADIO_NRF || s->active == NS_RADIO_CC) &&
+       (uint32_t)(now-s->started_ms) >= NS_CAPTURE_LIMIT_MS) {
+        /* Successful bounded capture, not a missing-device timeout. Cleanup
+         * failures still replace OK and are recorded in history. */
+        s->capture_complete = true; ns_session_stop(s, now); return s->error;
+    }
     NsResult r = NS_OK;
     char record[120];
     if(s->active == NS_RADIO_ESP) {

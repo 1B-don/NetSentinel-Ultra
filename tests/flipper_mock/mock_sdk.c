@@ -54,7 +54,7 @@ FuriStatus furi_message_queue_put(FuriMessageQueue* q, const void* data, uint32_
 FuriStatus furi_message_queue_get(FuriMessageQueue* q, void* out, uint32_t wait) {
     assert(q->item_size == sizeof(InputEvent)); ticks += wait;
     assert(active_viewport && active_viewport->input);
-    do {
+    if(wait) do {
         InputEvent e = event_index < event_count ? events[event_index++] : (InputEvent){InputKeyBack, InputTypeShort};
         active_viewport->input(&e, active_viewport->input_ctx);
     } while(burst && event_index < event_count);
