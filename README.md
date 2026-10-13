@@ -47,3 +47,5 @@ Milestone `ab8e708` was published by the owner and independently verified on Git
 The NRF SPI adapter now rejects payload/TX commands, carrier mode, auto-ACK/retries and unsupported register operations before board callbacks. Exhaustive command/value rejection checks and a complete 126-channel scan pass against mocks. This guard does not establish physical SPI operation or firmware ABI compatibility.
 
 Build readiness now includes `make sdk-preflight` for a permitted owner-provided target export table, before the manual SDK compile/link stage. No target export input is currently available. GUI shutdown clears draw/input callbacks and detaches the viewport before session/storage teardown; existing mock lifecycle and failure tests enforce cleared callbacks at viewport free.
+
+[Remaining build blockers](docs/BUILD_BLOCKERS.md) separates all seven requested categories and the minimum authorized SDK/toolchain inputs. The default shell can be compiled before physical RF tests or complete NRF/CC bindings once a permitted compatible SDK is available; a shell-only FAP does not complete the three-radio application. No target compile/link or installation has yet occurred.

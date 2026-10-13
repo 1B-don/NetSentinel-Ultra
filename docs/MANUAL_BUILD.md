@@ -2,6 +2,8 @@
 
 The assistant has not accessed the restricted Momentum checkout or performed an SDK build. This workflow requires an SDK the owner is appropriately authorized to use; it does not bypass repository instructions. Do not use a current development SDK as assumed proof of compatibility with firmware `d3f89dfe2ef6b01839201598e9be1590cba80322`.
 
+See [categorized build blockers and minimum authorized inputs](BUILD_BLOCKERS.md) before preparing a SDK build.
+
 ## Candidate app build
 
 1. Read the authorized SDK's applicable instructions and confirm its revision/exported API matches the installed firmware. Preserve NetSentinel source in this repository; register the directory using the SDK's supported external-app source workflow. Do not include `legacy` or the host `tests/flipper_mock` headers in an SDK build.
