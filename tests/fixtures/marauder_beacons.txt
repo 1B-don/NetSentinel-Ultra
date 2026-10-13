@@ -1,0 +1,5 @@
+-59 Ch: 3 00:11:22:33:44:55 ESSID: Lab AP
+-71 Ch: 11 00:11:22:33:44:66 ESSID: Guest,"net"
+-83 Ch: 1 00:11:22:33:44:77 ESSID: 
+-44 Ch: 6 00:11:22:33:44:55 ESSID: Lab AP
+malformed output

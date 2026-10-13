@@ -1,10 +1,16 @@
 #include "../../include/netsentinel/application.h"
+#include "../../ns_analysis.h"
 #include <stdio.h>
 #include <string.h>
 static const char* const menu[] = {"Wi-Fi", "BLE", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics"};
 const char* ns_result_name(NsResult r) {
     static const char* const names[] = {"OK", "Invalid", "Busy", "Unsupported", "I/O failure", "Absent", "Timeout", "Full"};
     return r >= NS_OK && r <= NS_FULL ? names[r] : "Unknown";
+}
+static void clear_cc_measurements(NsApplication* a) {
+    a->session.cc.frequency = 0; a->session.cc.samples = 0;
+    a->session.cc.trace_count = a->session.cc.trace_next = 0;
+    a->session.cc.diagnostic_valid = false;
 }
 static void apply_settings(NsApplication* a) {
     a->session.timeout_ms = a->saved.settings.timeout_ms;
@@ -15,7 +21,9 @@ NsResult ns_app_init(NsApplication* a, const NsPlatform* io, const NsStore* stor
     memset(a, 0, sizeof(*a)); a->capabilities = caps; a->running = true;
     ns_saved_defaults(&a->saved);
     NsResult r = ns_persistence_load(&a->persistence, store, &a->saved);
-    ns_session_init(&a->session, io, NULL); /* ESP deliberately disabled */
+    ns_session_init(&a->session, io, NULL);
+    a->session.use_marauder = caps.esp_uart;
+    a->session.installed_wifi_verified = caps.esp_wifi_verified;
     a->session.id = a->saved.last_id;
     a->session.history_count = a->saved.history_count;
     a->session.history_next = a->saved.history_count % NS_HISTORY_LIMIT;
@@ -29,6 +37,7 @@ NsResult ns_app_reload(NsApplication* a) {
     NsSavedState next; NsPersistence loaded;
     NsResult r = ns_persistence_load(&loaded, a->persistence.io, &next);
     if(r == NS_OK || r == NS_ABSENT) {
+        if(a->saved.settings.cc_frequency_hz != next.settings.cc_frequency_hz) clear_cc_measurements(a);
         a->persistence = loaded; a->saved = next; a->session.id = next.last_id;
         a->session.history_count = next.history_count;
         a->session.history_next = next.history_count % NS_HISTORY_LIMIT;
@@ -54,16 +63,22 @@ NsResult ns_app_save_settings(NsApplication* a, const NsSettings* settings) {
     if(r != NS_OK) return a->status = r;
     NsSavedState next = a->saved; next.settings = *settings;
     r = ns_persistence_save(&a->persistence, &next);
-    if(r == NS_OK) { a->saved = next; apply_settings(a); }
+    if(r == NS_OK) {
+        if(a->saved.settings.cc_frequency_hz != next.settings.cc_frequency_hz) clear_cc_measurements(a);
+        a->saved = next; apply_settings(a);
+    }
     return a->status = r;
 }
-NsResult ns_app_start(NsApplication* a, NsRadio radio, bool ble, bool confirmed, uint32_t now) {
+static NsResult start_session(NsApplication* a, NsRadio radio, bool ble, bool confirmed, uint32_t now) {
     if(!a || !a->running) return NS_INVALID;
     if(a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
-    if(radio == NS_RADIO_ESP) return a->status = NS_UNSUPPORTED;
-    if(radio != NS_RADIO_NRF && radio != NS_RADIO_CC) return a->status = NS_INVALID;
-    if(!(radio == NS_RADIO_NRF ? a->capabilities.nrf : a->capabilities.cc)) return a->status = NS_UNSUPPORTED;
-    if(!confirmed) return a->status = NS_INVALID;
+    if(radio == NS_RADIO_ESP) {
+        if(ble || a->saved.settings.baud != 115200 || !a->capabilities.esp_uart || (a->session.wifi_request && !a->capabilities.esp_wifi_verified)) return a->status = NS_UNSUPPORTED;
+    } else {
+        if(radio != NS_RADIO_NRF && radio != NS_RADIO_CC) return a->status = NS_INVALID;
+        if(!(radio == NS_RADIO_NRF ? a->capabilities.nrf : a->capabilities.cc)) return a->status = NS_UNSUPPORTED;
+        if(!confirmed) return a->status = NS_INVALID;
+    }
     NsResult r = persist_history(a);
     if(r != NS_OK) return a->status = r;
     if(a->saved.last_id == UINT32_MAX) return a->status = NS_FULL;
@@ -90,12 +105,44 @@ NsResult ns_app_start(NsApplication* a, NsRadio radio, bool ble, bool confirmed,
     a->selected = radio; a->ble = ble; a->page = NS_PAGE_RADIO;
     return a->status = NS_OK;
 }
+NsResult ns_app_start(NsApplication* a, NsRadio radio, bool ble, bool confirmed, uint32_t now) {
+    if(!a) return NS_INVALID;
+    if(a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
+    a->session.wifi_request = radio == NS_RADIO_ESP;
+    return start_session(a, radio, ble, confirmed, now);
+}
+NsResult ns_app_cc_tune(NsApplication* a, uint32_t frequency, uint32_t now) {
+    if(!a || !ns_cc_frequency_valid(frequency)) return NS_INVALID;
+    if(a->session.active == NS_RADIO_NONE) {
+        NsSettings s = a->saved.settings; s.cc_frequency_hz = frequency;
+        return ns_app_save_settings(a, &s);
+    }
+    if(a->session.active != NS_RADIO_CC) return a->status = NS_BUSY;
+    NsResult r = ns_session_cc_tune(&a->session, frequency, now);
+    if(a->session.active == NS_RADIO_NONE) {
+        a->history_dirty = true; NsResult stored = persist_history(a); if(stored != NS_OK) r = stored;
+    }
+    return a->status = r;
+}
+NsResult ns_app_device_info(NsApplication* a, uint32_t now) {
+    if(!a) return NS_INVALID;
+    if(a->session.active != NS_RADIO_NONE) return a->status = NS_BUSY;
+    a->session.wifi_request = false;
+    return start_session(a, NS_RADIO_ESP, false, false, now);
+}
+void ns_app_baseline(NsApplication* a) {
+    if(!a) return;
+    a->baseline_count = a->session.ap_count;
+    memcpy(a->baseline, a->session.aps, a->baseline_count*sizeof(*a->baseline));
+}
 NsResult ns_app_stop(NsApplication* a, uint32_t now) {
     if(!a) return NS_INVALID;
     if(a->session.active == NS_RADIO_NONE && !a->history_dirty) return a->status;
     NsResult session_result = NS_OK;
     if(a->session.active != NS_RADIO_NONE) {
-        ns_session_stop(&a->session, now); a->history_dirty = true;
+        NsResult cancelled = ns_session_cancel(&a->session, now);
+        if(cancelled == NS_BUSY) return a->status = NS_BUSY;
+        a->history_dirty = true;
         session_result = a->session.error;
     }
     NsResult r = persist_history(a);
@@ -104,12 +151,28 @@ NsResult ns_app_stop(NsApplication* a, uint32_t now) {
 NsResult ns_app_step(NsApplication* a, uint32_t now) {
     if(!a || !a->running) return NS_INVALID;
     if(a->session.active == NS_RADIO_NONE) return NS_OK;
-    NsResult r = ns_session_tick(&a->session, now);
+    NsResult r = NS_OK;
+    if(a->session.active == NS_RADIO_ESP && a->session.io->uart_read) {
+        uint8_t bytes[128];
+        for(unsigned batch = 0; batch < 8 && a->session.active == NS_RADIO_ESP; batch++) {
+            size_t count = 0;
+            r = a->session.io->uart_read(a->session.io->ctx, bytes, sizeof(bytes), &count);
+            if(r != NS_OK || count > sizeof(bytes)) {
+                if(r == NS_OK) r = NS_FULL;
+                a->session.error = r; ns_session_stop(&a->session, now); break;
+            }
+            if(!count) break;
+            r = ns_session_feed(&a->session, bytes, count, now);
+            if(r != NS_OK) break;
+        }
+    }
+    if(r == NS_OK && a->session.active != NS_RADIO_NONE) r = ns_session_tick(&a->session, now);
     if(a->session.active == NS_RADIO_NONE) {
         a->history_dirty = true;
         NsResult stored = persist_history(a);
         if(stored != NS_OK) r = stored;
     }
+    if(a->exit_requested && a->session.active == NS_RADIO_NONE) a->running = false;
     return a->status = r;
 }
 NsResult ns_app_feed(NsApplication* a, const uint8_t* bytes, size_t n, uint32_t now) {
@@ -140,7 +203,10 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
     if(!a || !a->running || key > NS_KEY_BACK || key < NS_KEY_UP) return NS_INVALID;
     if(key == NS_KEY_BACK) {
         NsResult r = ns_app_stop(a, now);
-        if(a->page == NS_PAGE_HOME) a->running = false;
+        if(a->page == NS_PAGE_HOME) {
+            if(a->session.active != NS_RADIO_NONE) a->exit_requested = true;
+            else a->running = false;
+        }
         else a->page = NS_PAGE_HOME;
         return r;
     }
@@ -158,8 +224,38 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
         return ns_app_start(a, a->selected, a->ble, true, now);
     } else if(a->page == NS_PAGE_RADIO && key == NS_KEY_OK) {
         if(a->session.active != NS_RADIO_NONE) return ns_app_stop(a, now);
-        if(a->selected == NS_RADIO_ESP || !(a->selected == NS_RADIO_NRF ? a->capabilities.nrf : a->capabilities.cc)) return a->status = NS_UNSUPPORTED;
+        if(a->selected == NS_RADIO_ESP) {
+            return ns_app_start(a, NS_RADIO_ESP, a->ble, false, now);
+        }
+        if(!(a->selected == NS_RADIO_NRF ? a->capabilities.nrf : a->capabilities.cc)) return a->status = NS_UNSUPPORTED;
         a->page = NS_PAGE_SELECTOR; /* confirmation is consumed by one start only */
+    } else if(a->page == NS_PAGE_RADIO && a->selected == NS_RADIO_ESP && !a->ble) {
+        if(key == NS_KEY_RIGHT) {
+            if(a->session.ap_count) a->wifi_details = !a->wifi_details;
+            else return ns_app_device_info(a, now);
+        }
+        if(key == NS_KEY_LEFT) ns_app_baseline(a);
+        if(key == NS_KEY_UP && a->ap_index) a->ap_index--;
+        if(key == NS_KEY_DOWN && a->ap_index+1 < a->session.ap_count) a->ap_index++;
+    } else if(a->page == NS_PAGE_RADIO && a->selected == NS_RADIO_CC) {
+        uint32_t frequency = a->session.active == NS_RADIO_CC ? a->session.cc.frequency : a->saved.settings.cc_frequency_hz;
+        if(key == NS_KEY_LEFT || key == NS_KEY_RIGHT) return ns_app_cc_tune(a,
+            key == NS_KEY_RIGHT ? frequency+100000 : frequency-100000, now);
+        if(key == NS_KEY_UP) {
+            static const uint32_t presets[] = {315000000, 433920000, 868000000, 915000000};
+            unsigned i = 0; while(i < 4 && presets[i] <= frequency) i++;
+            return ns_app_cc_tune(a, presets[i % 4], now);
+        }
+        if(key == NS_KEY_DOWN) {
+            a->cc_details = !a->cc_details;
+            if(a->cc_details && a->session.active == NS_RADIO_CC) {
+                NsResult r = ns_session_cc_diagnose(&a->session, now);
+                if(a->session.active == NS_RADIO_NONE) {
+                    a->history_dirty = true; NsResult stored = persist_history(a); if(stored != NS_OK) r = stored;
+                }
+                return a->status = r;
+            }
+        }
     } else if(a->page == NS_PAGE_SETTINGS) {
         if(key == NS_KEY_UP && a->setting) a->setting--;
         if(key == NS_KEY_DOWN && a->setting < 2) a->setting++;
@@ -185,21 +281,52 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
     } else if(a->page == NS_PAGE_RADIO) {
         if(a->status == NS_OK) snprintf(f->rows[5], sizeof(f->rows[5]), "%s", a->session.active == NS_RADIO_NONE ? "Idle: OK starts" : "RX: OK stops");
         if(a->selected == NS_RADIO_ESP) {
-            snprintf(f->rows[1], sizeof(f->rows[1]), "%s scanning disabled", a->ble ? "BLE" : "Wi-Fi");
-            snprintf(f->rows[2], sizeof(f->rows[2]), "Passive firmware unverified");
-            snprintf(f->rows[3], sizeof(f->rows[3]), "Back: dashboard");
+            if(a->ble) snprintf(f->rows[1], sizeof(f->rows[1]), "BLE active scan: disabled");
+            else if(a->session.ap_count) {
+                size_t index = a->ap_index < a->session.ap_count ? a->ap_index : 0;
+                const NsAccessPoint* ap = &a->session.aps[index];
+                uint8_t counts[14]; ns_channel_counts(a->session.aps, a->session.ap_count, counts);
+                NsDiff d = ns_diff(a->baseline, a->baseline_count, a->session.aps, a->session.ap_count);
+                snprintf(f->rows[1], sizeof(f->rows[1]), "%.32s", ap->ssid);
+                snprintf(f->rows[2], sizeof(f->rows[2]), "Ch%u %d dBm APs on ch:%u", ap->channel, ap->rssi, counts[ap->channel-1]);
+                snprintf(f->rows[3], sizeof(f->rows[3]), "New:%u Unseen:%u Moved:%u", d.new_aps, d.missing_aps, d.channel_changes);
+                snprintf(f->rows[4], sizeof(f->rows[4]), "RSSI min:%d max:%d", a->session.ap_min[index], a->session.ap_max[index]);
+                if(a->wifi_details) {
+                    snprintf(f->rows[3], sizeof(f->rows[3]), "BSSID: %.17s", ap->bssid[0] ? ap->bssid : "unknown");
+                    snprintf(f->rows[4], sizeof(f->rows[4]), "Security: %.23s", ap->security[0] ? ap->security : "not reported");
+                }
+            } else {
+                snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi %s", a->capabilities.esp_wifi_verified ? "passive adapter" : "command capture needed");
+                snprintf(f->rows[2], sizeof(f->rows[2]), "%.23s", a->session.marauder.version);
+                snprintf(f->rows[3], sizeof(f->rows[3]), "%.38s", a->session.marauder.hardware);
+                snprintf(f->rows[4], sizeof(f->rows[4]), "Right: info  OK: discovery");
+            }
         } else if(a->selected == NS_RADIO_NRF) {
             snprintf(f->rows[1], sizeof(f->rows[1]), "NRF24 sampled activity");
             f->bar_count = NS_NRF_CHANNELS;
             for(unsigned ch = 0; ch < NS_NRF_CHANNELS; ch++) f->bars[ch] = ns_graph_height(a->session.nrf.hits[ch], a->session.nrf.samples[ch], 22);
             snprintf(f->rows[4], sizeof(f->rows[4]), "0-125  %lu observations", (unsigned long)a->session.observations);
         } else {
-            snprintf(f->rows[1], sizeof(f->rows[1]), "CC1101 %lu Hz", (unsigned long)a->saved.settings.cc_frequency_hz);
-            if(a->session.cc.samples) {
-                snprintf(f->rows[2], sizeof(f->rows[2]), "RSSI %d dBm", a->session.cc.last);
-                snprintf(f->rows[3], sizeof(f->rows[3]), "Min %d Max %d", a->session.cc.minimum, a->session.cc.maximum);
-            } else snprintf(f->rows[2], sizeof(f->rows[2]), "No measurements yet");
-            snprintf(f->rows[4], sizeof(f->rows[4]), "OK: start/stop RX");
+            const NsCc* c = &a->session.cc;
+            uint32_t frequency = c->frequency ? c->frequency : a->saved.settings.cc_frequency_hz;
+            snprintf(f->rows[1], sizeof(f->rows[1]), "CC1101 %lu Hz", (unsigned long)frequency);
+            if(a->cc_details) {
+                if(c->diagnostic_valid) {
+                    snprintf(f->rows[2], sizeof(f->rows[2]), "ID %02X/%02X State %02X", c->diagnostic.part, c->diagnostic.version, c->diagnostic.state);
+                    snprintf(f->rows[3], sizeof(f->rows[3]), "Reads%lu RSSIraw %02X", (unsigned long)c->diagnostic.transactions, c->diagnostic.rssi_raw);
+                } else snprintf(f->rows[2], sizeof(f->rows[2]), "Raw SPI diagnostic unavailable");
+                snprintf(f->rows[4], sizeof(f->rows[4]), "Down: trace Up: preset");
+            } else if(c->samples) {
+                snprintf(f->rows[2], sizeof(f->rows[2]), "RSSI %d Mean %d dBm", c->last, ns_cc_recent_mean(c));
+                f->cc_plot = true; f->bar_count = c->trace_count;
+                size_t first = (c->trace_next + NS_CC_TRACE-c->trace_count) % NS_CC_TRACE;
+                for(size_t i = 0; i < c->trace_count; i++) f->bars[i] = ns_cc_graph_height(c->trace[(first+i) % NS_CC_TRACE], 10);
+                snprintf(f->rows[4], sizeof(f->rows[4]), "Lo%d Hi%d >=%d:%u%%", c->minimum, c->maximum, NS_CC_THRESHOLD_DBM, ns_cc_above_percent(c, NS_CC_THRESHOLD_DBM));
+            } else {
+                snprintf(f->rows[2], sizeof(f->rows[2]), "No measurements yet");
+                snprintf(f->rows[3], sizeof(f->rows[3]), "Left/Right: 100 kHz");
+                snprintf(f->rows[4], sizeof(f->rows[4]), "Up: preset Down: diagnostics");
+            }
         }
     } else if(a->page == NS_PAGE_SETTINGS) {
         snprintf(f->rows[1], sizeof(f->rows[1]), "%c Timeout %lu ms", a->setting == 0 ? '>' : ' ', (unsigned long)a->saved.settings.timeout_ms);

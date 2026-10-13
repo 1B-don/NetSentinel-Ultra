@@ -5,6 +5,10 @@
 #include <stdint.h>
 typedef enum { NS_OK, NS_INVALID, NS_BUSY, NS_UNSUPPORTED, NS_IO, NS_ABSENT, NS_TIMEOUT, NS_FULL } NsResult;
 typedef enum { NS_RADIO_NONE, NS_RADIO_ESP, NS_RADIO_NRF, NS_RADIO_CC } NsRadio;
+typedef struct {
+    uint8_t part, version, state, rssi_raw;
+    uint32_t transactions;
+} NsCcDiagnostics;
 /* Adapter owns bus locking, finite transfer timeouts, CS and pin restoration.
  * release must lower CE, put the peripheral in a safe state and restore pins.
  * CC adapter must use external-only receive interfaces: never fall back internally. */
@@ -24,5 +28,11 @@ typedef struct {
     NsResult (*file_write)(void*, const char*, size_t); /* full write or error */
     NsResult (*file_sync)(void*);
     NsResult (*file_close)(void*); /* close handle even on error; report status */
+    /* Nonblocking, bounded receive. Set count<=capacity. Dropped RX bytes must
+     * return NS_FULL, never silently splice fragments. Ownership is ESP only. */
+    NsResult (*uart_read)(void*, uint8_t*, size_t capacity, size_t* count);
+    /* Optional external-only raw status diagnostics. Complete snapshot or error.
+     * No writes/strobes; settled receive must return MARCSTATE RX (0x0d). */
+    NsResult (*cc_diagnose)(void*, NsCcDiagnostics*);
 } NsPlatform;
 #endif

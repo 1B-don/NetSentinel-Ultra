@@ -11,6 +11,7 @@ typedef struct {
     int16_t rssi;
     uint32_t frequency;
     char file[8192]; size_t size;
+    char commands[1024];
 } Mock;
 static NsResult acquire(void* ctx, NsRadio r) {
     Mock* m = ctx; if(m->owner) return NS_BUSY;
@@ -41,7 +42,10 @@ static void ce(void* ctx, bool high) {
 static void delay(void* ctx, uint32_t us) { ((Mock*)ctx)->delay += us; }
 static NsResult uart(void* ctx, const uint8_t* data, size_t n) {
     Mock* m = ctx; assert(data && n); m->uart_calls++;
-    return m->fail_uart ? NS_IO : NS_OK;
+    if(m->fail_uart) return NS_IO;
+    size_t length = strlen(m->commands); assert(length+n < sizeof(m->commands));
+    memcpy(m->commands+length, data, n); m->commands[length+n] = 0;
+    return NS_OK;
 }
 static NsResult probe(void* ctx) { return ((Mock*)ctx)->absent ? NS_ABSENT : NS_OK; }
 static NsResult receive(void* ctx, uint32_t f) { ((Mock*)ctx)->frequency = f; return NS_OK; }
@@ -60,6 +64,6 @@ static NsResult sync_file(void* ctx) { return ((Mock*)ctx)->fail_sync ? NS_IO : 
 static NsResult close_file(void* ctx) { Mock* m = ctx; m->closes++; return m->fail_close ? NS_IO : NS_OK; }
 static NsPlatform platform(Mock* m) {
     return (NsPlatform){m, acquire, release, spi, ce, delay, uart, probe, receive, rssi, idle,
-        create, write_file, sync_file, close_file};
+        create, write_file, sync_file, close_file, NULL, NULL};
 }
 #endif

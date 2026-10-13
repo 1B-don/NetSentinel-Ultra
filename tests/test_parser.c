@@ -21,7 +21,10 @@ int main(void) {
           "<hidden>", "AA:bb:C0:11:22:33", -83, 11);
     check("[0][CH:3] Octoglass -66", "Octoglass", "", -66, 3);
     check("[12][CH:11] Home Network 2.4 -90", "Home Network 2.4", "", -90, 11);
+    check("[0][CH:3] Lab AP -66 (selected)", "Lab AP", "", -66, 3);
     NsAccessPoint ap;
+    assert(!ns_parse_ap_line("-44 Ch: 3 ESSID: 00:11:22:33:44:55 fake MAC", &ap));
+    assert(!ns_parse_ap_line("-44 00:11:22:33:44:55 ESSID: Ch: 3 spoof", &ap));
     assert(!ns_parse_ap_line("Starting AP scan. Stop with stopscan", &ap));
     assert(!ns_parse_ap_line("Beacon: 11 18 1 17464", &ap));
     assert(!ns_parse_ap_line("RSSI: -44 Ch: 36 BSSID: 00:11:22:33:44:55 ESSID: 5G", &ap));
@@ -32,5 +35,5 @@ int main(void) {
     assert(!ns_parse_ap_line("[0][CH:3] bad -50x", &ap));
     assert(!ns_parse_ap_line("[0][CH:3] bad -9999999999999999999999999", &ap));
     assert(!ns_parse_ap_line(NULL, &ap));
-    puts("PASS: 15 Marauder parser scenarios");
+    puts("PASS: 18 Marauder parser scenarios");
 }

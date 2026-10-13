@@ -2,9 +2,12 @@ CC ?= cc
 BUILD := builds/host
 CPPFLAGS := -Iinclude -I.
 CFLAGS := -std=c11 -Wall -Wextra -Werror -pedantic -g
-CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c
-.PHONY: test clean sanitize
-test: $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
+CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/cc_spi.c src/core/marauder.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c
+.PHONY: test clean sanitize audit-test
+test: audit-test $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
+	$(BUILD)/test_board_contract
+	$(BUILD)/test_cc
+	$(BUILD)/test_marauder
 	$(BUILD)/test_parser
 	$(BUILD)/test_analysis
 	$(BUILD)/test_core
@@ -26,6 +29,18 @@ clean:
 $(BUILD)/test_application: $(CORE) tests/test_application.c tests/mock_platform.h $(wildcard include/netsentinel/*.h) ap_parser.h ns_analysis.h | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE) tests/test_application.c -o $@
 
-FLIPPER := src/flipper/ns_flipper.c src/flipper/netsentinel_app.c
+FLIPPER := src/flipper/ns_flipper.c src/flipper/ns_uart.c src/flipper/netsentinel_app.c
 $(BUILD)/test_flipper_contract: $(CORE) $(FLIPPER) src/flipper/ns_flipper.h tests/test_flipper_contract.c tests/flipper_mock/mock_sdk.c ap_parser.h ns_analysis.h $(wildcard tests/flipper_mock/*.h tests/flipper_mock/*/*.h) $(wildcard include/netsentinel/*.h) | $(BUILD)
 	$(CC) $(CPPFLAGS) -Itests/flipper_mock -Isrc/flipper $(CFLAGS) $(CORE) $(FLIPPER) tests/flipper_mock/mock_sdk.c tests/test_flipper_contract.c -o $@
+
+$(BUILD)/test_marauder: $(CORE) tests/test_marauder.c tests/mock_platform.h $(wildcard tests/fixtures/*) $(wildcard include/netsentinel/*.h) ap_parser.h ns_analysis.h | $(BUILD)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE) tests/test_marauder.c -o $@
+
+$(BUILD)/test_cc: $(CORE) tests/test_cc.c tests/mock_platform.h $(wildcard include/netsentinel/*.h) ap_parser.h ns_analysis.h | $(BUILD)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE) tests/test_cc.c -o $@
+
+$(BUILD)/test_board_contract: $(CORE) $(FLIPPER) src/flipper/ns_flipper.h tests/test_board_contract.c tests/mock_platform.h tests/flipper_mock/mock_sdk.c $(wildcard tests/flipper_mock/*.h tests/flipper_mock/*/*.h) $(wildcard include/netsentinel/*.h) ap_parser.h ns_analysis.h | $(BUILD)
+	$(CC) $(CPPFLAGS) -DNS_ENABLE_BOARD_PORT -Itests/flipper_mock -Isrc/flipper $(CFLAGS) $(CORE) $(FLIPPER) tests/flipper_mock/mock_sdk.c tests/test_board_contract.c -o $@
+
+audit-test:
+	python3 -m unittest discover -s tests -p test_publication.py

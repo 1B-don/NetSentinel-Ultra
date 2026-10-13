@@ -63,7 +63,7 @@ static void test_torn_writes(void) {
 static void test_app(void) {
     Mock m = {.rssi = -70}; NsPlatform radio = platform(&m);
     StoreMock disk = {0}; NsStore io = store(&disk); NsApplication app;
-    NsCapabilities caps = {true, true};
+    NsCapabilities caps = {.nrf=true, .cc=true};
     assert(ns_app_init(&app, &radio, &io, caps) == NS_ABSENT);
     assert(ns_app_start(&app, NS_RADIO_ESP, false, false, 0) == NS_UNSUPPORTED);
     assert(ns_app_start(&app, NS_RADIO_ESP, true, false, 0) == NS_UNSUPPORTED);
@@ -120,13 +120,13 @@ static void test_app(void) {
 static void test_history_wrap_and_exhaustion(void) {
     StoreMock disk = {0}; NsStore io = store(&disk);
     Mock m = {0}; NsPlatform radio = platform(&m); NsApplication a;
-    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){true, true}) == NS_ABSENT);
+    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){.nrf=true, .cc=true}) == NS_ABSENT);
     for(unsigned i = 0; i < 24; i++) {
         assert(ns_app_start(&a, NS_RADIO_CC, false, true, i*100) == NS_OK);
         assert(ns_app_step(&a, i*100+1) == NS_OK);
         assert(ns_app_stop(&a, i*100+2) == NS_OK);
     }
-    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){true, true}) == NS_OK);
+    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){.nrf=true, .cc=true}) == NS_OK);
     assert(a.saved.history_count == 16 && a.saved.history[0].id == 9 && a.saved.history[15].id == 24);
     a.page = NS_PAGE_HISTORY; NsFrame frame; ns_app_frame(&a, &frame);
     assert(strstr(frame.rows[1], "Session 24"));
@@ -142,7 +142,7 @@ static void test_history_wrap_and_exhaustion(void) {
 static void test_recovery_and_cleanup(void) {
     StoreMock disk = {.fail_read = true}; NsStore io = store(&disk);
     Mock m = {0}; NsPlatform radio = platform(&m); NsApplication a;
-    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){true, true}) == NS_IO);
+    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){.nrf=true, .cc=true}) == NS_IO);
     assert(ns_app_start(&a, NS_RADIO_NRF, false, true, 0) == NS_INVALID && !m.acquired);
     disk.fail_read = false;
     assert(ns_app_reload(&a) == NS_OK);
@@ -166,15 +166,64 @@ static void test_readback_and_disabled(void) {
     StoreMock disk = {0}; NsStore io = store(&disk); Mock m = {0}; NsPlatform radio = platform(&m); NsApplication a;
     assert(ns_app_init(&a, &radio, &io, (NsCapabilities){0}) == NS_ABSENT);
     assert(ns_app_start(&a, NS_RADIO_NRF, false, true, 0) == NS_UNSUPPORTED && !disk.writes);
-    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){true, true}) == NS_ABSENT);
+    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){.nrf=true, .cc=true}) == NS_ABSENT);
     disk.corrupt_readback = true;
     assert(ns_app_start(&a, NS_RADIO_NRF, false, true, 0) == NS_IO && !m.acquired);
     disk.corrupt_readback = false;
-    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){true, true}) == NS_OK && a.saved.last_id == 1);
+    assert(ns_app_init(&a, &radio, &io, (NsCapabilities){.nrf=true, .cc=true}) == NS_OK && a.saved.last_id == 1);
     assert(ns_app_start(&a, NS_RADIO_NRF, false, true, 0) == NS_OK && a.session.id == 2);
     assert(ns_app_stop(&a, 1) == NS_OK);
 }
-int main(void) {
+static NsResult cc_diagnostic(void* ctx, NsCcDiagnostics* out) {
+    Mock* m = ctx; assert(m->owner == NS_RADIO_CC);
+    if(m->fail_spi) return NS_TIMEOUT;
+    *out = (NsCcDiagnostics){.part=0, .version=0x14, .state=m->frequency ? 13 : 1, .transactions=7};
+    return NS_OK;
+}
+static void test_cc_explorer(void) {
+    StoreMock disk = {0}; NsStore io = store(&disk); Mock m = {.rssi=-120};
+    NsPlatform radio = platform(&m); radio.cc_diagnose = cc_diagnostic; NsApplication a;
+    NsCapabilities caps = {.nrf=true, .cc=true, .esp_uart=true};
+    assert(ns_app_init(&a, &radio, &io, caps) == NS_ABSENT);
+    a.selected = NS_RADIO_CC; a.page = NS_PAGE_RADIO;
+    assert(ns_app_key(&a, NS_KEY_UP, 0) == NS_OK && a.saved.settings.cc_frequency_hz == 868000000 && !m.acquired);
+    assert(ns_app_init(&a, &radio, &io, caps) == NS_OK && a.saved.settings.cc_frequency_hz == 868000000);
+    a.selected = NS_RADIO_CC; a.page = NS_PAGE_RADIO;
+    assert(ns_app_key(&a, NS_KEY_OK, 0) == NS_OK && a.page == NS_PAGE_SELECTOR);
+    assert(ns_app_key(&a, NS_KEY_OK, 1) == NS_OK && m.frequency == 868000000);
+    assert(ns_app_step(&a, 2) == NS_OK); m.rssi = -70;
+    assert(ns_app_step(&a, 102) == NS_OK); m.rssi = -20;
+    assert(ns_app_step(&a, 202) == NS_OK);
+    NsFrame f; ns_app_frame(&a, &f);
+    assert(f.cc_plot && f.bar_count == 3 && f.bars[0] == 0 && f.bars[1] == 5 && f.bars[2] == 10);
+    assert(strstr(f.rows[2], "Mean -70") && strstr(f.rows[4], "66%"));
+    assert(strstr(m.file, "cc,,868000000,-20,dBm") && strstr(m.file, "cc_activity,above_-80,868000000,66,percent"));
+    assert(ns_app_key(&a, NS_KEY_DOWN, 203) == NS_OK); ns_app_frame(&a, &f);
+    assert(!f.cc_plot && strstr(f.rows[2], "ID 00/14") && strstr(m.file, "cc_diag,version"));
+    assert(ns_app_key(&a, NS_KEY_UP, 204) == NS_OK && m.frequency == 915000000 && !a.session.cc.samples);
+    assert(a.saved.settings.cc_frequency_hz == 868000000); /* active exploration is temporary */
+    assert(ns_app_step(&a, 204) == NS_OK && a.session.observations == 4);
+    assert(ns_app_cc_tune(&a, 350000000, 205) == NS_INVALID && m.frequency == 915000000);
+    m.fail_spi = true;
+    assert(ns_app_step(&a, 304) == NS_TIMEOUT && !m.owner && !a.history_dirty);
+    assert(a.saved.history_count == 1 && a.saved.history[0].result == NS_TIMEOUT);
+    m.fail_spi = false;
+    assert(ns_app_start(&a, NS_RADIO_NRF, false, true, 305) == NS_OK);
+    assert(ns_app_cc_tune(&a, 433920000, 306) == NS_BUSY && m.owner == NS_RADIO_NRF);
+    assert(ns_app_stop(&a, 307) == NS_OK);
+    assert(ns_app_start(&a, NS_RADIO_ESP, false, false, 308) == NS_UNSUPPORTED && !m.uart_calls);
+    assert(ns_app_cc_tune(&a, 433920000, 309) == NS_OK && !a.session.cc.samples);
+    assert(ns_app_init(&a, &radio, &io, caps) == NS_OK && a.saved.settings.cc_frequency_hz == 433920000);
+    assert(ns_app_start(&a, NS_RADIO_CC, false, true, 310) == NS_OK);
+    assert(ns_app_step(&a, 311) == NS_OK && a.session.cc.samples == 1);
+    assert(ns_app_stop(&a, 312) == NS_OK && m.acquired == m.released);
+    a.page = NS_PAGE_SETTINGS; a.setting = 2;
+    disk.fail_write = true;
+    assert(ns_app_key(&a, NS_KEY_RIGHT, 313) == NS_IO && a.session.cc.samples == 1);
+    disk.fail_write = false;
+    assert(ns_app_key(&a, NS_KEY_RIGHT, 314) == NS_OK && !a.session.cc.samples && !a.session.cc.diagnostic_valid);
+}
+int main(void) { test_cc_explorer();
     test_persistence(); test_torn_writes(); test_app(); test_history_wrap_and_exhaustion(); test_recovery_and_cleanup(); test_readback_and_disabled();
     puts("PASS: application navigation, restart persistence, 420 torn writes, ID reservation and recovery");
 }

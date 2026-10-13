@@ -87,24 +87,71 @@ NsResult ns_cc_open(NsCc* c, const NsPlatform* io, bool confirmed) {
     c->owned = true;
     r = io->cc_probe(io->ctx);
     if(r != NS_OK) { ns_cc_close(c); return r; }
-    c->ready = true; return NS_OK;
+    c->ready = true;
+    if(io->cc_diagnose) {
+        r = ns_cc_diagnose(c);
+        if(r != NS_OK) { ns_cc_close(c); return r; }
+    }
+    return NS_OK;
+}
+NsResult ns_cc_diagnose(NsCc* c) {
+    if(!c || !c->ready || !c->owned) return NS_INVALID;
+    if(!c->io->cc_diagnose) return NS_UNSUPPORTED;
+    NsCcDiagnostics d = {0};
+    NsResult r = c->io->cc_diagnose(c->io->ctx, &d);
+    c->diagnostic_valid = false;
+    if(r != NS_OK) return r;
+    if(d.part != 0 || d.version == 0 || d.version == 0xff) return NS_ABSENT;
+    if(d.state > 0x1f) return NS_IO;
+    c->diagnostic = d; c->diagnostic_valid = true; return NS_OK;
 }
 NsResult ns_cc_tune(NsCc* c, uint32_t f) {
     if(!c || !c->ready || !ns_cc_frequency_valid(f)) return NS_INVALID;
     NsResult r = c->io->cc_idle(c->io->ctx);
     if(r == NS_OK) r = c->io->cc_receive(c->io->ctx, f);
     if(r != NS_OK) { ns_cc_close(c); return r; }
-    c->frequency = f; c->samples = 0; return NS_OK;
+    if(r == NS_OK && c->io->cc_diagnose) {
+        r = ns_cc_diagnose(c);
+        if(r == NS_OK && c->diagnostic.state != 0x0d) r = NS_IO;
+        if(r != NS_OK) { ns_cc_close(c); return r; }
+    }
+    c->frequency = f; c->samples = 0; c->last = c->minimum = c->maximum = 0;
+    c->trace_count = c->trace_next = 0; return NS_OK;
 }
 NsResult ns_cc_sample(NsCc* c) {
     if(!c || !c->ready || !c->frequency) return NS_INVALID;
     int16_t value = 0;
-    NsResult r = c->io->cc_rssi(c->io->ctx, &value);
+    NsResult r = NS_OK;
+    if(c->io->cc_diagnose) {
+        r = ns_cc_diagnose(c);
+        if(r == NS_OK && c->diagnostic.state != 0x0d) r = NS_IO;
+    }
+    if(r == NS_OK) r = c->io->cc_rssi(c->io->ctx, &value);
     if(r != NS_OK) { ns_cc_close(c); return r; }
     if(value < -150 || value > 20) { ns_cc_close(c); return NS_IO; }
     if(c->samples == UINT32_MAX) return NS_FULL;
     c->last = value;
     if(!c->samples || value < c->minimum) c->minimum = value;
     if(!c->samples || value > c->maximum) c->maximum = value;
+    c->trace[c->trace_next] = value;
+    c->trace_next = (c->trace_next+1) % NS_CC_TRACE;
+    if(c->trace_count < NS_CC_TRACE) c->trace_count++;
     c->samples++; return NS_OK;
+}
+uint8_t ns_cc_graph_height(int16_t rssi, uint8_t height) {
+    if(rssi <= -120) return 0;
+    if(rssi >= -20) return height;
+    return (uint8_t)((uint32_t)(rssi+120)*height/100);
+}
+unsigned ns_cc_above_percent(const NsCc* c, int16_t threshold) {
+    if(!c || !c->trace_count) return 0;
+    unsigned hits = 0;
+    for(size_t i = 0; i < c->trace_count; i++) if(c->trace[i] >= threshold) hits++;
+    return (unsigned)(hits*100/c->trace_count);
+}
+int16_t ns_cc_recent_mean(const NsCc* c) {
+    if(!c || !c->trace_count) return 0;
+    int32_t sum = 0;
+    for(size_t i = 0; i < c->trace_count; i++) sum += c->trace[i];
+    return (int16_t)(sum/(int32_t)c->trace_count);
 }

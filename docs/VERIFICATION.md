@@ -2,10 +2,10 @@
 
 | Area | Host evidence | Outstanding device/SDK evidence |
 |---|---|---|
-| Wi-Fi | 15 parser cases; identity update; bounded line processing; unknown/overflow rejection | Installed ESP32 identity; passive scan commands; observed AP fixtures; UART routing |
+| Wi-Fi | 18 parser cases; gated protocol; UART ring loss; fragmented echoes/prompts; AP/RSSI/CSV/UI/cancellation integration | Owner identity/standalone Recon confirmed; installed raw sequence/labels, channel policy, receive-only implementation and NetSentinel UART/SDK still pending |
 | BLE | Unsupported-by-default gate; raw line handling in mock profile | Passive capability verification; structured parser; real BLE observations |
 | NRF24 | All 126 channels; ACK/retry disabled before CE; PRX-only; sample percentages; 17 transfer fault cases | Verified GPIO routing and chip; RPD timing/RF; activity plot source passes mock frame/GUI tests; actual GUI/RF pending |
-| CC1101 | Band validation; mocked tuning/RSSI extrema; absence handling; cleanup | External SDK adapter; calibration and RX state; RSSI measurements; exploration UI |
+| CC1101 | SIMULATED read-only SPI/identity/state diagnostics; RX-only state checks; rolling graph/mean/threshold CSV; preset persistence/live retune; faults/cadence/wrap/cleanup | User reports prior Ultra operation; NetSentinel external SDK binding, device SPI/RSSI, calibration and formal RF reception pending |
 | Storage | CSV quoting; partial/error writes; sync error; path confinement | Source SD adapter passes shim tests; real file creation/export and card/removal behavior pending |
 | Sessions | Radio exclusion; timeout across tick wrap; retry; bounded RAM history; no double release | Controller/UI allocation unwind and shutdown error propagation pass mocks; real device resource restoration pending |
 | Settings | Strict versioned format; invalid/corrupt/range rejection; transactional decode | Dual-slot settings/history restart tests pass on mocks; actual SD relaunch pending |
@@ -29,4 +29,16 @@ All physical scenarios are pending. Deployment/launch requires explicit owner ap
 
 ## Application integration additions
 
-All five local suites pass. Added 420 torn-write boundaries, CRC rejection/recovery, full 16-entry history serialization, saved-settings/ID restoration, mandatory log setup, history retry/start blocking, explicit selector cancellation/start, disabled ESP/capabilities, readback mismatch, settings failure rollback, SD reload, shutdown/CSV-close error history, and Flipper shell/storage shims including four SDK allocation failure points. AddressSanitizer and UBSan pass with sandbox leak detection disabled. These are host outcomes, not completed physical scenarios.
+All seven local suites pass. Added 420 torn-write boundaries, CRC rejection/recovery, full 16-entry history serialization, saved-settings/ID restoration, mandatory log setup, history retry/start blocking, explicit selector cancellation/start, disabled ESP/capabilities, readback mismatch, settings failure rollback, SD reload, shutdown/CSV-close error history, and Flipper shell/storage shims including four SDK allocation failure points. AddressSanitizer and UBSan pass with sandbox leak detection disabled. These are host outcomes, not completed physical scenarios.
+
+## Marauder additions
+
+See [command evidence and gates](MARAUDER.md). New mock tests cover busy serial ownership, ring wrap/overflow, serial framing failure, command allowlisting, provisional info/UI/history flow, source-format synthetic beacons, AP RSSI ranges, baseline/details navigation, stop acknowledgment and deferred exit, tick wrap, incomplete responses, control-line overflow and recovery. Owner standalone tests are recorded separately from NetSentinel hardware results. Security detail querying, verified BLE receive-only discovery and real SDK build remain unresolved.
+
+## CC1101 evidence split
+
+Prior Ultra V3 operation and Momentum automatic external selection are user-reported. No controlled signal is available; formal RF tests remain pending. Software proceeds using simulated SPI/RSSI faults and unified application integration tests. [CC1101 plan](CC1101.md) includes diagnostics/noise monitoring tests that do not require a controlled source once an authorized SDK port/build and deployment approval exist. The lack of a source does not block continued source development.
+
+## Flipper API boundary milestone
+
+Original seven suites remain passing; an eighth board-enabled Flipper contract suite covers isolated binding, incomplete/failed bind unwind, shared UART/NRF/CC ownership, wrong-owner calls, real GUI input callback cancellation, NRF transfer failure and forced CC cleanup during mutex failure. The original GUI suite now exercises actual callback/queue filtering, long Back, overflow cancellation, GUI/storage record failures and mutex failure. Both source variants compile under C11 warnings-as-errors and pass ASan/UBSan locally. Publication policy has four regression cases; privacy checks operate on the complete staged tree and never echo suspected data. No compatible firmware SDK build or physical verification was performed.

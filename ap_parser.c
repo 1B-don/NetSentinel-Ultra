@@ -83,6 +83,7 @@ bool ns_parse_ap_line(const char* line, NsAccessPoint* out) {
 
     if(ssid_label && ch_label) {
         const char* rssi_label = strstr(line, "RSSI:");
+        if(ch_label >= ssid_label || (rssi_label && rssi_label >= ssid_label)) return false;
         if(rssi_label) {
             if(!ns_parse_int(rssi_label + 5, &rssi)) return false;
         } else {
@@ -94,7 +95,7 @@ bool ns_parse_ap_line(const char* line, NsAccessPoint* out) {
         if(!ns_parse_int(ch_label + 3, &ch)) return false;
         if(ch < 1 || ch > 14 || rssi < -127 || rssi > 20) return false;
         const char* mac = ns_find_mac(line);
-        if(!mac) return false;
+        if(!mac || mac >= ssid_label) return false;
         memcpy(out->bssid, mac, 17);
         out->bssid[17] = 0;
         out->rssi = (int16_t)rssi;
@@ -122,6 +123,9 @@ bool ns_parse_ap_line(const char* line, NsAccessPoint* out) {
     const char* name_start = ns_skip_space(bracket + 1);
     const char* name_end = name_start + strlen(name_start);
     while(name_end > name_start && isspace((unsigned char)name_end[-1])) name_end--;
+    const char* selected = " (selected)";
+    size_t selected_len = strlen(selected);
+    if((size_t)(name_end-name_start) >= selected_len && !memcmp(name_end-selected_len, selected, selected_len)) name_end -= selected_len;
     /* Locate the final RSSI token (e.g. -66), not an embedded SSID number. */
     const char* rssi_start = name_end;
     while(rssi_start > name_start && !isspace((unsigned char)rssi_start[-1])) rssi_start--;

@@ -1,5 +1,5 @@
 # Candidate external-app manifest; real SDK compilation/ABI verification pending.
-# No hardware port enabled: radio acquisition returns NS_UNSUPPORTED.
+# Candidate UART info port; Wi-Fi verification gate false; NRF/CC ports disabled.
 App(
     appid="netsentinel",
     name="NetSentinel Ultra",

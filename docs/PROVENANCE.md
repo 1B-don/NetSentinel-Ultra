@@ -18,3 +18,11 @@ Hardware/interface references (documentation consulted, no code copied):
 ## Application shell and persistence work
 
 The candidate Flipper shell follows the owner-provided legacy GUI lifecycle, with independently authored controller/storage integration. API names and callback usage were checked against public Flipper [storage](https://developer.flipper.net/flipperzero/doxygen/storage_8h.html), [viewport](https://developer.flipper.net/flipperzero/doxygen/view__port_8h.html) and [manifest](https://developer.flipper.net/flipperzero/doxygen/app_manifests.html) documentation. No SDK headers or repository code were copied. `tests/flipper_mock` contains independently authored, intentionally incomplete contract shims. They cannot prove real SDK compilation or ABI compatibility.
+
+## Marauder protocol work
+
+The independent UART state machine and shims use observable protocol facts from the tagged v1.11.0 [CommandLine.cpp](https://raw.githubusercontent.com/justcallmekoko/ESP32Marauder/v1.11.0/esp32_marauder/CommandLine.cpp) and [WiFiScan.cpp](https://raw.githubusercontent.com/justcallmekoko/ESP32Marauder/v1.11.0/esp32_marauder/WiFiScan.cpp), and the public [serial HAL documentation](https://developer.flipper.net/flipperzero/doxygen/furi__hal__serial_8h.html). No upstream implementation/header files were copied or vendored. Serial-controller calls also appear in the owner-provided permitted legacy source. Fixtures are independently written synthetic examples; identity labels are provisional. Source inspection does not prove the installed binary or Momentum ABI.
+
+## CC1101 status diagnostics
+
+The independently authored status-only SPI helper and simulated transport are based on the public TI CC1101 [datasheet](https://www.ti.com/lit/ds/symlink/cc1101.pdf), sections on SPI status access, chip identity, main state and RSSI. No firmware, external-radio plugin source, SDK headers or hardware pin mapping was imported. User-reported prior CC1101 operation does not establish NetSentinel reception.
