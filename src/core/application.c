@@ -5,7 +5,10 @@
 static const char* const menu[] = {"Wi-Fi", "BLE", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics"};
 const char* ns_result_name(NsResult r) {
     static const char* const names[] = {"OK", "Invalid", "Busy", "Unsupported", "I/O failure", "Absent", "Timeout", "Full"};
-    return (unsigned)r <= NS_FULL ? names[(unsigned)r] : "Unknown";
+    _Static_assert(sizeof(names)/sizeof(names[0]) == NS_FULL+1, "NsResult names must cover every result");
+    /* Handles signed and short unsigned enums, including invalid negatives. */
+    unsigned index = (unsigned)r;
+    return index < sizeof(names)/sizeof(names[0]) ? names[index] : "Unknown";
 }
 static void clear_cc_measurements(NsApplication* a) {
     a->session.cc.frequency = 0; a->session.cc.samples = 0;
@@ -200,6 +203,7 @@ static NsResult change_setting(NsApplication* a, bool increase) {
     return ns_app_save_settings(a, &s);
 }
 NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
+    /* All valid keys start at zero; unsigned conversion rejects negatives too. */
     if(!a || !a->running || (unsigned)key > NS_KEY_BACK) return NS_INVALID;
     if(key == NS_KEY_BACK) {
         NsResult r = ns_app_stop(a, now);

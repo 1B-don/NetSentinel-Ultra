@@ -2,7 +2,7 @@
 
 NetSentinel now compiles and packages a real GUI/storage-only FAP using the independently permitted official SDK **1.4.3**. Compilation, linking and SDK import validation pass. **Compatibility with installed Momentum d3f89dfe and physical operation are unverified.** No deployment or v1.0 release occurred; the restricted checkout remains untouched.
 
-Artifact: `dist/netsentinel.fap` (33,476 bytes), hardware target 7 / API 87.1. See [full build result](docs/BUILD_RESULT.md) for provenance, hash, logs and remaining verification.
+Artifact: `dist/netsentinel.fap` (33,480 bytes), hardware target 7 / API 87.1. See [full build result](docs/BUILD_RESULT.md) for provenance, hash, logs and remaining verification.
 
 ## Build and tests
 
@@ -47,3 +47,5 @@ The initial manifest defines `NS_GUI_STORAGE_ONLY`: GUI/navigation/settings/hist
 uFBT 0.2.6 is installed at `~/flipper-build-env/bin/ufbt`; ARM GCC 12.3.1 and the official 1.4.3 SDK reside in the existing SDK-only cache. A clean real build compiled all 12 translation units, linked, generated the FAP and passed APPCHK with 49 final imports supported by official API 87.1. This does not certify the Momentum target. `make short-enums` retains coverage for the ARM compiler failure fixed earlier.
 
 For first-build steps see [FIRST_BUILD.md](docs/FIRST_BUILD.md). Remaining target/radio gaps are in [BUILD_BLOCKERS.md](docs/BUILD_BLOCKERS.md) and [SDK_INTERFACES.md](docs/SDK_INTERFACES.md). Binaries, editor configuration, full compiler output and private build evidence remain local and are not published as release packages.
+
+Latest enum-validation rebuild passes with `-Werror` unchanged. Result-name indexing is bounded by its table and checked for enum completeness; serialized history radio/result words are validated before enum conversion. CRC-valid malformed-record tests verify rejection, older-slot recovery and no invalid-record writes under normal and short-enum compilers.

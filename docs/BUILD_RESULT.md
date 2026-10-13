@@ -1,4 +1,12 @@
-# First genuine FAP build result
+# Genuine FAP build results
+
+## Latest enum-validation rebuild
+
+The requested type-limit comparisons were already corrected in local commit `1249df0`. This follow-up bounds result-name indexing by the actual table with a completeness assertion, retains unsigned input/result range checks, and validates full 32-bit stored radio/result words before narrowing to enums. Normal/short-enum/sanitizer tests reject negative/out-of-range inputs and CRC-valid malformed history, preserve older valid snapshot recovery, and prohibit invalid persistence writes. No warning suppression or build-flag change was made.
+
+`~/flipper-build-env/bin/ufbt` returned exit 0: changed sources compile, link, packaging and APPCHK pass, hardware target 7 / API 87.1. No compiler/linker errors remain. SDK remains official 1.4.3; installed Momentum compatibility and physical operation remain unverified. Current artifact `dist/netsentinel.fap` is **33,480 bytes**, SHA256 `06cd1717590bd6658d2914a128432b8fcb9d0110ca463e3c77222ac4e5996b27`. Full output is local in `logs/enum-validation-build.log`. The earlier clean-build evidence below remains historical.
+
+## Initial successful clean build
 
 Application source commit: `47ce6b9e1830768f85a68ab9543dc240529bec58`. Documentation updates in the result milestone do not change compiled application source.
 

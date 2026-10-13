@@ -44,6 +44,54 @@ static void test_persistence(void) {
     m.fail_read = true;
     assert(ns_persistence_load(&reboot, &io, &recovered) == NS_IO);
 }
+static void test_record_word(uint8_t* p, uint32_t value) {
+    for(unsigned i = 0; i < 4; i++) p[i] = (uint8_t)(value >> (8*i));
+}
+static void test_record_crc(uint8_t* data, size_t n) {
+    uint32_t crc = UINT32_MAX;
+    for(size_t i = 0; i < n-4; i++) {
+        crc ^= data[i];
+        for(unsigned j = 0; j < 8; j++) crc = (crc >> 1) ^ (0xedb88320u & (0u-(crc & 1u)));
+    }
+    test_record_word(data+n-4, ~crc);
+}
+static void test_invalid_history_enums(void) {
+    StoreMock disk = {0}; NsStore io = store(&disk);
+    NsPersistence p; NsSavedState s;
+    assert(ns_persistence_load(&p, &io, &s) == NS_ABSENT);
+    s.last_id = 1; assert(ns_persistence_save(&p, &s) == NS_OK);
+    unsigned older = p.slot;
+    s.history_count = 1; s.history[0] = (NsHistory){1, 10, 20, 1, NS_RADIO_NRF, NS_OK};
+    assert(ns_persistence_save(&p, &s) == NS_OK);
+    StoreMock valid_disk = disk;
+    const uint32_t bad_results[] = {NS_FULL+1, 255, 256, UINT32_MAX};
+    const uint32_t bad_radios[] = {NS_RADIO_NONE, NS_RADIO_CC+1, 255, 256, 257, UINT32_MAX};
+    for(unsigned field = 0; field < 2; field++) {
+        const uint32_t* values = field ? bad_radios : bad_results;
+        size_t count = field ? sizeof(bad_radios)/sizeof(*bad_radios) : sizeof(bad_results)/sizeof(*bad_results);
+        for(size_t i = 0; i < count; i++) {
+            disk = valid_disk;
+            test_record_word(disk.data[p.slot]+32+(field ? 16 : 20), values[i]);
+            test_record_crc(disk.data[p.slot], disk.sizes[p.slot]);
+            /* CRC is valid: range validation alone must reject this snapshot. */
+            NsPersistence boot; NsSavedState recovered;
+            assert(ns_persistence_load(&boot, &io, &recovered) == NS_OK);
+            assert(boot.slot == older && boot.generation == 1 && !recovered.history_count);
+            disk.exists[older] = false; recovered.last_id = 123456;
+            unsigned writes = disk.writes;
+            assert(ns_persistence_load(&boot, &io, &recovered) == NS_INVALID);
+            assert(!boot.loaded && recovered.last_id == 123456);
+            assert(ns_persistence_save(&boot, &s) == NS_INVALID && disk.writes == writes);
+        }
+    }
+    disk = valid_disk;
+    unsigned writes = disk.writes; uint32_t generation = p.generation;
+    s.history[0].result = (NsResult)-1;
+    assert(ns_persistence_save(&p, &s) == NS_INVALID);
+    s.history[0].result = (NsResult)(NS_FULL+1);
+    assert(ns_persistence_save(&p, &s) == NS_INVALID);
+    assert(disk.writes == writes && p.generation == generation);
+}
 static void test_torn_writes(void) {
     /* Every byte boundary in a full history snapshot. Older slot must survive. */
     for(size_t cut = 0; cut < 420; cut++) {
@@ -231,6 +279,6 @@ int main(void) {
     assert(ns_app_key(&invalid_key_app, (NsKey)-1, 0) == NS_INVALID);
     assert(ns_app_key(&invalid_key_app, (NsKey)(NS_KEY_BACK+1), 0) == NS_INVALID);
  test_cc_explorer();
-    test_persistence(); test_torn_writes(); test_app(); test_history_wrap_and_exhaustion(); test_recovery_and_cleanup(); test_readback_and_disabled();
+    test_persistence(); test_invalid_history_enums(); test_torn_writes(); test_app(); test_history_wrap_and_exhaustion(); test_recovery_and_cleanup(); test_readback_and_disabled();
     puts("PASS: application navigation, restart persistence, 420 torn writes, ID reservation and recovery");
 }

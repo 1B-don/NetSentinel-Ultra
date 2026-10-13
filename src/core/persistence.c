@@ -48,9 +48,12 @@ static bool decode(const uint8_t* b, size_t n, NsSavedState* s, uint32_t* genera
     s->settings = (NsSettings){get(b+16), get(b+20), get(b+24), get(b+28)};
     for(size_t i = 0; i < s->history_count; i++) {
         size_t pos = 32+i*24;
-        if(get(b+pos+16) > NS_RADIO_CC || get(b+pos+20) > NS_FULL) return false;
+        /* Validate full stored words before conversion to possibly short enums.
+         * Otherwise values such as 256 could narrow into a valid result. */
+        uint32_t radio = get(b+pos+16), result = get(b+pos+20);
+        if(radio < NS_RADIO_ESP || radio > NS_RADIO_CC || result > NS_FULL) return false;
         s->history[i] = (NsHistory){get(b+pos), get(b+pos+4), get(b+pos+8), get(b+pos+12),
-            (NsRadio)get(b+pos+16), (NsResult)get(b+pos+20)};
+            (NsRadio)radio, (NsResult)result};
     }
     return valid(s);
 }
