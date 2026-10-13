@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a separate info-only FAP using the owner's permitted Momentum SDK.
+"""Build a separate gated FAP using the owner's permitted Momentum SDK.
 No SDK update, firmware operation, hardware launch or network operation is requested.
 """
 import argparse
@@ -20,10 +20,18 @@ def digest(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--variant", choices=("gui", "info", "diagnostics", "development"), help="explicit build variant; default remains diagnostics")
     parser.add_argument("--development", action="store_true", help="build the unified v1 development app with pending radios disabled")
     args = parser.parse_args()
-    appid = "netsentinel_development" if args.development else "netsentinel_esp_diagnostics"
-    title = "NetSentinel Ultra Dev" if args.development else "ESP Diagnostics v0.2"
+    if args.development and args.variant:
+        parser.error("use either --development or --variant")
+    variant = "development" if args.development else (args.variant or "diagnostics")
+    appid, title = {
+        "gui": ("netsentinel", "NetSentinel Ultra"),
+        "info": ("netsentinel_esp_info", "NetSentinel ESP Info"),
+        "diagnostics": ("netsentinel_esp_diagnostics", "ESP Diagnostics v0.2"),
+        "development": ("netsentinel_development", "NetSentinel Ultra Dev"),
+    }[variant]
     if SDK_HOME.is_symlink() or (SDK_HOME/"current").is_symlink():
         raise RuntimeError("SDK home must be the reviewed independent cache")
     archive = ROOT/"builds/sdk-input/flipper-z-f7-sdk-mntm-dev-d3f89dfe.zip"
@@ -46,6 +54,7 @@ def main():
     if not stage.resolve().is_relative_to(ROOT/"builds"):
         raise RuntimeError("Build stage escaped authorized project directory")
     paths = [ROOT/n for n in ("ap_parser.c", "ap_parser.h", "ns_analysis.c", "ns_analysis.h")]
+    paths.append(ROOT/"assets/netsentinel_icon.png")
     for folder in ("src/core", "src/flipper", "include/netsentinel"):
         paths += [p for p in (ROOT/folder).glob("*") if p.suffix in (".c", ".h")]
     for src in paths:
@@ -61,7 +70,8 @@ def main():
         raise RuntimeError("Default manifest gate changed; inspect before building")
     manifest = manifest.replace('appid="netsentinel"', f'appid="{appid}"')
     manifest = manifest.replace('name="NetSentinel Ultra"', f'name="{title}"')
-    manifest = manifest.replace('cdefines=["NS_GUI_STORAGE_ONLY"]', 'cdefines=["NS_ESP_INFO_ONLY"]')
+    if variant != "gui":
+        manifest = manifest.replace('cdefines=["NS_GUI_STORAGE_ONLY"]', 'cdefines=["NS_ESP_INFO_ONLY"]')
     if (stage/"application.fam").is_symlink():
         raise RuntimeError("Staged manifest must not be a symlink")
     (stage/"application.fam").write_text(manifest)
@@ -78,8 +88,12 @@ def main():
         raise RuntimeError("Preserved stable FAP unexpectedly changed")
     src = stage/"dist"/(appid+".fap")
     dst = ROOT/"dist"/(appid+".fap")
+    if dst.exists():
+        preserved = ROOT/"builds/preserved-artifacts"/digest(dst)
+        preserved.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(dst, preserved/dst.name)
     shutil.copy2(src, dst)
-    print("Built separate info-only FAP:", dst.name)
+    print("Built separate gated FAP:", dst.name)
     print("Bytes:", dst.stat().st_size, "SHA256:", digest(dst))
     print("Stable FAPs unchanged; no device operation performed")
 

@@ -31,7 +31,7 @@ Generated staged application.fam uses appid netsentinel_development, title NetSe
 
 ## Package evidence
 
-Final JSON is in ignored logs/v1-final-package.json: filename, actual size/SHA-256, manifest name/version/icon/flags, API/target/stack, every actual import and physical_test=false. Validator checks exact 86-byte permitted Momentum manifest layout, magic/version, ARM ELF32 little-endian relocatable EABI5, API 87.1, target 7, stack 8192, development app version/name, no icon/flags, and Thumb entry matching defined netsentinel_app. Every required import must be enabled in the checksummed supplied table; weak imports are rejected. Unexpected SPI/Sub-GHz/power/USB/direct GPIO/registry or unbounded UART-wait imports fail. This supplements real SDK compile/link/APPCHK; it does not bypass loader checks or edit metadata.
+Final JSON is in ignored logs/v1-final-package.json: filename, actual size/SHA-256, manifest name/version/icon/flags, API/target/stack, every actual import and physical_test=false. Validator checks exact 86-byte permitted Momentum manifest layout, magic/version, ARM ELF32 little-endian relocatable EABI5, API 87.1, target 7, stack 8192, development app version/name, the exact bundled 10x10 icon (or legacy no-icon metadata), zero flags, and Thumb entry matching defined netsentinel_app. Every required import must be enabled in the checksummed supplied table; weak imports are rejected. Unexpected SPI/Sub-GHz/power/USB/direct GPIO/registry or unbounded UART-wait imports fail. This supplements real SDK compile/link/APPCHK; it does not bypass loader checks or edit metadata.
 
 Build evidence: logs/v1-final-host.log, v1-final-short.log, v1-final-sanitize.log, v1-final-build.log, live-info-build.log, v1-final-preflight.log and v1-final-publication.log. All are local/ignored. Build logs may be replaced by later verification; preserve a checksum/evidence snapshot before proposing a different artifact. Fresh packaging can produce a different checksum, so always validate the exact final file; no byte-for-byte reproducibility claim is made.
 
@@ -39,16 +39,24 @@ Build evidence: logs/v1-final-host.log, v1-final-short.log, v1-final-sanitize.lo
 
 | Field | Verified result |
 |---|---|
-| Source milestone | a65d0da (subsequent build-evidence documentation only) |
+| Source milestone | Application icon integration milestone (based on a65d0da source) |
 | Artifact | dist/netsentinel_development.fap |
 | Size | 43,800 bytes |
-| SHA-256 | dbbd5be6eb5f4c3dac1994a76dc4ac100ba8b1b9cb2345461deae62ca5da4987 |
+| SHA-256 | 4a070c082700ad7ec2188a360d98ce4ba8fb928a0d76ef0c20079b643c8cf82d |
 | API / target / stack | 87.1 / 7 / 8192 |
 | Required imports / weak imports | 63 / 0 |
 | SDK compile/link/APPCHK | Passed; no compiler/linker errors |
 | Host / short enums / sanitizer | All 12 C suites passed |
-| Python checks | 8 preflight, 5 manifest, 4 publication tests passed |
+| Python checks | 8 preflight, 6 manifest, 5 publication tests passed |
 | Hardware operations | USART info only; other physical features disabled |
 | Physical validation | Not performed on this development artifact |
 
-Stable GUI/storage, ESP Info and ESP diagnostics checksums match builds/preserved-v1-start/checksums.json. The preceding unified development artifact and stable FAPs are also preserved under builds/preserved-0564846. No device data was accessed or rewritten. All seeded fuzz, counter/capacity, RXOFF and no-SD/stop-framing tests pass. Local sanitizer leak detection is disabled; ASan/UBSan ran. Public dependency findings are in DEPENDENCY_REVIEW.md. Packaging hashes can vary; this evidence applies to the exact file above, not another rebuild. No deployment/Release is authorized.
+The pre-icon stable GUI/storage, ESP Info and ESP diagnostics binaries remain preserved with their original checksums under builds/preserved-v1-start and builds/preserved-before-icon; current dist variants now include the icon. The preceding unified development artifact and stable FAPs are also preserved under builds/preserved-0564846. No device data was accessed or rewritten. All seeded fuzz, counter/capacity, RXOFF and no-SD/stop-framing tests pass. Local sanitizer leak detection is disabled; ASan/UBSan ran. Public dependency findings are in DEPENDENCY_REVIEW.md. Packaging hashes can vary; this evidence applies to the exact file above, not another rebuild. No deployment/Release is authorized.
+
+## Bundled application icon
+
+All manifests use `fap_icon="assets/netsentinel_icon.png"`. The owner-supplied PNG is 10x10, one-bit grayscale, black/white only, with no ancillary metadata. The SDK encodes it into the FAP metadata; no runtime asset path is needed. The source artwork is retained for attribution/editing. Publication permits only the two reviewed artwork checksums; modified or unrelated binary assets fail the audit.
+
+Build each variant with `python3 scripts/build_esp_info.py --variant gui|info|diagnostics|development` (choose one value). The default remains diagnostics and `--development` remains supported. GUI uses NS_GUI_STORAGE_ONLY; the other variants retain NS_ESP_INFO_ONLY. All staged builds copy the bundled icon. Prior overwritten artifacts are preserved by checksum under ignored builds/preserved-artifacts; the complete pre-icon snapshot is builds/preserved-before-icon. No settings or device files are touched.
+
+The current icon development build is not physically tested or authorized for deployment. The prior artifact evidence remains in local snapshots and historical milestones.

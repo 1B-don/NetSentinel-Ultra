@@ -35,6 +35,14 @@ class PublicationAudit(unittest.TestCase):
             with self.subTest():
                 self.run_case('config.txt', content, False)
 
+    def test_reviewed_artwork(self):
+        root = AUDIT.parents[1]
+        for name in ("netsentinel_icon.png", "netsentinel_icon_source.png"):
+            content = (root/"assets"/name).read_bytes()
+            self.run_case("assets/"+name, content, True)
+            self.run_case("assets/"+name, content+b"unexpected metadata", False)
+        self.run_case("assets/unreviewed.png", b"unknown\x00image", False)
+
     def test_binary(self):
         self.run_case('payload.dat', b'invented\x00binary', False)
 

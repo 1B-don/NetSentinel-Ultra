@@ -9,6 +9,7 @@ App(
     cdefines=["NS_GUI_STORAGE_ONLY"],
     fap_version="1.0",
     fap_category="GPIO",
+    fap_icon="assets/netsentinel_icon.png",
     fap_description="Receive-only diagnostics; v1.0 development; physical adapters gated",
     fap_author="Brandon Midgette",
     sources=["ap_parser.c", "ns_analysis.c", "src/core/*.c", "src/flipper/*.c"],

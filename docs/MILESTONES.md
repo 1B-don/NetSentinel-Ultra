@@ -165,3 +165,13 @@ Fuzz now mixes valid seeds, seeded mutations and random inputs, asserts more tha
 ## Source-verified receive protocol and dependency resolution
 
 Resolved status variants and stop framing against pinned public Marauder 1.11.0 source. Added consistent no-SD/disabled-WSL info parsing, complete identity gating, stop-message validation, direct radio-counter cleanup and status-only RXOFF-policy checks. All 12 C suites, 17 Python checks, short enums, ASan/UBSan and Momentum build/63-import checks pass. Research found SavePCAP defaults true and generic CC driver presence/frequency calls are not uniformly read-only/bounded; live observation/external ports remain blocked. DEPENDENCY_REVIEW.md and the current matrix identify exact missing inputs. README/MARAUDER documentation now describe current behavior rather than stale historical claims. Stable FAPs/data preserved; no deployment or Release. Normal GitHub publication still fails DNS.
+
+## Application icon integration — 2026-10-13
+
+Verified owner PNG: 10x10, mode 1, 38 black/62 white pixels, no ancillary metadata. Added the manifest icon and staged asset copying for all four variants without changing radio gates. Preserved all pre-icon FAPs/checksums and added automatic checksum-based preservation on subsequent builds. Strict FAP checks validate the exact SDK-generated 21-byte bitmap plus metadata padding; legacy no-icon artifacts remain accepted. Publication audit accepts only exact reviewed artwork hashes.
+
+Passed 12 C suites, 19 Python checks, short-enum and ASan/UBSan checks, Momentum API 87.1/target 7 clean compilation/APPCHK, preflight and publication audit. All four variants contain the icon; development has 63 validated imports, 43,800 bytes, SHA-256 4a070c082700ad7ec2188a360d98ce4ba8fb928a0d76ef0c20079b643c8cf82d. No deployment, firmware, device storage or radio behavior changes.
+
+- netsentinel.fap: 42060 bytes, 50 imports, SHA-256 `7da75cc47e8a40d0e9e329b30ae8046b9210ae6f4835644ff8e7a68d134ad9bf`.
+- netsentinel_esp_info.fap: 43796 bytes, 63 imports, SHA-256 `26acb974a432058d1c771a182f73652935c268bc17aecc7a595d6701c722e59c`.
+- netsentinel_esp_diagnostics.fap: 43804 bytes, 63 imports, SHA-256 `6d0f3199df8d23fcb12f033063e6e6e95e20f893a00db9772c07ed1b6d606a93`.

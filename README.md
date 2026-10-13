@@ -31,3 +31,5 @@ Use the [user guide](docs/USER_GUIDE.md), [current readiness matrix](docs/V1_REA
 ## Publication
 
 [GitHub](https://github.com/1B-don/NetSentinel-Ultra) is the primary repository. [AGENTS.md](AGENTS.md) requires tested, privacy-audited commits and normal fast-forward pushes. If DNS prevents publication, commits remain local without repeated retries. Binaries, runtime logs, captures, SDK inputs and private editor configuration are never published; no GitHub Release precedes complete hardware verification and explicit approval.
+
+The application now bundles the owner-supplied 10x10 monochrome icon in GUI, ESP Info, ESP Diagnostics and development builds. See [build instructions](docs/V1_BUILD.md) for variant selection and preserved artifact evidence. Feature gates are unchanged; no new device deployment has occurred.

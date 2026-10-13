@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """Conservative staged/current-tree audit. Complements manual privacy review."""
+import hashlib
 import re
 import subprocess
 import sys
 from pathlib import PurePosixPath
+
+# Exact owner-supplied artwork reviewed for metadata and identifying content.
+REVIEWED_ASSETS = {
+    "assets/netsentinel_icon.png": "a3cdd9430a87d3acf17691667201a4ba759b740464b160dad00abc9eb851b646",
+    "assets/netsentinel_icon_source.png": "322e3b3bfbcd2da8c773781adbcc28f2073d0a09a597ee616abb484ee0af1801",
+}
 
 FORBIDDEN_DIRS = {'logs', 'build', 'builds', 'dist', '.venv', '__pycache__', '.pytest_cache'}
 FORBIDDEN_SUFFIXES = {'.fap', '.elf', '.o', '.bin', '.pcap', '.pcapng', '.csv', '.log', '.pem', '.key'}
@@ -32,6 +39,10 @@ def main():
             content = git('show', ':'+path)
         except subprocess.CalledProcessError:
             problems.append((path, 'unreadable staged file'))
+            continue
+        if path in REVIEWED_ASSETS:
+            if hashlib.sha256(content).hexdigest() != REVIEWED_ASSETS[path]:
+                problems.append((path, 'reviewed artwork checksum changed'))
             continue
         if b'\0' in content:
             problems.append((path, 'binary file requires review'))

@@ -8,6 +8,8 @@ import struct
 import subprocess
 import sdk_preflight
 ROOT = Path(__file__).resolve().parents[1]
+# Reviewed SDK file2image output for the bundled 10x10 one-bit PNG.
+EXPECTED_ICON = bytes.fromhex("00fc000201310249022102710212012a01c4007800").ljust(32, b"\0")
 
 def metadata(data):
     if len(data) < 52 or data[:7] != b'\x7fELF\x01\x01\x01':
@@ -44,10 +46,12 @@ def metadata(data):
         raise ValueError('unterminated application name')
     raw_name, padding = name.split(b'\0', 1)
     allowed = (b'NetSentinel Ultra', b'NetSentinel ESP Info', b'ESP Diagnostics v0.2', b'NetSentinel Ultra Dev')
-    if raw_name not in allowed or any(padding) or app_version != 0x00010000 or any(manifest[52:]):
+    if raw_name not in allowed or any(padding) or app_version != 0x00010000 or manifest[85] != 0:
+        raise ValueError('unexpected name/app version/icon/flags metadata')
+    if manifest[52] not in (0, 1) or manifest[53:85] != (EXPECTED_ICON if manifest[52] else bytes(32)):
         raise ValueError('unexpected name/app version/icon/flags metadata')
     return {'api': f'{major}.{minor}', 'target': target, 'stack': stack,
-            'app_version': '1.0 development', 'name': raw_name.decode('ascii'), 'icon': False, 'flags': 0}
+            'app_version': '1.0 development', 'name': raw_name.decode('ascii'), 'icon': bool(manifest[52]), 'flags': 0}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
