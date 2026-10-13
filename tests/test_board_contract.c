@@ -6,11 +6,17 @@ int32_t netsentinel_app(void*);
 static Mock board;
 static unsigned binds, unbinds;
 static bool incomplete, fail_bind;
+static NsResult acquire_failure;
+static NsResult checked_acquire(void* ctx, NsRadio radio) {
+    if(acquire_failure != NS_OK) return acquire_failure;
+    return acquire(ctx, radio);
+}
 static void safe_release(void* ctx, NsRadio radio) {
     Mock* m = ctx; m->frequency = 0; m->ce = false; release(ctx, radio);
 }
 bool ns_flipper_board_bind(NsBoardPort* port) {
     binds++; port->io = platform(&board); port->io.release = safe_release;
+    port->io.acquire = checked_acquire;
     port->nrf = port->cc = true;
     if(incomplete) port->io.cc_rssi = NULL;
     return !fail_bind;
@@ -22,6 +28,39 @@ void ns_flipper_board_unbind(NsBoardPort* port) {
 static void reset(void) {
     mock_sdk_reset(); memset(&board, 0, sizeof(board)); board.rssi = -70;
     incomplete = fail_bind = false; binds = unbinds = 0;
+    acquire_failure = NS_OK;
+}
+static void ownership_recovery_and_repeated_cancel(void) {
+    reset();
+    NsFlipper f; assert(ns_flipper_init(&f));
+    const NsResult failures[] = {NS_BUSY, NS_IO, NS_TIMEOUT, NS_CANCELLED};
+    const NsRadio radios[] = {NS_RADIO_NRF, NS_RADIO_CC};
+    for(unsigned cycle = 0; cycle < 24; cycle++) {
+        NsRadio radio = radios[cycle % 2];
+        NsRadio other = radios[(cycle + 1) % 2];
+        acquire_failure = failures[cycle % 4];
+        unsigned acquired_before = board.acquired, released_before = board.released;
+        assert(f.platform.acquire(&f, radio) == acquire_failure);
+        assert(f.owner == NS_RADIO_NONE && board.owner == NS_RADIO_NONE);
+        f.platform.release(&f, radio);
+        assert(board.acquired == acquired_before && board.released == released_before);
+        acquire_failure = NS_OK;
+
+        /* A session stop is cancellation between finite provider calls. */
+        NsSession session; ns_session_init(&session, &f.platform, NULL);
+        assert(ns_session_start(&session, radio, false, true, cycle * 10) == NS_OK);
+        assert(f.platform.acquire(&f, other) == NS_BUSY);
+        f.platform.release(&f, other);
+        assert(f.owner == radio && board.owner == radio);
+        ns_session_stop(&session, cycle * 10 + 1);
+        assert(session.active == NS_RADIO_NONE && f.owner == NS_RADIO_NONE);
+        assert(!board.owner && !board.ce && !board.frequency);
+        assert(board.acquired == board.released);
+        ns_session_stop(&session, cycle * 10 + 2);
+        assert(board.acquired == board.released && board.released == released_before + 1);
+    }
+    ns_flipper_deinit(&f);
+    assert(binds == unbinds && !mock_sdk_live() && !mock_sdk_records());
 }
 static void port_lifecycle(void) {
     reset(); NsFlipper f; assert(ns_flipper_init(&f));
@@ -96,4 +135,4 @@ static void shell_radio_lifecycle(void) {
     assert(netsentinel_app(NULL) == 1 && board.acquired == board.released && !board.frequency);
     assert(binds == unbinds && !mock_sdk_live() && !mock_sdk_records());
 }
-int main(void) { port_lifecycle(); receive_only_boundary(); shell_radio_lifecycle(); puts("PASS: typed Flipper board bind, shared ownership, partial init, real GUI callback cancellation and forced cleanup (MOCK API)"); }
+int main(void) { port_lifecycle(); ownership_recovery_and_repeated_cancel(); receive_only_boundary(); shell_radio_lifecycle(); puts("PASS: typed Flipper board bind, shared ownership, partial init, real GUI callback cancellation and forced cleanup (MOCK API)"); }

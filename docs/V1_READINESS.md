@@ -39,6 +39,8 @@ Target: permitted Momentum Dev d3f89dfe SDK, API 87.1, hardware target 7. No new
 
 ## Exact remaining inputs
 
+The [hardware architecture decision](HARDWARE_ARCHITECTURE.md) evaluates registry/plugin services, direct diagnostics, RPC brokers and bridges. No existing exported interface establishes finite shared ownership for NRF24 or a bounded external CC provider lifecycle. The physical gates remain open; new typed-board contention/cancellation tests verify software cleanup only.
+
 [Dependency review](DEPENDENCY_REVIEW.md) and [Hardware Integration M1](HARDWARE_INTEGRATION_M1.md) contain sources and the milestone inventory. Obtain an independently permitted manufacturer signal/net table for the actual Ultra V3 revision (SPI, NRF CE/CSN/IRQ, CC CS/GDO, selector and voltage circuitry). A separately approved owner power-off continuity check is an alternative; none performed here. For CC, obtain a permitted installed external plugin/provider implementation and reviewed receive-only preset with recoverable bounded init/calibration/ownership behavior; generic SDK exports or official-driver pin expectations are insufficient. For Wi-Fi, obtain installed-build/source correspondence and a verified passive-only lifecycle with peer-side raw capture prevented; do not provide credentials, complete settings dumps or packets.
 
 Nothing in software can establish unknown PCB routing, guarantee an opaque blocking driver deadline, prove installed RF silence or exercise physical cancellation without those inputs and separate approval. No guessed bindings, internal-radio fallback, firmware replacement, attack commands or synthetic live measurements were added. See SOFTWARE_COMPLETION.md for implemented audit fixes and V1_LIMITATIONS.md for release gates.
