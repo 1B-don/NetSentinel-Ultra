@@ -1,0 +1,9 @@
+name: Independent host regression
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make test
+      - run: make sanitize

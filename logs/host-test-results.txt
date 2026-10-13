@@ -1,0 +1,14 @@
+2026-10-12 — independent NetSentinel host development
+make test: PASS (parser, analysis, core)
+Compiler: cc, C11, -Wall -Wextra -Werror -pedantic
+Parser: 15 scenarios
+Core: SPI register safety and fault matrix, UART and storage mocks,
+CC measurements, lifecycle, settings and graph calculations
+ASAN_OPTIONS=detect_leaks=0 make sanitize: PASS (all three suites)
+AddressSanitizer: enabled
+UndefinedBehaviorSanitizer: enabled
+LeakSanitizer: unavailable in traced sandbox; not verified
+GitHub Actions: configured, not run
+FAP compile/link: NOT PERFORMED; concrete SDK adapter/UI absent
+Hardware: NOT TESTED
+Release: NOT PRODUCED

@@ -27,5 +27,10 @@ int main(void) {
     assert(!ns_parse_ap_line("RSSI: -44 Ch: 36 BSSID: 00:11:22:33:44:55 ESSID: 5G", &ap));
     assert(!ns_parse_ap_line("RSSI: -44 Ch: 3 BSSID: not-a-mac ESSID: test", &ap));
     assert(!ns_parse_ap_line("[0][CH:3] no rssi", &ap));
-    puts("PASS: 10 Marauder parser scenarios");
+    assert(!ns_parse_ap_line("[x][CH:3] bad -50", &ap));
+    assert(!ns_parse_ap_line("[0][CH:3x] bad -50", &ap));
+    assert(!ns_parse_ap_line("[0][CH:3] bad -50x", &ap));
+    assert(!ns_parse_ap_line("[0][CH:3] bad -9999999999999999999999999", &ap));
+    assert(!ns_parse_ap_line(NULL, &ap));
+    puts("PASS: 15 Marauder parser scenarios");
 }

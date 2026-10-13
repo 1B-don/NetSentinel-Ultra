@@ -1,6 +1,7 @@
 #include "ap_parser.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,8 +16,9 @@ static bool ns_parse_int(const char* p, long* value) {
     p = ns_skip_space(p);
     if(!*p) return false;
     char* end = NULL;
+    errno = 0;
     long number = strtol(p, &end, 10);
-    if(end == p) return false;
+    if(end == p || errno == ERANGE || (*end && !isspace((unsigned char)*end) && *end != ']')) return false;
     *value = number;
     return true;
 }
@@ -109,6 +111,9 @@ bool ns_parse_ap_line(const char* line, NsAccessPoint* out) {
     if(*p != '[') return false;
     const char* end_index = strchr(p, ']');
     if(!end_index || end_index == p + 1 || end_index[1] != '[') return false;
+    for(const char* digit = p + 1; digit < end_index; digit++) {
+        if(!isdigit((unsigned char)*digit)) return false;
+    }
     const char* header = end_index + 2;
     if(strncmp(header, "CH:", 3) && strncmp(header, "Ch:", 3)) return false;
     if(!ns_parse_int(header + 3, &ch) || ch < 1 || ch > 14) return false;
