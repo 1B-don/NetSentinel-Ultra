@@ -2,7 +2,9 @@
 
 NetSentinel now compiles and packages a real GUI/storage-only FAP using the independently permitted official SDK **1.4.3**. Compilation, linking and SDK import validation pass. **Compatibility with installed Momentum d3f89dfe and physical operation are unverified.** No deployment or v1.0 release occurred; the restricted checkout remains untouched.
 
-Artifact: `dist/netsentinel.fap` (33,480 bytes), hardware target 7 / API 87.1. See [full build result](docs/BUILD_RESULT.md) for provenance, hash, logs and remaining verification.
+Artifact: `dist/netsentinel.fap` (33,484 bytes), hardware target 7 / API 87.1. See [full build result](docs/BUILD_RESULT.md) for provenance, hash, logs and remaining verification.
+
+First on-device test is prepared in [the approval-gated test procedure](docs/FIRST_DEVICE_TEST.md). Package structure/imports are verified against the official SDK; exact installed-Momentum API/export evidence remains missing. No installation or launch has occurred.
 
 ## Build and tests
 

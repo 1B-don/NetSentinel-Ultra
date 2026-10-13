@@ -50,3 +50,7 @@ A ninth host C suite compiles the actual Flipper/core sources with `NS_GUI_STORA
 ## Official SDK build evidence
 
 A real clean uFBT 0.2.6 build using permitted official SDK 1.4.3 compiled all 12 source files, linked, packaged `dist/netsentinel.fap` and passed APPCHK (target 7, API 87.1). All 49 final imports are enabled in the official export table, with no serial HAL imports. This is actual build evidence; physical GUI/SD/resource checks and Momentum compatibility remain unverified. BUILD_RESULT.md records artifact size/hash, source commit and ignored logs. No deployment, firmware operation or radio activity occurred.
+
+## First device-test preparation milestone
+
+Direct package inspection and real official-SDK rebuild pass. Current FAP: 33,484 bytes, SHA256 `af74bfb1cdcc8fc3bf319d97b8fe056b563474cc39da223a1f87cd005ee37d30`, target 7 / API 87.1; all 49 packaged imports resolve officially. All 12 compiler commands retain GUI/storage-only mode. Nine host, short-enum and sanitizer suites plus eight preflight/four publication cases pass. No source changes, device operations or radio operations. Earlier binary fingerprints remain historical. See [first device-test procedure](FIRST_DEVICE_TEST.md) for exact compatibility evidence, missing permitted metadata and reversible, approval-gated GUI/storage checks. Momentum compatibility and physical verification remain pending. Remote master was verified at `42bdaec` before this milestone; earlier pending milestones are published.

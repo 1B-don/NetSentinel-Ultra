@@ -59,3 +59,7 @@ After that review, obtain explicit approval for deployment/launch. Transfer the 
 ## Regression checks
 
 Nine host C suites, eight SDK-preflight cases and four publication cases pass. Host short-enum variants and ASan/UBSan pass, with leak detection disabled in the local traced environment. Staged publication and whitespace audits pass; runtime/compiler logs and FAP binaries are excluded from publication.
+
+## First device-test preparation milestone
+
+Direct package inspection and real official-SDK rebuild pass. Current FAP: 33,484 bytes, SHA256 `af74bfb1cdcc8fc3bf319d97b8fe056b563474cc39da223a1f87cd005ee37d30`, target 7 / API 87.1; all 49 packaged imports resolve officially. All 12 compiler commands retain GUI/storage-only mode. Nine host, short-enum and sanitizer suites plus eight preflight/four publication cases pass. No source changes, device operations or radio operations. Earlier binary fingerprints remain historical. See [first device-test procedure](FIRST_DEVICE_TEST.md) for exact compatibility evidence, missing permitted metadata and reversible, approval-gated GUI/storage checks. Momentum compatibility and physical verification remain pending. Remote master was verified at `42bdaec` before this milestone; earlier pending milestones are published.
