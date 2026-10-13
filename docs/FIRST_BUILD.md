@@ -1,0 +1,45 @@
+# First NetSentinel build on Kubuntu
+
+The current manifest prepares GUI, navigation, settings/history and SD storage. All ESP32/NRF24/CC1101 capabilities are disabled with `NS_GUI_STORAGE_ONLY`. A successful first shell build is an integration checkpoint, not the completed three-radio v1.0 application.
+
+## What is verified locally
+
+- An ARM GCC 12.3.1 toolchain is present in the existing SDK-only cache. The available cache identifies **official firmware 1.4.3**, not the installed Momentum revision.
+- `ufbt` and `ufbt-bootstrap` are not on this session's PATH, and `python3 -m pip show ufbt` reports `Package(s) not found: ufbt`. No project-local uFBT executable was found. Your terminal may use another environment; report its executable path if you have installed it elsewhere.
+- The actual official 1.4.3 SDK manifest parser accepts `application.fam`: EXTERNAL type, `netsentinel_app`, version `(1, 0)`, 8 KiB stack, `NS_GUI_STORAGE_ONLY`, 12 source files. Tests/legacy are excluded. Empty `requires` and default targets are accepted. These fields do not supply missing link exports; actual target parser/linker validation remains pending.
+- All 12 sources previously compiled to ARM objects against that official SDK after short-enum fixes. There is no linked/packaged compatible FAP and no physical NetSentinel test.
+
+## Install the build command
+
+Run in your network-connected Kubuntu terminal:
+
+```sh
+cd ~/Projects/NetSentinel-Ultra
+python3 -m venv .venv
+.venv/bin/python -m pip install 'ufbt==0.2.6'
+.venv/bin/python -m pip show ufbt
+```
+
+If Python reports a venv/ensurepip setup error, retain the exact message before changing system packages. This keeps uFBT isolated from system Python. Official [uFBT instructions](https://github.com/flipperdevices/flipperzero-ufbt/blob/dev/README.md) document SDK-only builds and local/fixed-URL SDK inputs; normal first-run defaults use the official release SDK, which is not installed-Momentum compatibility evidence.
+
+## Obtain the one missing target input
+
+Ask the Momentum distributor for a permitted **f7 SDK-only archive** generated for commit `d3f89dfe2ef6b01839201598e9be1590cba80322`, with its revision provenance, checksum and usage instructions. The public [release listing](https://momentum-fw.dev/releases/) lists the short revision, but a specific compatible SDK download has not been validated here. The candidate third-party SDK index could not be reached from this environment. Do not copy from or use the restricted firmware checkout, clone around its restrictions, or substitute an unpinned development SDK.
+
+Place that permitted archive in `builds/sdk-input/` and provide its filename/provenance/instructions. Instructions must be reviewed before use. This is the smallest missing input to resume target build preparation; an exported API table alone cannot package an application.
+
+## Build after that input is verified
+
+The commands below use a placeholder archive name; run them only after its target and permitted use are confirmed:
+
+```sh
+export UFBT_HOME="$PWD/builds/ufbt"
+.venv/bin/ufbt update --local "$PWD/builds/sdk-input/authorized-sdk.zip"
+.venv/bin/ufbt
+```
+
+uFBT manages its required ARM/Python tools and puts the FAP in `dist`. The update can require network downloads. Do not run flash, flash_usb, launch or upload commands. Keep the full compiler/linker output local under ignored `logs`; report exact errors so fixes can be made in application source. `MANUAL_BUILD.md` covers export/import checks, build provenance and artifact hashes. No compatible SDK is available here, so these steps have not been performed.
+
+## First device test after a successful build
+
+Record application commit, SDK revision/API version, build log and FAP SHA256, and validate target/API metadata using the SDK's supported tooling. Obtain explicit approval before USB deployment or launch. Copy through the supported file-transfer workflow into `apps/GPIO`, then verify opening the app, navigation, saving/reloading a setting, history load and repeated exit without crashes/resource leaks. Record observed results and device logs locally. There is no radio testing in the initial configuration and no firmware update, erase or USB permission change is required.
