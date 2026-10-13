@@ -20,6 +20,8 @@ The current development artifact adds Monitor, Lab (offline), Simulation, and Ha
 
 Hardware Diagnostics now reports radio interface availability, route verification, software receiver core, simulation availability, physical enablement and explicit blockers separately. NRF24 and CC1101 cores remain host/mock-only; Wi-Fi observation remains blocked by Marauder's AP initialization and peer-side PCAP storage behavior. Owner reports the existing Momentum Read RAW app entered its external CC1101 receive UI at 433.92 MHz and showed RSSI fluctuation; this does not verify decoded RF or NetSentinel's CC adapter. See the [Hardware Integration Milestone 1 evidence](docs/HARDWARE_INTEGRATION_M1.md), [NRF24 hardware readiness review](docs/NRF24_HARDWARE.md) and [CC1101 development notes](docs/CC1101.md). The NRF read-only probe is software-tested but not integrated or physically enabled. Generic SDK/Sniffer pins do not establish the Ultra V3 SPI route.
 
+The Channel Scanner's published generic pinout agrees with Flipper's external SPI pins but does not establish Ultra V3 board routing. Its source-level init/teardown and the supplied seven-FAP symbol comparison remain pending because the provided static-analysis report was not present in the development workspace. See the NRF24 review for the exact limitation and required input.
+
 ## Implemented boundaries
 
 - GUI/controller own I/O on one worker; drawing reads bounded frames, Back is latched, queued/active queries cannot overlap, errors support safe retry and cleanup.
