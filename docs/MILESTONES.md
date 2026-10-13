@@ -85,3 +85,7 @@ Direct package inspection and real official-SDK rebuild pass. Current FAP: 33,48
 ## Confirmed API mismatch and public SDK candidate
 
 Owner confirms exact Momentum revision d3f89dfe2ef6b01839201598e9be1590cba80322, August 18, 2026, API 89.1, target 7. Official FAP API 87.1 remains a successful official build, not a target-compatible build. Public distributor lists a matching-short-revision SDK ZIP; one download fails with DNS/curl exit 6. Archive contents/instructions/full revision/API are unverified, so no matching-SDK rebuild is claimed. [SDK source and smallest manual input](MOMENTUM_SDK.md). No firmware/device operations, metadata overrides or radio changes.
+
+## Downloaded Momentum SDK validation milestone
+
+Downloaded ZIP SHA256 matches owner value `238db260ee7e8f6e9a79dd1c760e07a832351a7d92d896b4cb19082f8548b2c1`; all 626 members pass CRC and path/symlink checks. Component version is `mntm-dev-d3f89dfe` / f7; export table explicitly reports **87.1**, inconsistent with owner-confirmed installed API **89.1**. SDK switch/target rebuild stopped; no API 89.1 FAP generated. Official artifact/evidence preserved separately and existing cache untouched. [Exact inspected evidence and minimum resolution input](MOMENTUM_SDK.md). No radio changes, deployment, firmware operations or restricted-checkout access. Host, short-enum, sanitizer and publication regression suites remain passing.
