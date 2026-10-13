@@ -6,7 +6,7 @@ Artifact: `dist/netsentinel.fap` (33,484 bytes), hardware target 7 / API 87.1. S
 
 First on-device test is prepared in [the approval-gated test procedure](docs/FIRST_DEVICE_TEST.md). Package structure/imports are verified against the official SDK; exact installed-Momentum API/export evidence remains missing. No installation or launch has occurred.
 
-Owner device information confirms **Momentum API 89.1 / target 7**. The current FAP uses API 87.1 and is not validated for that firmware. The public revision-labelled SDK ZIP has now been validated: its export table declares API **87.1**, so SDK installation/rebuild is blocked by the confirmed API discrepancy. See [SDK investigation and minimum next input](docs/MOMENTUM_SDK.md).
+Owner device information confirms **Momentum API 89.1 / target 7**. The current FAP uses API 87.1 and is not validated for that firmware. The public revision-labelled SDK ZIP has now been validated: its export table declares API **87.1**, so SDK installation/rebuild is blocked by the confirmed API discrepancy. Read-only ELF inspection independently confirms its bundled loader and API reporter also use 87.1; the next step is the installed device’s built-in USB CLI `info` query. See [SDK investigation and minimum next input](docs/MOMENTUM_SDK.md).
 
 ## Build and tests
 

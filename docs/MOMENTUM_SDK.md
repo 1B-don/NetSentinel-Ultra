@@ -58,3 +58,33 @@ As requested, SDK installation and matching-target rebuild stop at this discrepa
 Minimum next input: distributor-confirmed SDK-only metadata/archive with API 89.1 attributable to the full installed revision, or authoritative clarification of why the downloaded revision-labelled SDK reports 87.1 while the installed device reports 89.1. Do not change the device firmware to resolve this. Once resolved, use an isolated SDK home, supported local ZIP update, clean app rebuild and packaged import/API checks with radios disabled.
 
 All nine host suites, short-enum variants and ASan/UBSan suites, eight SDK-preflight cases and four publication cases pass for this documentation/validation milestone. No application source changes or device tests occurred.
+
+## Read-only bundled firmware investigation
+
+The owner explicitly authorized inspecting the archive's `firmware.elf` in this milestone. It was extracted only to ignored `builds/sdk-investigation/` and examined with ARM nm/objdump plus bounded ELF section decoding. No execution, SDK update or flashing occurred. This authorization does not permit accessing any restricted checkout.
+
+| Independent bundled evidence | Observed result |
+|---|---|
+| SDK export table Version row | 87.1 |
+| `firmware_api_interface` at 0x080a3998 | Points to ELF API interface at 0x080a399c |
+| ELF API interface first two uint16 fields | major 87, minor 1 |
+| `furi_hal_info_get_api_version` at 0x08094ec4 | Instructions store constants 87 and 1 in output pointers |
+| Firmware version structure at 0x20000294 | Versioned structure magic BE40, format 1.1 |
+| Version strings | d3f89dfe / dev / 18-08-2026 / mntm-dev / Momentum |
+| Target and dirty flags | target 7, clean |
+
+Thus the bundled firmware loader, firmware API reporter and SDK table **internally agree on 87.1**. No internal export-version packaging mismatch was demonstrated. Embedded revision is abbreviated; full hash identity is not proved by that string. The supplied device report remains 89.1 and is not dismissed or overwritten. Possible device/distribution differences or a different displayed version field require evidence; no cause is assumed. The original firmware ELF and decoded evidence remain local/ignored (`logs/momentum-elf-evidence.json`, `logs/archive-info-disassembly.txt`).
+
+The [public development distribution directory](https://up.momentum-fw.dev/builds/firmware/dev/) still lists the supplied revision-labelled SDK. Searches of permitted distribution/release pages found no independently verified API 89.1 SDK for this revision and no authoritative mismatch explanation. This is a limited search result, not proof none exists. No repository source was accessed.
+
+### Loader policy
+
+[Official FAP documentation](https://developer.flipper.net/flipperzero/doxygen/apps_on_sd_card.html) specifies matching application/firmware API major versions; API major increments signify breaking changes, minor increments additions. It also requires actual imported-symbol resolution. Under that documented policy, an 87.x FAP is not made compatible with an 89.x loader merely because 89 is newer or both minor versions are 1. The bundled loader's manifest helpers compare the manifest major halfword at offset 10 with the API interface major field; this corroborates that major is considered but does not independently establish every installed Momentum loader decision. No checks were bypassed, and installed binary policy remains uninspected.
+
+### Smallest next action: independent device API confirmation
+
+Using the already configured USB CLI (for example the existing uFBT CLI or a serial terminal), issue only `info`, not launch/update/flash commands. In the bundled firmware, `cli_command_info` calls `furi_hal_info_get`; the latter calls `furi_hal_info_get_api_version` and formats major/minor API information. This is a built-in information query and needs no NetSentinel transfer. Keep raw output local, because info also includes identifiers. Share only the firmware commit/branch/date/target and the API major/minor fields (typically `firmware_api_major` and `firmware_api_minor`; preserve actual labels rather than guessing if they differ). Close other USB clients if the existing connection is busy; do not change permissions or firmware. No device query was performed by the agent.
+
+If this independently reports 87.1, reconcile it with the earlier 89.1 display before revising the compatibility gate; a permitted archive-based build may then proceed after that reconciliation. If it reports 89.1, retain the blocker and ask the distributor for API 89.1 SDK provenance for the installed image or an explanation why this revision's published SDK/bundled firmware report 87.1. A local build identifier alone does not guarantee identical APIs. No firmware replacement or relabelling is needed.
+
+Existing official build and tests remain intact. Nine host, short-enum and ASan/UBSan suites plus eight preflight/four publication cases pass. No new FAP build, deployment, RF operation or release was performed.
