@@ -61,3 +61,5 @@ Latest enum-validation rebuild passes with `-Werror` unchanged. Result-name inde
 ESP32 Diagnostics v0.2 is a separate, information-only experimental build with validated identity/SD details, query timing and an idle-only retry action. The preceding ESP Info hardware checklist has 7/8 owner-reported passes; active-request Back cancellation is pending. See [hardware checklist](docs/USART_HARDWARE_CHECKLIST.md) for artifact evidence and remaining tests. This build has not been deployed.
 
 Current v1.0 work follows the [readiness audit and sequential plan](docs/V1_READINESS.md). Stable artifacts are preserved; no intermediate deployment is authorized.
+
+The [development user guide](docs/USER_GUIDE.md) covers observation/history filters, private CSV exports and radio readiness. Build the separate unified development app with `python3 scripts/build_esp_info.py --development`, then validate it with `python3 scripts/validate_fap.py dist/netsentinel_development.fap`. Stable artifacts remain untouched.

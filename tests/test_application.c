@@ -271,6 +271,24 @@ static void test_cc_explorer(void) {
     disk.fail_write = false;
     assert(ns_app_key(&a, NS_KEY_RIGHT, 314) == NS_OK && !a.session.cc.samples && !a.session.cc.diagnostic_valid);
 }
+static void test_exports(void) {
+    Mock m={0}; StoreMock disk={0}; NsPlatform radio=platform(&m); NsStore io=store(&disk);
+    NsApplication a; assert(ns_app_init(&a,&radio,&io,(NsCapabilities){0})==NS_ABSENT);
+    a.saved.last_id=3; a.saved.history_count=2;
+    a.saved.history[0]=(NsHistory){1,UINT32_MAX-10,20,10,NS_RADIO_ESP,NS_OK};
+    a.saved.history[1]=(NsHistory){3,10,20,4,NS_RADIO_CC,NS_IO};
+    a.history_filter.radio=NS_RADIO_CC;
+    assert(ns_app_export_history(&a,100)==NS_OK && a.export_id==4 && a.saved.last_id==4);
+    assert(strstr(m.file,"history_result,radio_3,3,4,count") && !strstr(m.file,"radio_1"));
+    assert(m.acquired==0 && m.uart_calls==0 && m.closes==1);
+    a.info_pending=2;assert(ns_app_export_history(&a,101)==NS_BUSY && a.saved.last_id==4);
+    a.info_pending=0;m.fail_write=true;
+    assert(ns_app_export_history(&a,102)==NS_IO && a.saved.last_id==5 && m.closes==2 && a.export_id==4);
+    m.fail_write=false;m.fail_sync=true;
+    assert(ns_app_export_history(&a,103)==NS_IO && m.closes==3);
+    m.fail_sync=false;disk.fail_write=true;
+    assert(ns_app_export_history(&a,104)==NS_IO && m.closes==3 && a.saved.last_id==6);
+}
 int main(void) {
     assert(!strcmp(ns_result_name((NsResult)-1), "Unknown"));
     assert(!strcmp(ns_result_name((NsResult)(NS_FULL+1)), "Unknown"));
@@ -278,7 +296,7 @@ int main(void) {
     NsApplication invalid_key_app = {0}; invalid_key_app.running = true;
     assert(ns_app_key(&invalid_key_app, (NsKey)-1, 0) == NS_INVALID);
     assert(ns_app_key(&invalid_key_app, (NsKey)(NS_KEY_BACK+1), 0) == NS_INVALID);
- test_cc_explorer();
+ test_exports(); test_cc_explorer();
     test_persistence(); test_invalid_history_enums(); test_torn_writes(); test_app(); test_history_wrap_and_exhaustion(); test_recovery_and_cleanup(); test_readback_and_disabled();
     puts("PASS: application navigation, restart persistence, 420 torn writes, ID reservation and recovery");
 }

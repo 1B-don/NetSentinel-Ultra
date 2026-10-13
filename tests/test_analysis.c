@@ -19,10 +19,10 @@ int main(void) {
     assert(diff.new_aps == 1 && diff.missing_aps == 1 && diff.channel_changes == 1);
     char line[128];
     assert(ns_csv_ap(&a[0], line, sizeof(line)));
-    assert(strcmp(line, "\"alpha\",\"00:11:22:33:44:55\",1,-60\n") == 0);
+    assert(strcmp(line, "\"redacted\",\"\",1,-60\n") == 0);
     strcpy(a[0].ssid, "a,\"z");
     assert(ns_csv_ap(&a[0], line, sizeof(line)));
-    assert(strstr(line, "\"a,\"\"z\"") == line);
+    assert(!strstr(line,"a,") && !strstr(line,"00:11"));
     assert(!ns_csv_ap(&a[0], line, 7));
     puts("Analysis tests passed");
     return 0;

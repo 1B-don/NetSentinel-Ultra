@@ -106,10 +106,10 @@ static void test_uart(void) {
     mock_serial_feed((const uint8_t*)start, strlen(start)); assert(ns_app_step(&app, 50) == NS_OK);
     const char* ap = "-65 Ch: 3 00:11:22:33:44:55 ESSID: Test network\n";
     mock_serial_feed((const uint8_t*)ap, strlen(ap)); assert(ns_app_step(&app, 60) == NS_OK);
-    ns_app_frame(&app, &frame); assert(!strcmp(frame.rows[1], "Test network") && strstr(frame.rows[2], "Ch3 -65"));
+    ns_app_frame(&app, &frame); assert(strstr(frame.rows[1], "identifiers hidden") && strstr(frame.rows[2], "Ch3 -65"));
     assert(ns_app_key(&app, NS_KEY_LEFT, 70) == NS_OK && app.baseline_count == 1);
     assert(ns_app_key(&app, NS_KEY_RIGHT, 70) == NS_OK); ns_app_frame(&app, &frame);
-    assert(strstr(frame.rows[3], "00:11:22:33:44:55") && strstr(frame.rows[4], "not reported"));
+    assert(strstr(frame.rows[3], "hidden") && strstr(frame.rows[4], "not reported"));
     assert(ns_app_key(&app, NS_KEY_BACK, 80) == NS_BUSY && f.serial);
     assert(ns_app_key(&app, NS_KEY_BACK, 90) == NS_BUSY && app.running);
     const char* stop = "#stopscan\n> "; mock_serial_feed((const uint8_t*)stop, strlen(stop));

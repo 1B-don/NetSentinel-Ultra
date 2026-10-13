@@ -2,6 +2,7 @@
 """Build a separate info-only FAP using the owner's permitted Momentum SDK.
 No SDK update, firmware operation, hardware launch or network operation is requested.
 """
+import argparse
 import hashlib
 import json
 import os
@@ -18,6 +19,11 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--development", action="store_true", help="build the unified v1 development app with pending radios disabled")
+    args = parser.parse_args()
+    appid = "netsentinel_development" if args.development else "netsentinel_esp_diagnostics"
+    title = "NetSentinel Ultra Dev" if args.development else "ESP Diagnostics v0.2"
     if SDK_HOME.is_symlink() or (SDK_HOME/"current").is_symlink():
         raise RuntimeError("SDK home must be the reviewed independent cache")
     archive = ROOT/"builds/sdk-input/flipper-z-f7-sdk-mntm-dev-d3f89dfe.zip"
@@ -53,8 +59,8 @@ def main():
     manifest = (ROOT/"application.fam").read_text()
     if 'cdefines=["NS_GUI_STORAGE_ONLY"]' not in manifest:
         raise RuntimeError("Default manifest gate changed; inspect before building")
-    manifest = manifest.replace('appid="netsentinel"', 'appid="netsentinel_esp_diagnostics"')
-    manifest = manifest.replace('name="NetSentinel Ultra"', 'name="ESP Diagnostics v0.2"')
+    manifest = manifest.replace('appid="netsentinel"', f'appid="{appid}"')
+    manifest = manifest.replace('name="NetSentinel Ultra"', f'name="{title}"')
     manifest = manifest.replace('cdefines=["NS_GUI_STORAGE_ONLY"]', 'cdefines=["NS_ESP_INFO_ONLY"]')
     if (stage/"application.fam").is_symlink():
         raise RuntimeError("Staged manifest must not be a symlink")
@@ -69,8 +75,8 @@ def main():
                 stdout=log, stderr=subprocess.STDOUT, check=True)
     if digest(baseline) != before:
         raise RuntimeError("Default FAP unexpectedly changed")
-    src = stage/"dist/netsentinel_esp_diagnostics.fap"
-    dst = ROOT/"dist/netsentinel_esp_diagnostics.fap"
+    src = stage/"dist"/(appid+".fap")
+    dst = ROOT/"dist"/(appid+".fap")
     shutil.copy2(src, dst)
     print("Built separate info-only FAP:", dst.name)
     print("Bytes:", dst.stat().st_size, "SHA256:", digest(dst))

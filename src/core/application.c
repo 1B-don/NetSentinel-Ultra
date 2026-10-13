@@ -2,7 +2,7 @@
 #include "../../ns_analysis.h"
 #include <stdio.h>
 #include <string.h>
-static const char* const menu[] = {"Wi-Fi", "BLE", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics"};
+static const char* const menu[] = {"Wi-Fi", "BLE", "NRF24 activity", "CC1101 RSSI", "Settings", "History", "Diagnostics", "Filters", "CSV exports"};
 const char* ns_result_name(NsResult r) {
     static const char* const names[] = {"OK", "Invalid", "Busy", "Unsupported", "I/O failure", "Absent", "Timeout", "Full"};
     _Static_assert(sizeof(names)/sizeof(names[0]) == NS_FULL+1, "NsResult names must cover every result");
@@ -21,7 +21,7 @@ static void apply_settings(NsApplication* a) {
 }
 NsResult ns_app_init(NsApplication* a, const NsPlatform* io, const NsStore* store, NsCapabilities caps) {
     if(!a || !io || !store) return NS_INVALID;
-    memset(a, 0, sizeof(*a)); a->capabilities = caps; a->running = true;
+    memset(a, 0, sizeof(*a)); a->observation_filter = ns_observation_filter_default(); a->capabilities = caps; a->running = true;
     ns_saved_defaults(&a->saved);
     NsResult r = ns_persistence_load(&a->persistence, store, &a->saved);
     ns_session_init(&a->session, io, NULL);
@@ -36,7 +36,7 @@ NsResult ns_app_init(NsApplication* a, const NsPlatform* io, const NsStore* stor
 }
 NsResult ns_app_reload(NsApplication* a) {
     if(!a) return NS_INVALID;
-    if(a->session.active != NS_RADIO_NONE || a->history_dirty) return a->status = NS_BUSY;
+    if(a->session.active != NS_RADIO_NONE || a->info_pending || a->history_dirty) return a->status = NS_BUSY;
     NsSavedState next; NsPersistence loaded;
     NsResult r = ns_persistence_load(&loaded, a->persistence.io, &next);
     if(r == NS_OK || r == NS_ABSENT) {
@@ -74,6 +74,7 @@ NsResult ns_app_save_settings(NsApplication* a, const NsSettings* settings) {
 }
 static NsResult start_session(NsApplication* a, NsRadio radio, bool ble, bool confirmed, uint32_t now) {
     if(!a || !a->running) return NS_INVALID;
+    a->now_ms = now;
     if(a->session.active != NS_RADIO_NONE || a->info_pending) return a->status = NS_BUSY;
     if(radio == NS_RADIO_ESP) {
         if(ble || a->saved.settings.baud != 115200 || !a->capabilities.esp_uart || (a->session.wifi_request && !a->capabilities.esp_wifi_verified)) return a->status = NS_UNSUPPORTED;
@@ -230,6 +231,7 @@ static NsResult change_setting(NsApplication* a, bool increase) {
 NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
     /* All valid keys start at zero; unsigned conversion rejects negatives too. */
     if(!a || !a->running || (unsigned)key > NS_KEY_BACK) return NS_INVALID;
+    a->now_ms = now;
     if(key == NS_KEY_BACK) {
         NsResult r = ns_app_stop(a, now);
         if(a->page == NS_PAGE_HOME) {
@@ -241,13 +243,13 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
     }
     if(a->page == NS_PAGE_HOME) {
         if(key == NS_KEY_UP && a->menu) a->menu--;
-        if(key == NS_KEY_DOWN && a->menu < 6) a->menu++;
+        if(key == NS_KEY_DOWN && a->menu < 8) a->menu++;
         if(key == NS_KEY_OK) {
             a->status = NS_OK;
             if(a->menu < 4) {
                 a->selected = a->menu < 2 ? NS_RADIO_ESP : (a->menu == 2 ? NS_RADIO_NRF : NS_RADIO_CC);
                 a->ble = a->menu == 1; a->page = NS_PAGE_RADIO;
-            } else a->page = a->menu == 4 ? NS_PAGE_SETTINGS : (a->menu == 5 ? NS_PAGE_HISTORY : NS_PAGE_DIAGNOSTICS);
+            } else a->page = a->menu == 4 ? NS_PAGE_SETTINGS : (a->menu == 5 ? NS_PAGE_HISTORY : (a->menu == 6 ? NS_PAGE_DIAGNOSTICS : (a->menu == 7 ? NS_PAGE_FILTERS : NS_PAGE_EXPORTS)));
         }
     } else if(a->page == NS_PAGE_SELECTOR && key == NS_KEY_OK) {
         return ns_app_start(a, a->selected, a->ble, true, now);
@@ -279,7 +281,13 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
             a->info_view = (a->info_view + (key == NS_KEY_DOWN ? 1 : 2)) % 3;
         if(key == NS_KEY_LEFT) ns_app_baseline(a);
         if(key == NS_KEY_UP && a->ap_index) a->ap_index--;
-        if(key == NS_KEY_DOWN && a->ap_index+1 < a->session.ap_count) a->ap_index++;
+        if(key == NS_KEY_DOWN && !a->capabilities.esp_info_only) {
+            uint8_t indices[NS_AP_LIMIT]; size_t count = 0;
+            if(ns_observation_select(a->session.aps, a->session.ap_seen_ms, a->session.ap_count,
+               &a->observation_filter, now, indices, sizeof(indices), &count) == NS_OK && a->ap_index+1 < count) a->ap_index++;
+        }
+    } else if(a->page == NS_PAGE_RADIO && a->selected == NS_RADIO_NRF) {
+        if(key == NS_KEY_RIGHT) a->nrf_details = !a->nrf_details;
     } else if(a->page == NS_PAGE_RADIO && a->selected == NS_RADIO_CC) {
         uint32_t frequency = a->session.active == NS_RADIO_CC ? a->session.cc.frequency : a->saved.settings.cc_frequency_hz;
         if(key == NS_KEY_LEFT || key == NS_KEY_RIGHT) return ns_app_cc_tune(a,
@@ -305,8 +313,30 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
         if(key == NS_KEY_LEFT || key == NS_KEY_RIGHT) return change_setting(a, key == NS_KEY_RIGHT);
     } else if(a->page == NS_PAGE_HISTORY) {
         if(key == NS_KEY_UP && a->history_index) a->history_index--;
-        if(key == NS_KEY_DOWN && a->history_index+1 < a->saved.history_count) a->history_index++;
-    } else if(a->page == NS_PAGE_DIAGNOSTICS && key == NS_KEY_OK) return a->history_dirty ? (a->status = persist_history(a)) : ns_app_reload(a);
+        if(key == NS_KEY_DOWN && ns_history_select(&a->saved, &a->history_filter, a->history_index+1)) a->history_index++;
+        if(key == NS_KEY_RIGHT || key == NS_KEY_LEFT) {
+            a->history_filter.radio = (NsRadio)(((unsigned)a->history_filter.radio + (key == NS_KEY_RIGHT ? 1 : 3)) % 4);
+            a->history_index = 0;
+        }
+        if(key == NS_KEY_OK) { a->history_filter.failures_only = !a->history_filter.failures_only; a->history_index = 0; }
+    } else if(a->page == NS_PAGE_FILTERS) {
+        if(key == NS_KEY_UP && a->filter_setting) a->filter_setting--;
+        if(key == NS_KEY_DOWN && a->filter_setting < 2) a->filter_setting++;
+        if(key == NS_KEY_OK) { a->observation_filter = ns_observation_filter_default(); a->ap_index = 0; }
+        if(key == NS_KEY_RIGHT || key == NS_KEY_LEFT) {
+            bool up = key == NS_KEY_RIGHT;
+            if(a->filter_setting == 0) a->observation_filter.channel = (uint8_t)((a->observation_filter.channel+(up ? 1 : 14))%15);
+            else if(a->filter_setting == 1) {
+                int value = a->observation_filter.minimum_rssi + (up ? 5 : -5);
+                a->observation_filter.minimum_rssi = (int16_t)(value < -127 ? -127 : (value > 20 ? 20 : value));
+            } else {
+                uint32_t age = a->observation_filter.maximum_age_ms;
+                a->observation_filter.maximum_age_ms = up ? (age < 600000 ? age+10000 : 600000) : (age > 10000 ? age-10000 : 0);
+            }
+            a->ap_index = 0;
+        }
+    } else if(a->page == NS_PAGE_EXPORTS && key == NS_KEY_OK) return ns_app_export_history(a, now);
+    else if(a->page == NS_PAGE_DIAGNOSTICS && key == NS_KEY_OK) return a->history_dirty ? (a->status = persist_history(a)) : ns_app_reload(a);
     return NS_OK;
 }
 void ns_app_frame(const NsApplication* a, NsFrame* f) {
@@ -314,8 +344,8 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
     snprintf(f->rows[0], sizeof(f->rows[0]), "NetSentinel Ultra");
     snprintf(f->rows[5], sizeof(f->rows[5]), "%s", ns_result_name(a->status));
     if(a->page == NS_PAGE_HOME) {
-        unsigned first = a->menu < 4 ? 0 : 3;
-        for(unsigned i = 0; i < 4; i++) snprintf(f->rows[i+1], sizeof(f->rows[i+1]), "%c %s", a->menu == first+i ? '>' : ' ', menu[first+i]);
+        unsigned first = a->menu < 4 ? 0 : a->menu-3;
+        for(unsigned i = 0; i < 4; i++) snprintf(f->rows[i+1], sizeof(f->rows[i+1]), "%c %s", a->menu == first+i ? '>' : ' ', a->capabilities.esp_info_only && first+i == 0 ? "ESP32 diagnostics" : menu[first+i]);
     } else if(a->page == NS_PAGE_SELECTOR) {
         snprintf(f->rows[1], sizeof(f->rows[1]), "Set selector to %s", a->selected == NS_RADIO_NRF ? "NRF24" : "CC1101");
         snprintf(f->rows[2], sizeof(f->rows[2]), "Stop before changing it");
@@ -326,17 +356,25 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
         if(a->selected == NS_RADIO_ESP) {
             if(a->ble) snprintf(f->rows[1], sizeof(f->rows[1]), "BLE active scan: disabled");
             else if(a->session.ap_count) {
-                size_t index = a->ap_index < a->session.ap_count ? a->ap_index : 0;
-                const NsAccessPoint* ap = &a->session.aps[index];
-                uint8_t counts[14]; ns_channel_counts(a->session.aps, a->session.ap_count, counts);
-                NsDiff d = ns_diff(a->baseline, a->baseline_count, a->session.aps, a->session.ap_count);
-                snprintf(f->rows[1], sizeof(f->rows[1]), "%.32s", ap->ssid);
-                snprintf(f->rows[2], sizeof(f->rows[2]), "Ch%u %d dBm APs on ch:%u", ap->channel, ap->rssi, counts[ap->channel-1]);
-                snprintf(f->rows[3], sizeof(f->rows[3]), "New:%u Unseen:%u Moved:%u", d.new_aps, d.missing_aps, d.channel_changes);
-                snprintf(f->rows[4], sizeof(f->rows[4]), "RSSI min:%d max:%d", a->session.ap_min[index], a->session.ap_max[index]);
-                if(a->wifi_details) {
-                    snprintf(f->rows[3], sizeof(f->rows[3]), "BSSID: %.17s", ap->bssid[0] ? ap->bssid : "unknown");
-                    snprintf(f->rows[4], sizeof(f->rows[4]), "Security: %.23s", ap->security[0] ? ap->security : "not reported");
+                uint8_t indices[NS_AP_LIMIT]; size_t count = 0;
+                NsResult filtered = ns_observation_select(a->session.aps, a->session.ap_seen_ms,
+                    a->session.ap_count, &a->observation_filter, a->now_ms, indices, sizeof(indices), &count);
+                if(filtered != NS_OK || !count) {
+                    snprintf(f->rows[1], sizeof(f->rows[1]), "No observations match filters");
+                    snprintf(f->rows[4], sizeof(f->rows[4]), "Filters: channel/RSSI/age");
+                } else {
+                    size_t index = indices[a->ap_index < count ? a->ap_index : 0];
+                    const NsAccessPoint* ap = &a->session.aps[index];
+                    uint8_t counts[14]; ns_channel_counts(a->session.aps, a->session.ap_count, counts);
+                    NsDiff d = ns_diff(a->baseline, a->baseline_count, a->session.aps, a->session.ap_count);
+                    snprintf(f->rows[1], sizeof(f->rows[1]), "AP %u (identifiers hidden)", (unsigned)index+1);
+                    snprintf(f->rows[2], sizeof(f->rows[2]), "Ch%u %d dBm APs on ch:%u", ap->channel, ap->rssi, counts[ap->channel-1]);
+                    snprintf(f->rows[3], sizeof(f->rows[3]), "New:%u Unseen:%u Moved:%u", d.new_aps, d.missing_aps, d.channel_changes);
+                    snprintf(f->rows[4], sizeof(f->rows[4]), "RSSI min:%d max:%d", a->session.ap_min[index], a->session.ap_max[index]);
+                    if(a->wifi_details) {
+                        snprintf(f->rows[3], sizeof(f->rows[3]), "BSSID: hidden (RAM matching)");
+                        snprintf(f->rows[4], sizeof(f->rows[4]), "Security: %s", ap->security[0] ? "reported" : "not reported");
+                    }
                 }
             } else {
                 snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi %s", a->capabilities.esp_wifi_verified ? "passive adapter" : "command capture needed");
@@ -393,7 +431,18 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
             snprintf(f->rows[1], sizeof(f->rows[1]), "NRF24 sampled activity");
             f->bar_count = NS_NRF_CHANNELS;
             for(unsigned ch = 0; ch < NS_NRF_CHANNELS; ch++) f->bars[ch] = ns_graph_height(a->session.nrf.hits[ch], a->session.nrf.samples[ch], 22);
-            snprintf(f->rows[4], sizeof(f->rows[4]), "0-125  %lu observations", (unsigned long)a->session.observations);
+            NsActivitySummary summary;
+            if(a->nrf_details && ns_activity_summary(&a->session.nrf, &summary) == NS_OK) {
+                f->bar_count = 0;
+                snprintf(f->rows[2], sizeof(f->rows[2]), "Peak ch%u: %u%%", summary.peak_channel, summary.peak_percent);
+                snprintf(f->rows[3], sizeof(f->rows[3]), "Quiet ch%u: %u%%", summary.quiet_channel, summary.quiet_percent);
+                snprintf(f->rows[4], sizeof(f->rows[4]), "Measured %u/126; Right: plot", summary.measured_channels);
+            } else snprintf(f->rows[4], sizeof(f->rows[4]), "0-125 %lu samples; Right: stats", (unsigned long)a->session.observations);
+            if(!a->capabilities.nrf) {
+                f->bar_count = 0;
+                snprintf(f->rows[2], sizeof(f->rows[2]), "SPI/CE routing unverified");
+                snprintf(f->rows[4], sizeof(f->rows[4]), "Physical adapter blocked");
+            }
         } else {
             const NsCc* c = &a->session.cc;
             uint32_t frequency = c->frequency ? c->frequency : a->saved.settings.cc_frequency_hz;
@@ -411,7 +460,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 for(size_t i = 0; i < c->trace_count; i++) f->bars[i] = ns_cc_graph_height(c->trace[(first+i) % NS_CC_TRACE], 10);
                 snprintf(f->rows[4], sizeof(f->rows[4]), "Lo%d Hi%d >=%d:%u%%", c->minimum, c->maximum, NS_CC_THRESHOLD_DBM, ns_cc_above_percent(c, NS_CC_THRESHOLD_DBM));
             } else {
-                snprintf(f->rows[2], sizeof(f->rows[2]), "No measurements yet");
+                snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->capabilities.cc ? "No measurements yet" : "External RX adapter pending");
                 snprintf(f->rows[3], sizeof(f->rows[3]), "Left/Right: 100 kHz");
                 snprintf(f->rows[4], sizeof(f->rows[4]), "Up: preset Down: diagnostics");
             }
@@ -422,13 +471,24 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
         snprintf(f->rows[3], sizeof(f->rows[3]), "%c CC %lu Hz", a->setting == 2 ? '>' : ' ', (unsigned long)a->saved.settings.cc_frequency_hz);
         snprintf(f->rows[4], sizeof(f->rows[4]), "Left/Right: change + save");
     } else if(a->page == NS_PAGE_HISTORY) {
-        if(a->history_index < a->saved.history_count) {
-            const NsHistory* h = &a->saved.history[a->saved.history_count-1-a->history_index];
+        const NsHistory* h = ns_history_select(&a->saved, &a->history_filter, a->history_index);
+        snprintf(f->rows[0], sizeof(f->rows[0]), "History R%u %s", (unsigned)a->history_filter.radio, a->history_filter.failures_only ? "errors" : "all");
+        if(h) {
             snprintf(f->rows[1], sizeof(f->rows[1]), "Session %lu radio %u", (unsigned long)h->id, (unsigned)h->radio);
             snprintf(f->rows[2], sizeof(f->rows[2]), "%lu observations", (unsigned long)h->observations);
             snprintf(f->rows[3], sizeof(f->rows[3]), "Result: %s", ns_result_name(h->result));
             snprintf(f->rows[4], sizeof(f->rows[4]), "Duration %lu ms", (unsigned long)(h->ended_ms-h->started_ms));
         } else snprintf(f->rows[1], sizeof(f->rows[1]), "No completed sessions");
+    } else if(a->page == NS_PAGE_EXPORTS) {
+        snprintf(f->rows[1], sizeof(f->rows[1]), "Filtered numeric history CSV");
+        snprintf(f->rows[2], sizeof(f->rows[2]), "OK: export; no radio access");
+        snprintf(f->rows[3], sizeof(f->rows[3]), "Last export ID: %lu", (unsigned long)a->export_id);
+        snprintf(f->rows[4], sizeof(f->rows[4]), "SD apps_data/netsentinel");
+    } else if(a->page == NS_PAGE_FILTERS) {
+        snprintf(f->rows[1], sizeof(f->rows[1]), "%c Channel %u (0=all)", a->filter_setting == 0 ? '>' : ' ', a->observation_filter.channel);
+        snprintf(f->rows[2], sizeof(f->rows[2]), "%c Min RSSI %d dBm", a->filter_setting == 1 ? '>' : ' ', a->observation_filter.minimum_rssi);
+        snprintf(f->rows[3], sizeof(f->rows[3]), "%c Age %lu ms (0=all)", a->filter_setting == 2 ? '>' : ' ', (unsigned long)a->observation_filter.maximum_age_ms);
+        snprintf(f->rows[4], sizeof(f->rows[4]), "L/R change; OK clears (RAM)");
     } else {
         snprintf(f->rows[1], sizeof(f->rows[1]), "NRF:%s CC:%s", a->capabilities.nrf ? "port ready" : "no port", a->capabilities.cc ? "port ready" : "no port");
         snprintf(f->rows[2], sizeof(f->rows[2]), "CSV: %s", a->session.logging ? "open" : "closed");

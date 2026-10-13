@@ -43,19 +43,8 @@ NsDiff ns_diff(const NsAccessPoint* before, size_t n_before,
 }
 
 bool ns_csv_ap(const NsAccessPoint* ap, char* out, size_t cap) {
-    if(!ap || !out || cap == 0) return false;
-    size_t i = 0;
-#define ADD_CH(c) do { if(i + 1 >= cap) return false; out[i++] = (c); } while(0)
-    ADD_CH('"');
-    for(const char* p = ap->ssid; *p; ++p) {
-        if(*p == '"') ADD_CH('"');
-        ADD_CH(*p);
-    }
-    ADD_CH('"'); ADD_CH(','); ADD_CH('"');
-    for(const char* p = ap->bssid; *p; ++p) { if(*p == '"') ADD_CH('"'); ADD_CH(*p); }
-    ADD_CH('"');
-    int n = snprintf(out + i, cap - i, ",%u,%d\n", ap->channel, ap->rssi);
-    if(n < 0 || (size_t)n >= cap - i) return false;
-#undef ADD_CH
-    return true;
+    if(!ap || !out || !cap || ap->channel < 1 || ap->channel > 14 || ap->rssi < -127 || ap->rssi > 20) return false;
+    /* Never inspect or serialize identity strings, even malformed arrays. */
+    int n = snprintf(out, cap, "\"redacted\",\"\",%u,%d\n", ap->channel, ap->rssi);
+    return n >= 0 && (size_t)n < cap;
 }

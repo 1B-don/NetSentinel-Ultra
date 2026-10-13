@@ -143,3 +143,7 @@ Next hardware verification requires separate approval of this exact artifact: ch
 ## v1.0 readiness audit
 
 Audited the actual cores, adapter gates, UI, persistence and tests; preserved all current FAPs/checksums locally. Recorded sequential implementation work and exact passive/SPI dependencies in V1_READINESS.md. This milestone does not enable hardware or declare v1.0 complete. Existing host, short-enum, sanitizer and actual Momentum import evidence remains passing.
+
+## Bounded observations, history filtering and private exports
+
+Implemented the observation/storage milestone described in V1_READINESS.md and USER_GUIDE.md. Stable artifacts preserved, only a separate unified development artifact built. Existing persistence format unchanged. Tests now include eleven C suites and strict FAP metadata tests. Actual SDK build succeeds; no device deployment or new physical claims. Publication remains unavailable due to GitHub DNS; prior and new commits retained.

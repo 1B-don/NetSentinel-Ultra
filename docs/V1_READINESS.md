@@ -37,3 +37,7 @@ NRF register-level receive behavior is encoded and tested: CONFIG PRIM_RX before
 ## Release gate
 
 Full three-radio functionality is blocked by the above inputs. Software mocks and a packaged development FAP do not establish hardware completeness. No v1.0 Release until implemented capabilities, passive review, compatible SDK build, physical checklist and explicit owner approval are all satisfied. Existing licensing/provenance requirements remain applicable.
+
+## Observation and storage milestone
+
+Implemented bounded channel/RSSI/age filters, filtered newest-first history and numeric history CSV exports with pre-create ID reservation, exclusive creation and cleanup on every storage fault. Added NRF measured-channel peak/quiet summaries, blocked-adapter explanations, and a private AP UI/CSV path. Filters are deliberately volatile; existing NSP1 settings/history schema remains compatible. Added tests for age wrap, invalid measurements, small-buffer transactionality, filtered UI, storage failures, ownership exclusion and actual FAP metadata mutation. Eleven C suites, short enums, sanitizer, preflight/publication tests and matching SDK build/import checks pass. Physical bindings remain blocked; full feature completeness is not claimed.
