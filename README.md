@@ -1,6 +1,8 @@
 # NetSentinel Ultra — independent v1.0 development
 
-Source development for Flipper Zero and FlipMods Ultra V3. No v1.0 release, real SDK build, verified FAP, or NetSentinel physical hardware test exists. The restricted Momentum checkout remains untouched.
+NetSentinel now compiles and packages a real GUI/storage-only FAP using the independently permitted official SDK **1.4.3**. Compilation, linking and SDK import validation pass. **Compatibility with installed Momentum d3f89dfe and physical operation are unverified.** No deployment or v1.0 release occurred; the restricted checkout remains untouched.
+
+Artifact: `dist/netsentinel.fap` (33,476 bytes), hardware target 7 / API 87.1. See [full build result](docs/BUILD_RESULT.md) for provenance, hash, logs and remaining verification.
 
 ## Build and tests
 
@@ -10,7 +12,7 @@ make test
 make sanitize
 ```
 
-In this traced sandbox use `ASAN_OPTIONS=detect_leaks=0 make sanitize`. Address/undefined-behavior checks run; leak detection is unavailable. Eight suites cover the imported parser/analysis, portable radio/session core, application/persistence integration, and Flipper GUI/storage contract shims. Shims are independent test doubles and cannot validate actual SDK declarations or ABI. Remote CI is configured but not run here.
+In this traced sandbox use `ASAN_OPTIONS=detect_leaks=0 make sanitize`. Address/undefined-behavior checks run; leak detection is unavailable. Nine C suites plus eight SDK-preflight and four publication cases cover the imported parser/analysis, portable radio/session core, application/persistence integration, and Flipper GUI/storage contract shims. Shims are independent test doubles and cannot validate actual SDK declarations or ABI. Remote CI is configured but not run here.
 
 ## Implemented in source
 
@@ -32,7 +34,7 @@ Up/Down selects a dashboard item; OK opens it; Back returns or exits. On NRF/CC 
 
 ## Remaining verification
 
-Real SDK compilation/exported ABI, on-device GUI/heap/thread checks, authorized external-radio callbacks and verified board wiring, actual SD/power-loss behavior, RF timing/detection/RSSI, passive ESP32 firmware commands and BLE parsing, and approved deployment/launch. The current GUI/storage-only manifest disables UART acquisition and all radio capabilities; the preserved nonminimal configuration supports explicit device-info requests while scanning stays gated. It does not change GPIO power or acquire NRF/CC by default.
+Installed Momentum exported ABI/loader compatibility, on-device GUI/heap/thread checks, authorized external-radio callbacks and verified board wiring, actual SD/power-loss behavior, RF timing/detection/RSSI, passive ESP32 firmware commands and BLE parsing, and approved deployment/launch. The current GUI/storage-only manifest disables UART acquisition and all radio capabilities; the preserved nonminimal configuration supports explicit device-info requests while scanning stays gated. It does not change GPIO power or acquire NRF/CC by default.
 
 See [adapter contract](adapters/README.md), [manual compilation](docs/MANUAL_BUILD.md), [verification matrix](docs/VERIFICATION.md), [persistence format](docs/PERSISTENCE.md), [provenance](docs/PROVENANCE.md) and [milestones](docs/MILESTONES.md).
 
@@ -40,20 +42,8 @@ See [adapter contract](adapters/README.md), [manual compilation](docs/MANUAL_BUI
 
 [GitHub](https://github.com/1B-don/NetSentinel-Ultra) is the primary development repository. [AGENTS.md](AGENTS.md) makes tested, privacy-reviewed milestone commits and normal verified pushes persistent. Raw logs, captures, binaries and private configuration stay local. Published history is preserved; earlier local log-bearing checkpoints are not pushed. [SDK requirements](docs/SDK_INTERFACES.md) records the exact current symbol inventory and unresolved hardware bindings.
 
-The application now isolates the optional board port from GUI/storage/UART, validates advertised callbacks, enforces shared radio ownership, routes tests through actual GUI input callbacks and preserves Back cancellation when the input queue is full. Both default and board-enabled Flipper source variants compile against mocks; real SDK compilation remains pending.
+The initial manifest defines `NS_GUI_STORAGE_ONLY`: GUI/navigation/settings/history/storage are compiled, while all radio capabilities and serial HAL imports are disabled. The complete radio/UART source and receive-only guards remain available for later verified integration. Both preserved hardware source variants and the minimal configuration pass host tests.
 
-Milestone `ab8e708` was published by the owner and independently verified on GitHub. Automatic normal pushes remain enabled; shell Git still cannot resolve GitHub in this execution environment as of the current check.
+uFBT 0.2.6 is installed at `~/flipper-build-env/bin/ufbt`; ARM GCC 12.3.1 and the official 1.4.3 SDK reside in the existing SDK-only cache. A clean real build compiled all 12 translation units, linked, generated the FAP and passed APPCHK with 49 final imports supported by official API 87.1. This does not certify the Momentum target. `make short-enums` retains coverage for the ARM compiler failure fixed earlier.
 
-The NRF SPI adapter now rejects payload/TX commands, carrier mode, auto-ACK/retries and unsupported register operations before board callbacks. Exhaustive command/value rejection checks and a complete 126-channel scan pass against mocks. This guard does not establish physical SPI operation or firmware ABI compatibility.
-
-Build readiness now includes `make sdk-preflight` for a permitted owner-provided target export table, before the manual SDK compile/link stage. No target export input is currently available. GUI shutdown clears draw/input callbacks and detaches the viewport before session/storage teardown; existing mock lifecycle and failure tests enforce cleared callbacks at viewport free.
-
-[Remaining build blockers](docs/BUILD_BLOCKERS.md) separates all seven requested categories and the minimum authorized SDK/toolchain inputs. The default shell can be compiled before physical RF tests or complete NRF/CC bindings once a permitted compatible SDK is available; a shell-only FAP does not complete the three-radio application. No target compile/link or installation has yet occurred.
-
-SDK preflight can also check an actual ARM ELF undefined-symbol listing against enabled function and variable exports, covering runtime helpers missed by source-call discovery. No real ARM ELF exists yet. Public SPI/external-device interface review narrowed adapter requirements; bounded acquisition, external plugin lifecycle, target ABI and Ultra wiring remain unresolved.
-
-The initial SDK build configuration now defines `NS_GUI_STORAGE_ONLY`: navigation/settings/history/storage remain available, all radio capabilities are false, and serial HAL headers/imports are excluded. Full adapter sources and their tests are preserved. [SDK-only build instructions](docs/MANUAL_BUILD.md) describe uFBT, the exact missing archive/provenance and the smallest owner action. No SDK-only archive was obtained and no ARM/FAP build is claimed.
-
-A subsequently discovered SDK-only installation identifies official firmware **1.4.3**, not installed Momentum d3f89dfe. All 12 GUI/storage application translation units now compile to real ARM objects against those headers after correcting short-enum range-check warnings. This is ARM compile-only evidence; no link/FAP packaging, target compatibility or physical test is claimed. `make short-enums` preserves coverage for the actual compiler-flag failure.
-
-For your first Kubuntu build, start with [FIRST_BUILD.md](docs/FIRST_BUILD.md). The current manifest is accepted by the available official 1.4.3 SDK parser, but the exact installed-Momentum SDK remains missing. No further compilation is attempted until a compatible permitted SDK is available.
+For first-build steps see [FIRST_BUILD.md](docs/FIRST_BUILD.md). Remaining target/radio gaps are in [BUILD_BLOCKERS.md](docs/BUILD_BLOCKERS.md) and [SDK_INTERFACES.md](docs/SDK_INTERFACES.md). Binaries, editor configuration, full compiler output and private build evidence remain local and are not published as release packages.

@@ -46,3 +46,7 @@ Original seven suites remain passing; an eighth board-enabled Flipper contract s
 ## Initial GUI/storage-only build configuration
 
 A ninth host C suite compiles the actual Flipper/core sources with `NS_GUI_STORAGE_ONLY`, checks disabled radio acquisition/UART reads and writes, executes navigation/settings/exit and verifies the existing persistent-state save/load against SDK mocks. All previous suites remain unchanged. A native minimal UART object has no undefined serial HAL imports. These checks isolate the intended SDK build configuration; they do not prove an ARM FAP, SDK ABI or physical SD operation. Actual compatible SDK input remains unavailable.
+
+## Official SDK build evidence
+
+A real clean uFBT 0.2.6 build using permitted official SDK 1.4.3 compiled all 12 source files, linked, packaged `dist/netsentinel.fap` and passed APPCHK (target 7, API 87.1). All 49 final imports are enabled in the official export table, with no serial HAL imports. This is actual build evidence; physical GUI/SD/resource checks and Momentum compatibility remain unverified. BUILD_RESULT.md records artifact size/hash, source commit and ignored logs. No deployment, firmware operation or radio activity occurred.

@@ -2,14 +2,25 @@
 
 The current manifest prepares GUI, navigation, settings/history and SD storage. All ESP32/NRF24/CC1101 capabilities are disabled with `NS_GUI_STORAGE_ONLY`. A successful first shell build is an integration checkpoint, not the completed three-radio v1.0 application.
 
+Current result: the owner authorized official-SDK compilation independently of Momentum compatibility. A clean uFBT build now produces `dist/netsentinel.fap`; see [BUILD_RESULT.md](BUILD_RESULT.md). No device deployment or physical test has occurred.
+
 ## What is verified locally
 
 - An ARM GCC 12.3.1 toolchain is present in the existing SDK-only cache. The available cache identifies **official firmware 1.4.3**, not the installed Momentum revision.
-- `ufbt` and `ufbt-bootstrap` are not on this session's PATH, and `python3 -m pip show ufbt` reports `Package(s) not found: ufbt`. No project-local uFBT executable was found. Your terminal may use another environment; report its executable path if you have installed it elsewhere.
+- uFBT **0.2.6** is available at `~/flipper-build-env/bin/ufbt`. Use this explicit executable because it is not on the default session PATH.
 - The actual official 1.4.3 SDK manifest parser accepts `application.fam`: EXTERNAL type, `netsentinel_app`, version `(1, 0)`, 8 KiB stack, `NS_GUI_STORAGE_ONLY`, 12 source files. Tests/legacy are excluded. Empty `requires` and default targets are accepted. These fields do not supply missing link exports; actual target parser/linker validation remains pending.
-- All 12 sources previously compiled to ARM objects against that official SDK after short-enum fixes. There is no linked/packaged compatible FAP and no physical NetSentinel test.
+- All 12 sources now compile/link/package a real FAP against the official SDK, with APPCHK target 7 / API 87.1. Installed-Momentum compatibility and physical NetSentinel operation are not verified.
 
-## Install the build command
+## Build using the installed environment
+
+```sh
+cd ~/Projects/NetSentinel-Ultra
+~/flipper-build-env/bin/ufbt
+```
+
+This builds only; it does not deploy. Keep all hardware adapters disabled. The current environment targets official SDK 1.4.3.
+
+## Optional isolated setup on another machine
 
 Run in your network-connected Kubuntu terminal:
 
@@ -38,7 +49,7 @@ export UFBT_HOME="$PWD/builds/ufbt"
 .venv/bin/ufbt
 ```
 
-uFBT manages its required ARM/Python tools and puts the FAP in `dist`. The update can require network downloads. Do not run flash, flash_usb, launch or upload commands. Keep the full compiler/linker output local under ignored `logs`; report exact errors so fixes can be made in application source. `MANUAL_BUILD.md` covers export/import checks, build provenance and artifact hashes. No compatible SDK is available here, so these steps have not been performed.
+uFBT manages its required ARM/Python tools and puts the FAP in `dist`. The update can require network downloads. Do not run flash, flash_usb, launch or upload commands. Keep the full compiler/linker output local under ignored `logs`; report exact errors so fixes can be made in application source. `MANUAL_BUILD.md` covers export/import checks, build provenance and artifact hashes. No exact Momentum SDK is available here, so the target-specific archive steps have not been performed. The separately authorized official-SDK build succeeded.
 
 ## First device test after a successful build
 

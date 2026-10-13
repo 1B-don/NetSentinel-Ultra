@@ -1,6 +1,6 @@
 # Manual SDK compilation and device verification
 
-The assistant has not accessed the restricted Momentum checkout or performed an SDK build. This workflow requires an SDK the owner is appropriately authorized to use; it does not bypass repository instructions. Do not use a current development SDK as assumed proof of compatibility with firmware `d3f89dfe2ef6b01839201598e9be1590cba80322`.
+The restricted Momentum checkout has not been accessed. An explicitly authorized official SDK 1.4.3 build has now succeeded; see BUILD_RESULT.md. Installed Momentum compatibility remains unverified. This workflow requires an SDK the owner is appropriately authorized to use; it does not bypass repository instructions. Do not use a current development SDK as assumed proof of compatibility with firmware `d3f89dfe2ef6b01839201598e9be1590cba80322`.
 
 See [categorized build blockers and minimum authorized inputs](BUILD_BLOCKERS.md) before preparing a SDK build.
 
@@ -34,7 +34,7 @@ The checker discovers firmware calls in the actual Flipper C sources and records
 
 ## Check imports after an actual ARM link
 
-When an authorized SDK build produces its intermediate linked ELF, use that SDK's `arm-none-eabi-nm --undefined-only --format=posix` (or documented equivalent) to save the unresolved-symbol listing as `builds/sdk-input/undefined.txt`. Do not use a desktop test executable or pre-link object file. Record the actual ELF SHA256 and build provenance separately with the build evidence. Then run:
+When an authorized SDK build produces its final packaged-app import listing, prefer that SDK-generated POSIX `.impsyms` evidence and save a permitted local copy as `builds/sdk-input/undefined.txt`. Alternatively use the SDK's documented final ELF import tooling. An intermediate debug ELF can expose debug-only undefined symbols absent from the packaged app. Do not use a desktop test executable or pre-link object file. Record the actual ELF SHA256 and build provenance separately with the build evidence. Then run:
 
 ```sh
 python3 scripts/sdk_preflight.py builds/sdk-input/api_symbols.csv --gui-storage-only \
@@ -42,7 +42,7 @@ python3 scripts/sdk_preflight.py builds/sdk-input/api_symbols.csv --gui-storage-
   --undefined-symbols builds/sdk-input/undefined.txt
 ```
 
-This mode checks required `U` imports against enabled Function and Variable entries, including runtime/helper imports outside the 43 source-call names. Undefined weak `w`/`v` entries are reported separately; this checker does not require their resolution, but the actual SDK loader/packager must confirm whether they are supported. Other formats, duplicate or empty evidence fail closed. No ARM ELF or real import listing exists yet. The checker hashes the listing and table but does not inspect ELF architecture, provenance, types, relocation compatibility or runtime loader behavior. A successful check remains diagnostic evidence, not a FAP build or installability claim.
+This mode checks required `U` imports against enabled Function and Variable entries, including runtime/helper imports outside the 43 source-call names. Undefined weak `w`/`v` entries are reported separately; this checker does not require their resolution, but the actual SDK loader/packager must confirm whether they are supported. Other formats, duplicate or empty evidence fail closed. An official SDK ARM ELF and final import listing now exist; exact Momentum target evidence remains unavailable. The checker hashes the listing and table but does not inspect ELF architecture, provenance, types, relocation compatibility or runtime loader behavior. A successful check remains diagnostic evidence, not a FAP build or installability claim.
 
 ## SDK-only path for the first build
 
