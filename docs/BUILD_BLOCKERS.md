@@ -77,7 +77,7 @@ view_port_input_callback_set
 view_port_update
 ```
 
-The name checker deliberately does not certify C runtime imports: allocation, formatting, string operations, `strtol`, character classification, `errno` access and compiler-generated 64-bit division/atomic helpers need the actual target compiler/linker/import resolver. Review the generated ELF undefined/import symbols with the authorized SDK tooling and resolve each one through its documented mechanism. Do not assume desktop libc or a mock-linked executable proves those imports are available.
+The default source-name mode deliberately does not check C runtime imports: allocation, formatting, string operations, `strtol`, character classification, `errno` access and compiler-generated 64-bit division/atomic helpers need the actual target compiler/linker/import resolver. The optional actual-ELF undefined-symbol mode now checks required Function/Variable import names from an owner-provided ARM nm listing, including helper imports; it does not certify types or linkage. Review the generated ELF imports with the authorized SDK tooling and resolve each one through its documented mechanism. Do not assume desktop libc or a mock-linked executable proves those imports are available.
 
 ## Manifest and linker readiness
 
@@ -107,3 +107,5 @@ These inputs suffice to attempt the default GUI/storage/UART shell. NRF/CC wirin
 ## Build validation when inputs arrive
 
 Follow MANUAL_BUILD.md: review instructions/provenance, run tests and export preflight, compile through the supported build-only command, inspect compiler/linker and import-resolution results, fix application mismatches and rebuild. Keep full outputs local. Record toolchain/SDK revision and API version, application SHA, manifest/defines/source selection, artifact path/SHA256 and build status. Verify the artifact's target/API metadata through the SDK's supported tool before requesting device deployment approval. Successful compilation is build evidence; installation, runtime compatibility and RF functionality remain separate approved physical tests. No firmware flash, release or launch is part of this milestone.
+
+Public SPI/external-device interfaces have now been reviewed successfully; see SDK_INTERFACES.md for candidate names and the remaining bounded-acquisition/plugin-lifecycle gaps. This is permitted current documentation, not target-export verification. No concrete radio port can yet be enabled safely using the available wiring and SDK evidence.

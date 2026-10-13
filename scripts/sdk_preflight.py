@@ -26,7 +26,7 @@ def required_functions(root=ROOT):
         raise ValueError('no firmware function calls discovered')
     return names
 
-def read_exports(text):
+def read_exports(text, include_variables=False):
     reader = csv.DictReader(io.StringIO(text), strict=True)
     if reader.fieldnames != ['entry', 'status', 'name', 'type', 'params']:
         raise ValueError('unsupported export-table columns')
@@ -45,11 +45,31 @@ def read_exports(text):
             if version is not None or status != '+' or not re.fullmatch(r'\d+\.\d+', name):
                 raise ValueError('invalid API version')
             version = name
-        elif kind == 'Function' and status == '+':
+        elif status == '+' and (kind == 'Function' or (include_variables and kind == 'Variable')):
             exports.add(name)
     if version is None:
         raise ValueError('missing API version')
     return version, exports
+
+def read_undefined(text):
+    """Parse nm --undefined-only --format=posix output, never execute nm.
+
+    U is a required import; undefined weak w/v entries are reported separately.
+    An SDK-linked intermediate ELF is needed: object files include imports which
+    the SDK's private libraries may still resolve later.
+    """
+    required, weak = set(), set()
+    for line in text.splitlines():
+        fields = line.split()
+        if len(fields) != 2 or fields[1] not in {'U', 'w', 'v'} or not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.$]*', fields[0]):
+            raise ValueError('unsupported undefined-symbol listing')
+        symbol, kind = fields
+        if symbol in required or symbol in weak:
+            raise ValueError('duplicate undefined symbol')
+        (required if kind == 'U' else weak).add(symbol)
+    if not required and not weak:
+        raise ValueError('empty undefined-symbol evidence')
+    return required, weak
 
 def permitted_input(path):
     # Do not read any firmware checkout. Resolve symlinks before opening data;
@@ -67,6 +87,8 @@ def main(argv=None):
     parser.add_argument('exports', type=Path)
     parser.add_argument('--firmware-revision', required=True,
                         help='owner-confirmed origin revision; not inferred from CSV')
+    parser.add_argument('--undefined-symbols', type=Path,
+                        help='project-local POSIX nm listing from actual SDK-linked ARM ELF')
     args = parser.parse_args(argv)
     if args.firmware_revision != TARGET:
         print('BLOCK: export provenance revision does not match installed target')
@@ -74,8 +96,14 @@ def main(argv=None):
     try:
         path = permitted_input(args.exports)
         data = path.read_bytes()
-        version, exports = read_exports(data.decode('utf-8'))
-        required = required_functions()
+        version, exports = read_exports(data.decode('utf-8'), include_variables=bool(args.undefined_symbols))
+        weak = set()
+        evidence = None
+        if args.undefined_symbols:
+            evidence = permitted_input(args.undefined_symbols).read_bytes()
+            required, weak = read_undefined(evidence.decode('utf-8'))
+        else:
+            required = required_functions()
     except (ValueError, OSError, UnicodeError, csv.Error):
         print('BLOCK: invalid or unavailable local export input; no SDK was accessed')
         return 1
@@ -83,12 +111,18 @@ def main(argv=None):
     missing = sorted(required - exports)
     for name in missing:
         print(f'MISSING: {name}')
-    print(f'Firmware function names checked: {len(required)}')
+    if evidence is not None:
+        print(f'ELF import-list SHA256: {hashlib.sha256(evidence).hexdigest()}')
+        print(f'Required ELF imports checked: {len(required)}; undefined weak imports: {len(weak)}')
+        for name in sorted(weak):
+            print(f'WEAK (resolution not required by this check): {name}')
+    else:
+        print(f'Firmware function names checked: {len(required)}')
     print('Scope: names only; provenance is owner-supplied. Headers, signatures, enums, '
           'runtime exports, C helpers, board port and actual ARM compile/link remain unverified.')
     if missing:
         return 1
-    print('PASS: candidate firmware function names are enabled in supplied table; not a compatible FAP build')
+    print('PASS: checked names are enabled in supplied table; not a compatible FAP build')
     return 0
 
 if __name__ == '__main__':

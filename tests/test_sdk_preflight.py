@@ -54,6 +54,42 @@ class SdkPreflightTests(unittest.TestCase):
             finally:
                 link.unlink(missing_ok=True)
 
+    def test_import_listing(self):
+        required, weak = sdk.read_undefined('__aeabi_uldivmod U\nfuri_hal_spi_bus_handle_external U\noptional_hook w\noptional_data v\n')
+        self.assertEqual(required, {'__aeabi_uldivmod', 'furi_hal_spi_bus_handle_external'})
+        self.assertEqual(weak, {'optional_hook', 'optional_data'})
+        for text in ('', 'symbol T', 'file.o: symbol U', 'symbol U 0', 'x U\nx w', 'x U\n\n'):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                sdk.read_undefined(text)
+
+    def test_import_check_includes_variables(self):
+        text = HEADER + 'Variable,+,furi_hal_spi_bus_handle_external,const void*,\nFunction,+,__aeabi_uldivmod,void,void\n'
+        _, functions = sdk.read_exports(text)
+        _, imports = sdk.read_exports(text, include_variables=True)
+        self.assertEqual(functions, {'__aeabi_uldivmod'})
+        self.assertEqual(imports, {'__aeabi_uldivmod', 'furi_hal_spi_bus_handle_external'})
+        sdk.INPUT.mkdir(parents=True, exist_ok=True)
+        table = sdk.INPUT / 'test-imports.csv'
+        listing = sdk.INPUT / 'test-imports.txt'
+        try:
+            table.write_text(text)
+            listing.write_text('furi_hal_spi_bus_handle_external U\n__aeabi_uldivmod U\noptional_hook w\n')
+            args = [str(table), '--firmware-revision', sdk.TARGET, '--undefined-symbols', str(listing)]
+            result, output = self.run_check(args)
+            self.assertEqual(result, 0)
+            self.assertIn('Required ELF imports checked: 2', output)
+            self.assertIn('ELF import-list SHA256:', output)
+            self.assertIn('WEAK', output)
+            listing.write_text('missing_runtime U\n')
+            result, output = self.run_check(args)
+            self.assertEqual(result, 1)
+            self.assertIn('MISSING: missing_runtime', output)
+            listing.write_text('malformed evidence')
+            self.assertEqual(self.run_check(args)[0], 1)
+        finally:
+            table.unlink(missing_ok=True)
+            listing.unlink(missing_ok=True)
+
     def test_target_gate_precedes_file_access(self):
         result, output = self.run_check(['absent.csv', '--firmware-revision', 'wrong'])
         self.assertEqual(result, 1)

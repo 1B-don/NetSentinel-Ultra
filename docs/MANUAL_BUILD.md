@@ -31,3 +31,15 @@ Run every required scenario in `VERIFICATION.md`, capture device logs, and recor
 After reviewing SDK instructions and obtaining permission to use its exported API table, the owner may place an authorized copy of `api_symbols.csv` in `builds/sdk-input/`. Do not copy it from a restricted checkout without permission. Confirm the table was generated for the full target revision above, then run `make sdk-preflight`. The script never downloads, traverses or builds an SDK. It rejects external/symlinked input paths, wrong revision arguments, malformed tables and absent/disabled firmware functions. The input and output stay local under ignored build directories.
 
 The checker discovers firmware calls in the actual Flipper C sources and records table API version/SHA256. Its CSV format follows the public upstream [API export table](https://raw.githubusercontent.com/flipperdevices/flipperzero-firmware/dev/targets/f7/api_symbols.csv); that current table is not used as the target SDK. The revision argument is an owner provenance assertion, not cryptographic proof that a table matches installed firmware. A passing name check does not validate C declarations, inline functions/macros, enum/struct layout, compiler-generated helpers, concrete board callbacks or ARM linkage. Actual compatible compilation and physical verification remain required. An absent input is a blocker, not a successful check.
+
+## Check imports after an actual ARM link
+
+When an authorized SDK build produces its intermediate linked ELF, use that SDK's `arm-none-eabi-nm --undefined-only --format=posix` (or documented equivalent) to save the unresolved-symbol listing as `builds/sdk-input/undefined.txt`. Do not use a desktop test executable or pre-link object file. Record the actual ELF SHA256 and build provenance separately with the build evidence. Then run:
+
+```sh
+python3 scripts/sdk_preflight.py builds/sdk-input/api_symbols.csv \
+  --firmware-revision d3f89dfe2ef6b01839201598e9be1590cba80322 \
+  --undefined-symbols builds/sdk-input/undefined.txt
+```
+
+This mode checks required `U` imports against enabled Function and Variable entries, including runtime/helper imports outside the 43 source-call names. Undefined weak `w`/`v` entries are reported separately; this checker does not require their resolution, but the actual SDK loader/packager must confirm whether they are supported. Other formats, duplicate or empty evidence fail closed. No ARM ELF or real import listing exists yet. The checker hashes the listing and table but does not inspect ELF architecture, provenance, types, relocation compatibility or runtime loader behavior. A successful check remains diagnostic evidence, not a FAP build or installability claim.
