@@ -2,7 +2,12 @@
 #define NS_FLIPPER_H
 #include "../../include/netsentinel/application.h"
 #include <storage/storage.h>
+#ifndef NS_GUI_STORAGE_ONLY
 #include <furi_hal_serial.h>
+#endif
+#if defined(NS_GUI_STORAGE_ONLY) && defined(NS_ENABLE_BOARD_PORT)
+#error "GUI/storage build cannot enable hardware board ports"
+#endif
 #include <stdatomic.h>
 #define NS_UART_CAPACITY 4096
 typedef struct {
@@ -10,7 +15,11 @@ typedef struct {
     bool nrf, cc;
 } NsBoardPort;
 typedef struct {
+#ifdef NS_GUI_STORAGE_ONLY
+    void* serial; /* always NULL; no serial HAL declarations/imports */
+#else
     FuriHalSerialHandle* serial;
+#endif
     uint8_t rx[NS_UART_CAPACITY];
     atomic_uint rx_head, rx_tail, rx_error;
     Storage* storage;

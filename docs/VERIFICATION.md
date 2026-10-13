@@ -42,3 +42,7 @@ Prior Ultra V3 operation and Momentum automatic external selection are user-repo
 ## Flipper API boundary milestone
 
 Original seven suites remain passing; an eighth board-enabled Flipper contract suite covers isolated binding, incomplete/failed bind unwind, shared UART/NRF/CC ownership, wrong-owner calls, real GUI input callback cancellation, NRF transfer failure and forced CC cleanup during mutex failure. The original GUI suite now exercises actual callback/queue filtering, long Back, overflow cancellation, GUI/storage record failures and mutex failure. Both source variants compile under C11 warnings-as-errors and pass ASan/UBSan locally. Publication policy has four regression cases; privacy checks operate on the complete staged tree and never echo suspected data. No compatible firmware SDK build or physical verification was performed.
+
+## Initial GUI/storage-only build configuration
+
+A ninth host C suite compiles the actual Flipper/core sources with `NS_GUI_STORAGE_ONLY`, checks disabled radio acquisition/UART reads and writes, executes navigation/settings/exit and verifies the existing persistent-state save/load against SDK mocks. All previous suites remain unchanged. A native minimal UART object has no undefined serial HAL imports. These checks isolate the intended SDK build configuration; they do not prove an ARM FAP, SDK ABI or physical SD operation. Actual compatible SDK input remains unavailable.

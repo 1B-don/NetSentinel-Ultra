@@ -1,11 +1,12 @@
 # Candidate external-app manifest; real SDK compilation/ABI verification pending.
-# Candidate UART info port; Wi-Fi verification gate false; NRF/CC ports disabled.
+# Initial SDK build: GUI/navigation/storage only; all hardware ports disabled.
 App(
     appid="netsentinel",
     name="NetSentinel Ultra",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="netsentinel_app",
     stack_size=8 * 1024,
+    cdefines=["NS_GUI_STORAGE_ONLY"],
     fap_version="1.0",
     fap_category="GPIO",
     fap_description="Receive-only diagnostics; v1.0 development, unverified SDK integration",

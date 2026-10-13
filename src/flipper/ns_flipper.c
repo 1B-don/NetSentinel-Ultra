@@ -135,7 +135,9 @@ static NsResult log_close(void* ctx) {
 bool ns_flipper_init(NsFlipper* f) {
     memset(f, 0, sizeof(*f));
     atomic_init(&f->rx_head, 0); atomic_init(&f->rx_tail, 0); atomic_init(&f->rx_error, NS_OK);
+#ifndef NS_GUI_STORAGE_ONLY
     f->capabilities.esp_uart = true; /* command-capture gate remains false */
+#endif
     f->storage = furi_record_open(RECORD_STORAGE);
     if(!f->storage) return false;
     f->log = storage_file_alloc(f->storage);

@@ -1,4 +1,19 @@
 #include "ns_flipper.h"
+#ifdef NS_GUI_STORAGE_ONLY
+/* Build-only baseline: radio commands cannot acquire or touch UART hardware. */
+NsResult ns_flipper_uart_acquire(void* ctx, NsRadio radio) {
+    (void)ctx; (void)radio; return NS_UNSUPPORTED;
+}
+void ns_flipper_uart_release(void* ctx, NsRadio radio) { (void)ctx; (void)radio; }
+NsResult ns_flipper_uart_write(void* ctx, const uint8_t* bytes, size_t count) {
+    (void)ctx; (void)bytes; (void)count; return NS_UNSUPPORTED;
+}
+NsResult ns_flipper_uart_read(void* ctx, uint8_t* bytes, size_t cap, size_t* count) {
+    (void)ctx; (void)bytes; (void)cap;
+    if(count) *count = 0;
+    return NS_UNSUPPORTED;
+}
+#else
 #include <furi_hal_serial_control.h>
 #include <string.h>
 /* Single interrupt producer / single worker consumer. No allocation, parsing,
@@ -65,3 +80,5 @@ NsResult ns_flipper_uart_read(void* ctx, uint8_t* bytes, size_t cap, size_t* cou
     if(error != NS_OK) *count = 0;
     return error;
 }
+
+#endif /* NS_GUI_STORAGE_ONLY */

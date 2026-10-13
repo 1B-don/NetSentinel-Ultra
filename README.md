@@ -32,7 +32,7 @@ Up/Down selects a dashboard item; OK opens it; Back returns or exits. On NRF/CC 
 
 ## Remaining verification
 
-Real SDK compilation/exported ABI, on-device GUI/heap/thread checks, authorized external-radio callbacks and verified board wiring, actual SD/power-loss behavior, RF timing/detection/RSSI, passive ESP32 firmware commands and BLE parsing, and approved deployment/launch. The candidate shell acquires UART only on an explicit device-info request; Wi-Fi scans and BLE discovery remain gated. It does not change GPIO power or acquire NRF/CC by default.
+Real SDK compilation/exported ABI, on-device GUI/heap/thread checks, authorized external-radio callbacks and verified board wiring, actual SD/power-loss behavior, RF timing/detection/RSSI, passive ESP32 firmware commands and BLE parsing, and approved deployment/launch. The current GUI/storage-only manifest disables UART acquisition and all radio capabilities; the preserved nonminimal configuration supports explicit device-info requests while scanning stays gated. It does not change GPIO power or acquire NRF/CC by default.
 
 See [adapter contract](adapters/README.md), [manual compilation](docs/MANUAL_BUILD.md), [verification matrix](docs/VERIFICATION.md), [persistence format](docs/PERSISTENCE.md), [provenance](docs/PROVENANCE.md) and [milestones](docs/MILESTONES.md).
 
@@ -51,3 +51,5 @@ Build readiness now includes `make sdk-preflight` for a permitted owner-provided
 [Remaining build blockers](docs/BUILD_BLOCKERS.md) separates all seven requested categories and the minimum authorized SDK/toolchain inputs. The default shell can be compiled before physical RF tests or complete NRF/CC bindings once a permitted compatible SDK is available; a shell-only FAP does not complete the three-radio application. No target compile/link or installation has yet occurred.
 
 SDK preflight can also check an actual ARM ELF undefined-symbol listing against enabled function and variable exports, covering runtime helpers missed by source-call discovery. No real ARM ELF exists yet. Public SPI/external-device interface review narrowed adapter requirements; bounded acquisition, external plugin lifecycle, target ABI and Ultra wiring remain unresolved.
+
+The initial SDK build configuration now defines `NS_GUI_STORAGE_ONLY`: navigation/settings/history/storage remain available, all radio capabilities are false, and serial HAL headers/imports are excluded. Full adapter sources and their tests are preserved. [SDK-only build instructions](docs/MANUAL_BUILD.md) describe uFBT, the exact missing archive/provenance and the smallest owner action. No SDK-only archive was obtained and no ARM/FAP build is claimed.

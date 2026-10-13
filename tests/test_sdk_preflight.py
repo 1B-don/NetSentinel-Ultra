@@ -33,6 +33,11 @@ class SdkPreflightTests(unittest.TestCase):
         self.assertIn('gui_remove_view_port', names)
         self.assertIn('storage_file_sync', names)
         self.assertNotIn('ns_flipper_init', names)
+        minimal = sdk.required_functions(gui_storage_only=True)
+        self.assertIn('storage_file_sync', minimal)
+        self.assertIn('gui_remove_view_port', minimal)
+        self.assertFalse(any(name.startswith('furi_hal_serial_') for name in minimal))
+        self.assertTrue(minimal < names)
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / 'src/flipper').mkdir(parents=True)

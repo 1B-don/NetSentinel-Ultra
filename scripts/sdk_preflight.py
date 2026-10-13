@@ -18,9 +18,11 @@ INPUT = ROOT / 'builds' / 'sdk-input'
 C_TEXT = re.compile(r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.S)
 CALL = re.compile(r'\b((?:furi_|gui_|view_port_|canvas_|storage_)[A-Za-z0-9_]+)\s*\(')
 
-def required_functions(root=ROOT):
+def required_functions(root=ROOT, gui_storage_only=False):
     names = set()
     for path in sorted((root / 'src' / 'flipper').glob('*.c')):
+        if gui_storage_only and path.name == 'ns_uart.c':
+            continue  # NS_GUI_STORAGE_ONLY branch contains no firmware calls
         names.update(CALL.findall(C_TEXT.sub(' ', path.read_text())))
     if not names:
         raise ValueError('no firmware function calls discovered')
@@ -87,6 +89,8 @@ def main(argv=None):
     parser.add_argument('exports', type=Path)
     parser.add_argument('--firmware-revision', required=True,
                         help='owner-confirmed origin revision; not inferred from CSV')
+    parser.add_argument('--gui-storage-only', action='store_true',
+                        help='match manifest NS_GUI_STORAGE_ONLY; omit disabled UART HAL calls')
     parser.add_argument('--undefined-symbols', type=Path,
                         help='project-local POSIX nm listing from actual SDK-linked ARM ELF')
     args = parser.parse_args(argv)
@@ -103,7 +107,7 @@ def main(argv=None):
             evidence = permitted_input(args.undefined_symbols).read_bytes()
             required, weak = read_undefined(evidence.decode('utf-8'))
         else:
-            required = required_functions()
+            required = required_functions(gui_storage_only=args.gui_storage_only)
     except (ValueError, OSError, UnicodeError, csv.Error):
         print('BLOCK: invalid or unavailable local export input; no SDK was accessed')
         return 1
