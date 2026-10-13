@@ -1,12 +1,10 @@
 # NetSentinel Ultra — independent v1.0 development
 
-NetSentinel now compiles and packages a real GUI/storage-only FAP using the independently permitted official SDK **1.4.3**. Compilation, linking and SDK import validation pass. **Compatibility with installed Momentum d3f89dfe and physical operation are unverified.** No deployment or v1.0 release occurred; the restricted checkout remains untouched.
+NetSentinel now compiles and packages a real GUI/storage-only FAP using the permitted **Momentum mntm-dev-d3f89dfe SDK**, matching the running firmware’s independently confirmed **API 87.1 / hardware target 7**. Clean compilation, linking, packaging and all 49 import checks pass. Physical operation remains unverified; no deployment or v1.0 release occurred.
 
-Artifact: `dist/netsentinel.fap` (33,484 bytes), hardware target 7 / API 87.1. See [full build result](docs/BUILD_RESULT.md) for provenance, hash, logs and remaining verification.
+Artifact: `dist/netsentinel.fap` (33,480 bytes). See [Momentum build evidence and reproducible commands](docs/MOMENTUM_BUILD.md). The earlier official SDK artifact/evidence are preserved separately.
 
-First on-device test is prepared in [the approval-gated test procedure](docs/FIRST_DEVICE_TEST.md). Package structure/imports are verified against the official SDK; exact installed-Momentum API/export evidence remains missing. No installation or launch has occurred.
-
-Owner device information confirms **Momentum API 89.1 / target 7**. The current FAP uses API 87.1 and is not validated for that firmware. The public revision-labelled SDK ZIP has now been validated: its export table declares API **87.1**, so SDK installation/rebuild is blocked by the confirmed API discrepancy. Read-only ELF inspection independently confirms its bundled loader and API reporter also use 87.1; the next step is the installed device’s built-in USB CLI `info` query. See [SDK investigation and minimum next input](docs/MOMENTUM_SDK.md).
+The earlier API 89.1 report is superseded by the owner’s direct USB CLI result. All radio adapters remain disabled. [First on-device test](docs/FIRST_DEVICE_TEST.md) requires explicit approval before installation or execution.
 
 ## Build and tests
 

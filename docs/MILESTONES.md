@@ -93,3 +93,7 @@ Downloaded ZIP SHA256 matches owner value `238db260ee7e8f6e9a79dd1c760e07a832351
 ## Read-only SDK/firmware API investigation
 
 Bundled firmware ELF loader interface and API-reporting function both confirm 87.1, agreeing with the SDK table. Version structure reports d3f89dfe/dev/18-08-2026/Momentum, target 7, clean. No internal packaging mismatch established; owner-installed report 89.1 still unresolved. Public metadata search identifies no verified exact-revision API89.1 SDK. Documented major-version matching does not explain away 87 versus 89. Smallest next action: built-in USB CLI `info`, sharing sanitized API/firmware fields. No device connection or build/cache change; existing artifacts preserved. [Full evidence](MOMENTUM_SDK.md).
+
+## First matching Momentum SDK build
+
+Owner USB CLI confirms running API87.1/target7/d3f89dfe, resolving earlier mismatch. Permitted unmodified ZIP installed using supported local update in separate uFBT home; clean rebuild compiles all12 C files and passes link/package/APPCHK. FAP metadata API87.1/target7; all49 actual packaged imports enabled in matching export table. Artifact33480 bytes, SHA256 de38c1c7e08336a1ab5a3ebe6dcf2865ac8aa5ce9dedb97c8f8c17c024b859b5. Original official SDK/FAP/evidence preserved. All host/short-enum/sanitizer/preflight/publication checks pass; radio adapters disabled and physical tests pending. [Full build and setup errors resolved](MOMENTUM_BUILD.md).

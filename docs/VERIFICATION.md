@@ -1,5 +1,7 @@
 # Verification status — no release
 
+**Current update:** USB CLI independently confirms installed API **87.1**, target 7, d3f89dfe; earlier 89.1/mismatch blockers below are superseded. Matching permitted Momentum SDK clean build, metadata and all 49 imports pass. Current FAP is 33,480 bytes, SHA256 `de38c1c7e08336a1ab5a3ebe6dcf2865ac8aa5ce9dedb97c8f8c17c024b859b5`. See [Momentum build result](MOMENTUM_BUILD.md). All radios remain disabled; physical installation/execution are pending explicit approval. For the device procedure use this artifact/hash; former fingerprint and metadata requests are historical.
+
 | Area | Host evidence | Outstanding device/SDK evidence |
 |---|---|---|
 | Wi-Fi | 18 parser cases; gated protocol; UART ring loss; fragmented echoes/prompts; AP/RSSI/CSV/UI/cancellation integration | Owner identity/standalone Recon confirmed; installed raw sequence/labels, channel policy, receive-only implementation and NetSentinel UART/SDK still pending |

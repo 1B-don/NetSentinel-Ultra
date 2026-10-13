@@ -1,5 +1,7 @@
 # Exact Momentum SDK investigation
 
+**Current status: resolved.** Owner independently queried the running firmware through USB CLI: Momentum Dev, d3f89dfe, August 18, 2026, target 7, application API **87.1**. This supersedes the earlier 89.1 report. The archive export table and bundled ELF agree. The matching Momentum SDK clean build succeeds; see [MOMENTUM_BUILD.md](MOMENTUM_BUILD.md). Earlier sections below preserve investigation history and superseded blockers. No installation or execution has occurred.
+
 ## Confirmed installed target (owner device information)
 
 | Field | Confirmed value |

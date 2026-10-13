@@ -1,5 +1,7 @@
 # First NetSentinel build on Kubuntu
 
+**Current update:** USB CLI independently confirms installed API **87.1**, target 7, d3f89dfe; earlier 89.1/mismatch blockers below are superseded. Matching permitted Momentum SDK clean build, metadata and all 49 imports pass. Current FAP is 33,480 bytes, SHA256 `de38c1c7e08336a1ab5a3ebe6dcf2865ac8aa5ce9dedb97c8f8c17c024b859b5`. See [Momentum build result](MOMENTUM_BUILD.md). All radios remain disabled; physical installation/execution are pending explicit approval. For the device procedure use this artifact/hash; former fingerprint and metadata requests are historical.
+
 The current manifest prepares GUI, navigation, settings/history and SD storage. All ESP32/NRF24/CC1101 capabilities are disabled with `NS_GUI_STORAGE_ONLY`. A successful first shell build is an integration checkpoint, not the completed three-radio v1.0 application.
 
 Current result: the owner authorized official-SDK compilation independently of Momentum compatibility. A clean uFBT build now produces `dist/netsentinel.fap`; see [BUILD_RESULT.md](BUILD_RESULT.md). No device deployment or physical test has occurred.

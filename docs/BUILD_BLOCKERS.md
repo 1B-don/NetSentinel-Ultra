@@ -1,5 +1,7 @@
 # Remaining blockers for an installable FAP
 
+**Current update:** USB CLI independently confirms installed API **87.1**, target 7, d3f89dfe; earlier 89.1/mismatch blockers below are superseded. Matching permitted Momentum SDK clean build, metadata and all 49 imports pass. Current FAP is 33,480 bytes, SHA256 `de38c1c7e08336a1ab5a3ebe6dcf2865ac8aa5ce9dedb97c8f8c17c024b859b5`. See [Momentum build result](MOMENTUM_BUILD.md). All radios remain disabled; physical installation/execution are pending explicit approval. For the device procedure use this artifact/hash; former fingerprint and metadata requests are historical.
+
 Current status: official SDK 1.4.3 compilation/link/FAP packaging now passes with hardware disabled; installed-Momentum compatibility and physical tests remain pending. See BUILD_RESULT.md. The assessment below originally started at application commit `537b31e` and describes exact-target inputs still unverified. Installed target: Momentum `d3f89dfe2ef6b01839201598e9be1590cba80322`. All evidence comes from this application, its independent tests and permitted public documentation. No restricted checkout was accessed. No compiler/link error remains in the successful official-SDK build; exact Momentum SDK compilation has not run. “Unverified” does not mean a symbol is known to be absent.
 
 ## Blocker categories

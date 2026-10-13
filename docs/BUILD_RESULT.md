@@ -1,5 +1,7 @@
 # Genuine FAP build results
 
+**Current update:** USB CLI independently confirms installed API **87.1**, target 7, d3f89dfe; earlier 89.1/mismatch blockers below are superseded. Matching permitted Momentum SDK clean build, metadata and all 49 imports pass. Current FAP is 33,480 bytes, SHA256 `de38c1c7e08336a1ab5a3ebe6dcf2865ac8aa5ce9dedb97c8f8c17c024b859b5`. See [Momentum build result](MOMENTUM_BUILD.md). All radios remain disabled; physical installation/execution are pending explicit approval. For the device procedure use this artifact/hash; former fingerprint and metadata requests are historical.
+
 ## Latest enum-validation rebuild
 
 The requested type-limit comparisons were already corrected in local commit `1249df0`. This follow-up bounds result-name indexing by the actual table with a completeness assertion, retains unsigned input/result range checks, and validates full 32-bit stored radio/result words before narrowing to enums. Normal/short-enum/sanitizer tests reject negative/out-of-range inputs and CRC-valid malformed history, preserve older valid snapshot recovery, and prohibit invalid persistence writes. No warning suppression or build-flag change was made.

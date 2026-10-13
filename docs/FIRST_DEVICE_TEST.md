@@ -1,5 +1,7 @@
 # First device test preparation — approval pending
 
+**Current update:** USB CLI independently confirms installed API **87.1**, target 7, d3f89dfe; earlier 89.1/mismatch blockers below are superseded. Matching permitted Momentum SDK clean build, metadata and all 49 imports pass. Current FAP is 33,480 bytes, SHA256 `de38c1c7e08336a1ab5a3ebe6dcf2865ac8aa5ce9dedb97c8f8c17c024b859b5`. See [Momentum build result](MOMENTUM_BUILD.md). All radios remain disabled; physical installation/execution are pending explicit approval. For the device procedure use this artifact/hash; former fingerprint and metadata requests are historical.
+
 ## Package evidence
 
 The existing package was inspected directly, then rebuilt with permitted official SDK 1.4.3 and inspected again. Both inspections passed. The current `dist/netsentinel.fap` is 33,484 bytes, SHA256 `af74bfb1cdcc8fc3bf319d97b8fe056b563474cc39da223a1f87cd005ee37d30`. This supersedes earlier artifact fingerprints; identify the exact transferred binary by hash, not filename alone. No application source changed in this milestone.
