@@ -44,10 +44,40 @@ int main(void) {
     assert(ns_app_step(&a, 1) == NS_OK && !f.serial);
     assert(ns_app_step(&a, 2) == NS_OK && f.serial);
     check_frame(&a, "Waiting: info response");
+    const char* private_line = "Serial Number: PRIVATE_TEST_ID\n";
+    mock_serial_feed((const uint8_t*)private_line, strlen(private_line));
     char reply[1024]; fixture(reply); mock_serial_feed((const uint8_t*)reply, strlen(reply));
     assert(ns_app_step(&a, 3) == NS_OK && !f.serial && f.owner == NS_RADIO_NONE);
     check_frame(&a, "Connected: query passed");
     assert(a.session.marauder.identity_matches && a.saved.history_count == 1);
+    for(size_t i=0; i<sizeof(f.rx); i++) assert(f.rx[i] == 0);
+    assert(!atomic_load(&f.rx_head) && !atomic_load(&f.rx_tail) && !f.rx_total && !f.info_sent);
+    /* History snapshots and closed CSV contain no arbitrary serial identifiers. */
+    uint8_t persisted[NS_STATE_CAPACITY]; size_t length = 0;
+    for(unsigned slot=0; slot<2; slot++) {
+        assert(f.store.read(f.store.ctx, slot, persisted, sizeof(persisted), &length) == NS_OK);
+        for(size_t j=0; j+strlen("PRIVATE_TEST_ID")<=length; j++)
+            assert(memcmp(persisted+j, "PRIVATE_TEST_ID", strlen("PRIVATE_TEST_ID")));
+    }
+    File* csv = storage_file_alloc(f.storage); assert(csv);
+    assert(storage_file_open(csv, "/ext/apps_data/netsentinel/session_0000000001.csv", FSAM_READ, FSOM_OPEN_EXISTING));
+    uint8_t telemetry[2048]; size_t telemetry_length = storage_file_read(csv, telemetry, sizeof(telemetry));
+    assert(telemetry_length == storage_file_size(csv));
+    for(size_t j=0; j+strlen("PRIVATE_TEST_ID")<=telemetry_length; j++)
+        assert(memcmp(telemetry+j, "PRIVATE_TEST_ID", strlen("PRIVATE_TEST_ID")));
+    assert(storage_file_close(csv)); storage_file_free(csv);
+    size_t stale_count = 99; uint8_t stale;
+    assert(f.platform.uart_read(&f, &stale, 1, &stale_count) == NS_INVALID && !stale_count);
+    f.platform.release(&f, NS_RADIO_ESP); /* already released: no double HAL cleanup */
+    a.session.marauder.identity_matches = false;
+    strcpy(a.session.marauder.hardware, "PRIVATE_TEST_ID");
+    NsFrame redacted; ns_app_frame(&a, &redacted);
+    for(unsigned row=0; row<6; row++) assert(!strstr(redacted.rows[row], "PRIVATE_TEST"));
+    a.status=NS_INVALID; check_frame(&a, "Error: reply/state invalid");
+    a.status=NS_IO; check_frame(&a, "Error: serial or SD I/O");
+    a.status=NS_FULL; check_frame(&a, "Error: response/storage full");
+    a.status=NS_UNSUPPORTED; check_frame(&a, "Error: USART configuration");
+    a.status=NS_OK;
     assert(!strcmp(mock_serial_commands(), "info\n"));
     assert(ns_app_key(&a, NS_KEY_OK, 4) == NS_OK);
     assert(ns_app_key(&a, NS_KEY_BACK, 5) == NS_OK && !f.serial && !a.info_pending);

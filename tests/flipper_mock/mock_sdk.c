@@ -126,9 +126,9 @@ FuriHalSerialHandle* furi_hal_serial_control_acquire(FuriHalSerialId id) {
     assert(id == FuriHalSerialIdUsart); if(serial.owned) return NULL;
     serial.owned = true; commands[0] = 0; return &serial;
 }
-void furi_hal_serial_control_release(FuriHalSerialHandle* s) { assert(s->owned && !s->initialized && !s->callback); s->owned = false; }
+void furi_hal_serial_control_release(FuriHalSerialHandle* s) { assert(s->owned && !s->initialized && !s->callback && !s->context); s->owned = false; }
 void furi_hal_serial_init(FuriHalSerialHandle* s, uint32_t baud) { assert(s->owned && baud == 115200); s->initialized = true; }
-void furi_hal_serial_deinit(FuriHalSerialHandle* s) { assert(s->initialized && !s->callback); s->initialized = false; }
+void furi_hal_serial_deinit(FuriHalSerialHandle* s) { assert(s->initialized && !s->callback); s->context = NULL; s->initialized = false; }
 void furi_hal_serial_async_rx_start(FuriHalSerialHandle* s, FuriHalSerialAsyncRxCallback cb, void* ctx, bool errors) { assert(s->initialized && errors); s->callback = cb; s->context = ctx; }
 void furi_hal_serial_async_rx_stop(FuriHalSerialHandle* s) { assert(s->initialized); s->callback = NULL; }
 bool furi_hal_serial_async_rx_available(FuriHalSerialHandle* s) { assert(s->callback); return s->available; }

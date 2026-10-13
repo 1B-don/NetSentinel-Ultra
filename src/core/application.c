@@ -336,12 +336,19 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 else if(a->status == NS_OK) state = "Right queries device info";
                 if(a->capabilities.esp_info_only) {
                     snprintf(f->rows[1], sizeof(f->rows[1]), "ESP32 info-only USART");
+                    /* Only known matched constants reach diagnostics, never untrusted identity text. */
+                    snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->session.marauder.identity_matches ? "v1.11.0" : "Identity not validated");
+                    snprintf(f->rows[3], sizeof(f->rows[3]), "%s", a->session.marauder.identity_matches ? "Marauder v4" : "");
                     snprintf(f->rows[4], sizeof(f->rows[4]), "OK/Right: info  Back: cancel");
                     if(a->info_pending) state = "Connecting: USART requested";
                     else if(a->session.active == NS_RADIO_ESP) state = "Waiting: info response";
                     else if(a->status == NS_TIMEOUT) state = "Timeout: link unconfirmed";
                     else if(a->status == NS_BUSY) state = "Error: USART/session busy";
-                    else if(a->status != NS_OK && a->status != NS_ABSENT) state = "Error: UART/interface/SD";
+                    else if(a->status == NS_FULL) state = "Error: response/storage full";
+                    else if(a->status == NS_INVALID) state = "Error: reply/state invalid";
+                    else if(a->status == NS_IO) state = "Error: serial or SD I/O";
+                    else if(a->status == NS_UNSUPPORTED) state = "Error: USART configuration";
+                    else if(a->status != NS_OK && a->status != NS_ABSENT) state = "Error: operation failed";
                     else if(a->session.marauder.stage == NS_M_DONE && a->session.marauder.info_complete)
                         state = a->session.marauder.identity_matches ? "Connected: query passed" : "Error: identity mismatch";
                     else if(a->session.marauder.stage == NS_M_DONE && a->session.marauder.info_fields) state = "Error: incomplete reply";

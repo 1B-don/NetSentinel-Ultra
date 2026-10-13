@@ -1,5 +1,7 @@
 # First USART information-only test build — not deployed
 
+**Owner physical update:** one requested USART information transaction displayed Connected on Momentum d3f89dfe/API87.1/target7. This confirms that transaction only; independent response-field verification, cleanup/restoration, repeatability and cancellation remain pending. Previous test artifact is preserved. The rebuilt cleanup/privacy/error-reporting artifact is not deployed. [Structured verification checklist and current artifact](USART_HARDWARE_CHECKLIST.md). Earlier all-pending statements below are historical.
+
 ## New owner evidence and permitted SDK direction checks
 
 Owner confirms the attached Ultra V3 communicates through Momentum's existing Marauder app with USART Default pins13/14,115200,8N1, on d3f89dfe/API87.1/target7. USB-C/CH340 independently confirms info identity. This is operational evidence for the intended Flipper interface, not a newly obtained PCB netlist or NetSentinel UART test.

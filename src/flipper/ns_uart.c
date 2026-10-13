@@ -76,6 +76,10 @@ void ns_flipper_uart_release(void* ctx, NsRadio radio) {
     if(radio != NS_RADIO_ESP || !f->serial) return;
     furi_hal_serial_async_rx_stop(f->serial);
     furi_hal_serial_deinit(f->serial);
+    /* RX is stopped and hardware disabled before clearing ISR-owned storage. */
+    memset(f->rx, 0, sizeof(f->rx));
+    atomic_store(&f->rx_head, 0); atomic_store(&f->rx_tail, 0);
+    atomic_store(&f->rx_error, NS_OK); f->rx_total = 0; f->info_sent = false;
     furi_hal_serial_control_release(f->serial); f->serial = NULL;
 }
 NsResult ns_flipper_uart_write(void* ctx, const uint8_t* bytes, size_t count) {

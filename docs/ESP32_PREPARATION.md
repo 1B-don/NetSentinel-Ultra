@@ -1,5 +1,7 @@
 # Ultra V3 ESP32 preparation — UART hardware test pending
 
+**Owner physical update:** one requested USART information transaction displayed Connected on Momentum d3f89dfe/API87.1/target7. This confirms that transaction only; independent response-field verification, cleanup/restoration, repeatability and cancellation remain pending. Previous test artifact is preserved. The rebuilt cleanup/privacy/error-reporting artifact is not deployed. [Structured verification checklist and current artifact](USART_HARDWARE_CHECKLIST.md). Earlier all-pending statements below are historical.
+
 **Current milestone:** owner confirms the Ultra V3 works with Momentum's existing Marauder app on Default USART13/14,115200/8N1. Permitted SDK direction mapping verifies TX13/PB6 and RX14/PB7; runtime guard checks it before init. A separate NS_ESP_INFO_ONLY FAP compiles/API87.1/target7/all62 imports validated; only one info query is permitted. Default GUI/storage FAP and first-device baseline are unchanged. No new deployment/execution; exact-artifact approval still required. [USART test-build details](ESP32_LIVE_INFO.md). Earlier wiring-only preparation gates below are historical; circuit-level details/physical NetSentinel timing remain unverified.
 
 ## Latest owner USB-C verification
