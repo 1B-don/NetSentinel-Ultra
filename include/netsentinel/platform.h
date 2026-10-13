@@ -3,7 +3,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-typedef enum { NS_OK, NS_INVALID, NS_BUSY, NS_UNSUPPORTED, NS_IO, NS_ABSENT, NS_TIMEOUT, NS_FULL } NsResult;
+/* Append only: persisted history stores these ordinal values. */
+typedef enum { NS_OK, NS_INVALID, NS_BUSY, NS_UNSUPPORTED, NS_IO, NS_ABSENT, NS_TIMEOUT, NS_FULL, NS_CANCELLED } NsResult;
 typedef enum { NS_RADIO_NONE, NS_RADIO_ESP, NS_RADIO_NRF, NS_RADIO_CC } NsRadio;
 typedef struct {
     uint8_t part, version, state, rssi_raw;

@@ -24,7 +24,7 @@ static bool valid(const NsSavedState* s) {
     for(size_t i = 0; i < s->history_count; i++) {
         const NsHistory* h = &s->history[i];
         if(!h->id || h->id <= prior || h->id > s->last_id || h->radio < NS_RADIO_ESP ||
-           h->radio > NS_RADIO_CC || (unsigned)h->result > NS_FULL) return false;
+           h->radio > NS_RADIO_CC || (unsigned)h->result > NS_CANCELLED) return false;
         prior = h->id;
     }
     return true;
@@ -51,7 +51,7 @@ static bool decode(const uint8_t* b, size_t n, NsSavedState* s, uint32_t* genera
         /* Validate full stored words before conversion to possibly short enums.
          * Otherwise values such as 256 could narrow into a valid result. */
         uint32_t radio = get(b+pos+16), result = get(b+pos+20);
-        if(radio < NS_RADIO_ESP || radio > NS_RADIO_CC || result > NS_FULL) return false;
+        if(radio < NS_RADIO_ESP || radio > NS_RADIO_CC || result > NS_CANCELLED) return false;
         s->history[i] = (NsHistory){get(b+pos), get(b+pos+4), get(b+pos+8), get(b+pos+12),
             (NsRadio)radio, (NsResult)result};
     }

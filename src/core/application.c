@@ -14,8 +14,8 @@ static const char* radio_name(NsRadio r) {
     }
 }
 const char* ns_result_name(NsResult r) {
-    static const char* const names[] = {"OK", "Invalid", "Busy", "Unsupported", "I/O failure", "Absent", "Timeout", "Full"};
-    _Static_assert(sizeof(names)/sizeof(names[0]) == NS_FULL+1, "NsResult names must cover every result");
+    static const char* const names[] = {"OK", "Invalid", "Busy", "Unsupported", "I/O failure", "Absent", "Timeout", "Full", "Cancelled"};
+    _Static_assert(sizeof(names)/sizeof(names[0]) == NS_CANCELLED+1, "NsResult names must cover every result");
     /* Handles signed and short unsigned enums, including invalid negatives. */
     unsigned index = (unsigned)r;
     return index < sizeof(names)/sizeof(names[0]) ? names[index] : "Unknown";

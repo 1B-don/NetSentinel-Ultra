@@ -64,7 +64,7 @@ static void test_invalid_history_enums(void) {
     s.history_count = 1; s.history[0] = (NsHistory){1, 10, 20, 1, NS_RADIO_NRF, NS_OK};
     assert(ns_persistence_save(&p, &s) == NS_OK);
     StoreMock valid_disk = disk;
-    const uint32_t bad_results[] = {NS_FULL+1, 255, 256, UINT32_MAX};
+    const uint32_t bad_results[] = {NS_CANCELLED+1, 255, 256, UINT32_MAX};
     const uint32_t bad_radios[] = {NS_RADIO_NONE, NS_RADIO_CC+1, 255, 256, 257, UINT32_MAX};
     for(unsigned field = 0; field < 2; field++) {
         const uint32_t* values = field ? bad_radios : bad_results;
@@ -88,7 +88,7 @@ static void test_invalid_history_enums(void) {
     unsigned writes = disk.writes; uint32_t generation = p.generation;
     s.history[0].result = (NsResult)-1;
     assert(ns_persistence_save(&p, &s) == NS_INVALID);
-    s.history[0].result = (NsResult)(NS_FULL+1);
+    s.history[0].result = (NsResult)(NS_CANCELLED+1);
     assert(ns_persistence_save(&p, &s) == NS_INVALID);
     assert(disk.writes == writes && p.generation == generation);
 }
@@ -417,7 +417,8 @@ static void test_information_log_completion_errors(void) {
 }
 int main(void) {
     assert(!strcmp(ns_result_name((NsResult)-1), "Unknown"));
-    assert(!strcmp(ns_result_name((NsResult)(NS_FULL+1)), "Unknown"));
+    assert(!strcmp(ns_result_name(NS_CANCELLED), "Cancelled"));
+    assert(!strcmp(ns_result_name((NsResult)(NS_CANCELLED+1)), "Unknown"));
     assert(!strcmp(ns_result_name(NS_OK), "OK"));
     NsApplication invalid_key_app = {0}; invalid_key_app.running = true;
     assert(ns_app_key(&invalid_key_app, (NsKey)-1, 0) == NS_INVALID);
