@@ -1,0 +1,39 @@
+# Ultra V3 ESP32 preparation — UART hardware test pending
+
+## Physical baseline reported by owner
+
+On Flipper Zero Momentum Dev d3f89dfe, API87.1, target7: FAP launch passes; dashboard renders; Back exits; settings changes persist through exit/relaunch; ESP32/NRF24/CC1101 correctly display Unsupported. These are actual owner-performed device results, distinct from host mocks. Exact tested artifact checksum, full menu traversal, repeat/long input, heap measurements, SD fault/rollback scenarios and radio/UART operations were not supplied or verified. Do not extend the result to those cases. The pre-change local Momentum artifact/evidence are preserved in `builds/preserved-first-device-baseline/`; this preservation alone does not prove which bytes the owner tested.
+
+## Topology and electrical evidence
+
+[Manufacturer Ultra V3 guide](https://sacredlabstech.com/boards/ultra-v3/) documents an 18-pin Flipper GPIO board, ESP32-WROOM-32UE, USB-C firmware-upload port and selector for NRF24/CC1101; ESP32 stays powered regardless of selector. It does not publish inspected UART net mappings, ESP32 endpoint pins, power-regulator/level-shifter schematic or line voltages. The [component guide](https://sacredlabstech.com/guides/components/) did not resolve those gaps. USB-C upload functionality does not prove the Flipper GPIO route.
+
+[Flipper settings documentation](https://docs.flipper.net/zero/basics/settings) identifies USART on connector pins13/14 and LPUART on15/16; USART can also be used by logging/expansion. The permitted target SDK names USART1 TX PB6 and RX PB7. These establish the Flipper peripheral choice, **not the Ultra PCB's actual nets**. The adapter currently chooses USART; this is a candidate pending schematic/manufacturer or owner wiring confirmation. No expansion/logging settings are automatically changed; another owner produces Busy. No selector change is needed merely from the documented ESP power topology.
+
+[Espressif module datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32e_esp32-wroom-32ue_datasheet_en.pdf) gives nominal3.3V supply (recommended3.0–3.6V) and input limits relative to that supply. Treat candidate UART as a 3.3V logic interface; do not connect5V to an ESP32 UART input. Actual Ultra line voltage/level shifting remains unmeasured. No wiring/power/reset changes or electrical tests were performed.
+
+## Command evidence
+
+Permitted tagged upstream references: [CLI](https://raw.githubusercontent.com/justcallmekoko/ESP32Marauder/v1.11.0/esp32_marauder/CommandLine.cpp), [startup](https://raw.githubusercontent.com/justcallmekoko/ESP32Marauder/v1.11.0/esp32_marauder/esp32_marauder.ino), [info implementation](https://raw.githubusercontent.com/justcallmekoko/ESP32Marauder/v1.11.0/esp32_marauder/WiFiScan.cpp). Startup configures115200 baud. Candidate status commands are `info` and `help`, newline terminated with command echo and a prompt. Bare info reads identity/MAC/resource information; it also changes Marauder's local display/scan-mode state, so it is not claimed to leave all ESP software state unchanged. It contains no reviewed attack or scan initiation path. Help lists capabilities; listing an attack command does not authorize invoking it. Do not issue info while another app/ESP operation owns the session. No additional commands were added to NetSentinel's allowlist.
+
+Version/IDF labels come from language tables; installed raw output is still missing. Current parser labels remain provisional mock contracts and reject incomplete identities. Tagged upstream behavior does not prove this installed build behaves identically. Scanning and BLE remain disabled pending installed receive-only evidence. Information bytes can include identifiers; raw responses/session CSV stay on the SD/local ignored directories, never GitHub.
+
+## Transport and lifecycle implementation
+
+The existing source uses a4096-byte lock-free ISR-to-worker ring, exclusive serial acquisition, bounded128-byte reads/eight batches per worker step, strict fixed-command allowlist, CRLF/prompt framing, bounded line/identity/AP storage, poisoned-stream handling on loss and IO errors, and fixed1000–60000ms phase deadlines. Storage setup and durable session IDs precede transactions; failed completion records history and releases ownership. No implicit reset, power cycling or forced expansion disable is used.
+
+This milestone closes a real deadline race: line and prompt handling now enforce the deadline **before** accepting a response, so late complete identities cannot revive an expired transaction. Tests cover exact deadline boundaries, unsigned tick wrap, no timeout extension from partial fields, and information-query cancellation without sending stop/scan commands. UART reads reset output count even for invalid/null/zero-capacity requests, preventing stale lengths. Existing fragmented-response, overflow, framing-error, acquire-busy and cleanup tests remain passing.
+
+The actual HAL TX call is semi-blocking and supplies no deadline/error return; no wait-complete call is used. ISR FIFO draining depends on SDK scheduling and is not independently proven bounded under sustained bytes. Therefore protocol/worker budgets are bounded, but a fully bounded hardware TX/ISR guarantee remains an explicit integration blocker. Do not call it physically verified or enable UART until topology, installed framing and HAL timing/ownership are resolved. No extra simulated radio features were added.
+
+## UI and build
+
+Wi-Fi status now distinguishes adapter disabled, waiting for info, info reply received, no reply/check UART, busy owner/session, buffer/log full and UART/SD IO failure. It does not call a timeout proof of missing hardware or a local disabled gate proof of device absence. Unsupported scan capability is shown as unverified; BLE remains explicitly disabled. Mock tests exercise these actual frame strings and lifecycle paths, and ensure the disabled-adapter message does not hide storage errors.
+
+Production manifest remains `NS_GUI_STORAGE_ONLY`; no UART/NRF/CC acquisition or radio imports are enabled. UART-enabled source changes are host-tested only. Clean matching-Momentum SDK build passes all12 compilation units and APPCHK API87.1/target7; packaged imports all resolve. New FAP: `dist/netsentinel.fap`, **34,148 bytes**, SHA256 `914670abc5c3a1b8e7850db10dd7b2799af18fdfd2861edd03055af21558e42b`. This changed artifact has not been installed or physically tested. Local evidence: `logs/esp-status-evidence.json`, `logs/esp-status-build.log`, `logs/esp-status-final-build.log`, `logs/esp-status-imports.log`.
+
+Nine host C suites, eight preflight and four publication cases pass; short-enum variants and ASan/UBSan pass (leak detection disabled locally). No deployment, RF test, firmware update or release occurred.
+
+## Smallest next inputs
+
+Provide manufacturer-approved Ultra V3 UART net/voltage documentation, or owner-confirmed pin routing from existing documentation. Provide sanitized installed `info`/`help` response labels/echo/prompt behavior using the already working Marauder app, without resetting/flashing or capturing nearby network data. Do not substitute guessed wire routing. After that review and hardware TX timing assessment, prepare an explicitly information-only UART build, then request approval for its concrete deployment/test. Wi-Fi commands still require a separate passive implementation/output verification gate.

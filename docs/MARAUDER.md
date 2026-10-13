@@ -28,4 +28,8 @@ APs update by BSSID, with SSID/channel fallback only when BSSID is missing. Expl
 
 The observed beacon format does not report encryption. Security is explicitly unknown; indexed `info -a` detail requests remain unimplemented until indices/response framing are verified, rather than attaching security from a guessed index. The existing list parser accepts the selected suffix and honestly leaves BSSID unavailable. No list/index commands are automatically sent.
 
-CSV retains escaped raw UART lines (including SSID/BSSID/RSSI/channel when present), and final 14-channel AP totals use the existing seven-column session schema. Settings, session ID reservation and completed history use existing durable storage. RSSI ranges/baselines are RAM-only; no independent normalized security export exists. SDK/SD/hardware validation remains required. No FAP has been compiled, deployed or launched.
+CSV retains escaped raw UART lines (including SSID/BSSID/RSSI/channel when present), and final 14-channel AP totals use the existing seven-column session schema. Settings, session ID reservation and completed history use existing durable storage. RSSI ranges/baselines are RAM-only; no independent normalized security export exists. SDK/SD/hardware validation remains required. A matching-SDK GUI/storage-only FAP compiled and its first basic GUI/settings test was performed by the owner; UART/radio physical testing remains pending.
+
+## Current preparation milestone
+
+See [Ultra V3 evidence and bounded-transport review](ESP32_PREPARATION.md). Line/prompt deadlines now reject late complete replies before parsing, with exact/wrapped-deadline tests; invalid UART reads clear output count. Wi-Fi UI distinguishes disabled/busy/waiting/timeout/info-received states. Candidate USART mapping is not a verified Ultra netlist. Hardware TX/ISR timing and installed identity formatting remain blockers; production hardware ports stay disabled.

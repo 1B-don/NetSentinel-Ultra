@@ -303,7 +303,22 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi %s", a->capabilities.esp_wifi_verified ? "passive adapter" : "command capture needed");
                 snprintf(f->rows[2], sizeof(f->rows[2]), "%.23s", a->session.marauder.version);
                 snprintf(f->rows[3], sizeof(f->rows[3]), "%.38s", a->session.marauder.hardware);
-                snprintf(f->rows[4], sizeof(f->rows[4]), "Right: info  OK: discovery");
+                snprintf(f->rows[4], sizeof(f->rows[4]), "%s", a->capabilities.esp_uart ?
+                    "Right: info  OK: discovery" : "UART disabled in this build");
+                const char* state = NULL;
+                if(!a->capabilities.esp_uart) {
+                    if(a->status == NS_OK || a->status == NS_ABSENT || a->status == NS_UNSUPPORTED) state = "ESP32 adapter disabled";
+                }
+                else if(a->session.active == NS_RADIO_ESP && a->session.marauder.stage == NS_M_INFO) state = "Waiting for info reply";
+                else if(a->status == NS_TIMEOUT) state = "No reply: check UART";
+                else if(a->status == NS_FULL) state = "UART buffer/log full";
+                else if(a->status == NS_INVALID) state = "Reply/state invalid";
+                else if(a->status == NS_IO) state = "UART or SD I/O error";
+                else if(a->status == NS_BUSY) state = "Port/session busy";
+                else if(a->status == NS_UNSUPPORTED) state = "Scan not yet verified";
+                else if(a->session.marauder.stage == NS_M_DONE && a->status == NS_OK) state = "Info reply received";
+                else if(a->status == NS_OK) state = "Right queries device info";
+                if(state) snprintf(f->rows[5], sizeof(f->rows[5]), "%s", state);
             }
         } else if(a->selected == NS_RADIO_NRF) {
             snprintf(f->rows[1], sizeof(f->rows[1]), "NRF24 sampled activity");

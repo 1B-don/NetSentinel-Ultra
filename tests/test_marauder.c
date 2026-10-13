@@ -82,4 +82,26 @@ static void rejection(void) {
     feed(&s, "#help\nsniffbeacon_only\nstopscan\n", 20);
     assert(ns_session_feed(&s, (const uint8_t*)"> ", 2, 20) == NS_UNSUPPORTED && !m.owner);
 }
-int main(void) { protocol(); failures(); rejection(); puts("PASS: gated Marauder protocol, byte fragments, fixture observations, cancellation, logging and timeout recovery"); }
+static void information_deadlines(void) {
+    Mock m = {0}; NsPlatform io = platform(&m); NsMarauder p;
+    assert(ns_marauder_begin(&p, &io, false, false, 1000, 0) == NS_OK);
+    assert(ns_marauder_line(&p, "#info", 1) == NS_OK);
+    assert(ns_marauder_line(&p, "Version: v1.11.0", 999) == NS_OK);
+    assert(ns_marauder_line(&p, "Hardware: Marauder v4", 1000) == NS_TIMEOUT);
+    assert(p.stage == NS_M_FAILED && !p.hardware[0]);
+    assert(ns_marauder_prompt(&p, 1001) == NS_TIMEOUT);
+    assert(!strcmp(m.commands, "info\n"));
+    memset(&m, 0, sizeof(m));
+    assert(ns_marauder_begin(&p, &io, false, false, 1000, UINT32_MAX-99) == NS_OK);
+    assert(ns_marauder_line(&p, "#info", UINT32_MAX-98) == NS_OK);
+    assert(ns_marauder_line(&p, "Version: v1.11.0", 0) == NS_OK);
+    assert(ns_marauder_line(&p, "Hardware: Marauder v4", 0) == NS_OK);
+    assert(ns_marauder_line(&p, "ESP-IDF: v5.5.1-710-g840210c9a", 0) == NS_OK);
+    assert(ns_marauder_prompt(&p, 900) == NS_TIMEOUT); /* exact wrapped deadline */
+    assert(!strcmp(m.commands, "info\n"));
+    memset(&m, 0, sizeof(m));
+    assert(ns_marauder_begin(&p, &io, false, false, 1000, 0) == NS_OK);
+    assert(ns_marauder_cancel(&p, 1) == NS_OK && p.stage == NS_M_DONE);
+    assert(ns_marauder_abort(&p) == NS_OK && !strcmp(m.commands, "info\n"));
+}
+int main(void) { protocol(); failures(); rejection(); information_deadlines(); puts("PASS: gated Marauder protocol, byte fragments, fixture observations, cancellation, logging and timeout recovery"); }

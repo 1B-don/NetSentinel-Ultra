@@ -3,6 +3,7 @@
 #include "mock_sdk.h"
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 int32_t netsentinel_app(void*);
 int main(void) {
     mock_sdk_reset(); NsFlipper f;
@@ -21,6 +22,13 @@ int main(void) {
     assert(ns_persistence_save(&persistence, &saved) == NS_OK);
     assert(ns_persistence_load(&persistence, &f.store, &restored) == NS_OK);
     assert(restored.last_id == 7 && restored.settings.timeout_ms == saved.settings.timeout_ms);
+    NsApplication app; assert(ns_app_init(&app, &f.platform, &f.store, f.capabilities) == NS_OK);
+    app.selected = NS_RADIO_ESP; app.page = NS_PAGE_RADIO; NsFrame frame;
+    ns_app_frame(&app, &frame);
+    assert(!strcmp(frame.rows[4], "UART disabled in this build"));
+    assert(!strcmp(frame.rows[5], "ESP32 adapter disabled"));
+    app.status = NS_IO; ns_app_frame(&app, &frame);
+    assert(!strcmp(frame.rows[5], ns_result_name(NS_IO))); /* preserve storage errors */
     ns_flipper_deinit(&f); assert(!mock_sdk_live() && !mock_sdk_records());
     mock_sdk_reset();
     InputEvent navigation[] = {

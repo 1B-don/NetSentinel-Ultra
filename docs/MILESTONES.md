@@ -97,3 +97,7 @@ Bundled firmware ELF loader interface and API-reporting function both confirm 87
 ## First matching Momentum SDK build
 
 Owner USB CLI confirms running API87.1/target7/d3f89dfe, resolving earlier mismatch. Permitted unmodified ZIP installed using supported local update in separate uFBT home; clean rebuild compiles all12 C files and passes link/package/APPCHK. FAP metadata API87.1/target7; all49 actual packaged imports enabled in matching export table. Artifact33480 bytes, SHA256 de38c1c7e08336a1ab5a3ebe6dcf2865ac8aa5ce9dedb97c8f8c17c024b859b5. Original official SDK/FAP/evidence preserved. All host/short-enum/sanitizer/preflight/publication checks pass; radio adapters disabled and physical tests pending. [Full build and setup errors resolved](MOMENTUM_BUILD.md).
+
+## ESP32 status preparation after first physical baseline
+
+Owner confirms first launch/dashboard/Back/settings persistence/disabled-radio results. Public topology/voltage/protocol research documents exact unresolved Ultra wiring and installed labels. UART protocol now rejects late responses before parsing; invalid reads clear output length; actual Wi-Fi frames distinguish disabled, waiting, info-received and errors. New deadline/wrap/cancel/UI tests and all existing regressions pass. Clean Momentum build/API87.1/target7/import checks pass; new34148-byte FAP hash 914670abc5c3a1b8e7850db10dd7b2799af18fdfd2861edd03055af21558e42b remains GUI/storage-only and physically untested. [Evidence/remaining gates](ESP32_PREPARATION.md).

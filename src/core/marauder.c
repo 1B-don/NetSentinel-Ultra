@@ -27,8 +27,9 @@ NsResult ns_marauder_begin(NsMarauder* m, const NsPlatform* io, bool wifi, bool 
     NsResult r = send(m, "info\n"); return r == NS_OK ? r : fail(m, r);
 }
 NsResult ns_marauder_line(NsMarauder* m, const char* line, uint32_t now) {
-    (void)now;
     if(!m || !line) return NS_INVALID;
+    NsResult deadline = ns_marauder_tick(m, now);
+    if(deadline != NS_OK) return deadline;
     while(*line == ' ') line++;
     const char* echo = m->stage == NS_M_INFO ? "#info" : m->stage == NS_M_HELP ? "#help" :
         m->stage == NS_M_START ? "#sniffbeacon" : m->stage == NS_M_STOP ? "#stopscan" : NULL;
@@ -51,6 +52,8 @@ NsResult ns_marauder_line(NsMarauder* m, const char* line, uint32_t now) {
 }
 NsResult ns_marauder_prompt(NsMarauder* m, uint32_t now) {
     if(!m) return NS_INVALID;
+    NsResult deadline = ns_marauder_tick(m, now);
+    if(deadline != NS_OK) return deadline;
     NsResult r = NS_OK;
     if(m->stage != NS_M_SCAN && !m->command_echo) return NS_OK;
     m->command_echo = false;

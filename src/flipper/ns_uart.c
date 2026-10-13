@@ -69,8 +69,9 @@ NsResult ns_flipper_uart_write(void* ctx, const uint8_t* bytes, size_t count) {
 }
 NsResult ns_flipper_uart_read(void* ctx, uint8_t* bytes, size_t cap, size_t* count) {
     NsFlipper* f = ctx;
-    if(!f->serial || !bytes || !count) return NS_INVALID;
+    if(!count) return NS_INVALID;
     *count = 0;
+    if(!f->serial || !bytes || !cap) return NS_INVALID;
     NsResult error = (NsResult)atomic_load(&f->rx_error); if(error != NS_OK) return error;
     unsigned tail = atomic_load_explicit(&f->rx_tail, memory_order_relaxed);
     unsigned head = atomic_load_explicit(&f->rx_head, memory_order_acquire);

@@ -1,5 +1,7 @@
 # Verification status — no release
 
+**Owner physical result:** first-build launch, dashboard rendering, Back exit, settings persistence and disabled ESP/NRF/CC status pass on Momentum d3f89dfe/API87.1/target7. Untested navigation paths, heap/SD faults and all radio functionality remain pending. The newly rebuilt status/deadline artifact is not physically tested. [Detailed evidence split and ESP32 next steps](ESP32_PREPARATION.md). Earlier all-pending statements below are historical.
+
 **Current update:** USB CLI independently confirms installed API **87.1**, target 7, d3f89dfe; earlier 89.1/mismatch blockers below are superseded. Matching permitted Momentum SDK clean build, metadata and all 49 imports pass. Current FAP is 33,480 bytes, SHA256 `de38c1c7e08336a1ab5a3ebe6dcf2865ac8aa5ce9dedb97c8f8c17c024b859b5`. See [Momentum build result](MOMENTUM_BUILD.md). All radios remain disabled; physical installation/execution are pending explicit approval. For the device procedure use this artifact/hash; former fingerprint and metadata requests are historical.
 
 | Area | Host evidence | Outstanding device/SDK evidence |

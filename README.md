@@ -1,8 +1,10 @@
 # NetSentinel Ultra — independent v1.0 development
 
-NetSentinel now compiles and packages a real GUI/storage-only FAP using the permitted **Momentum mntm-dev-d3f89dfe SDK**, matching the running firmware’s independently confirmed **API 87.1 / hardware target 7**. Clean compilation, linking, packaging and all 49 import checks pass. Physical operation remains unverified; no deployment or v1.0 release occurred.
+NetSentinel now compiles and packages a real GUI/storage-only FAP using the permitted **Momentum mntm-dev-d3f89dfe SDK**, matching the running firmware’s independently confirmed **API 87.1 / hardware target 7**. Clean compilation, linking, packaging and all 49 import checks pass. The owner physically verified launch, dashboard, Back exit, settings persistence and disabled-radio status on the first build. Radio operation and remaining navigation/error paths are unverified; no v1.0 release occurred.
 
-Artifact: `dist/netsentinel.fap` (33,480 bytes). See [Momentum build evidence and reproducible commands](docs/MOMENTUM_BUILD.md). The earlier official SDK artifact/evidence are preserved separately.
+Current rebuilt artifact: `dist/netsentinel.fap` (34,148 bytes; not physically tested). See [Momentum build evidence and reproducible commands](docs/MOMENTUM_BUILD.md). The earlier official SDK artifact/evidence are preserved separately.
+
+[ESP32 preparation](docs/ESP32_PREPARATION.md) records UART topology/protocol blockers, deadline fixes and meaningful status UI.
 
 The earlier API 89.1 report is superseded by the owner’s direct USB CLI result. All radio adapters remain disabled. [First on-device test](docs/FIRST_DEVICE_TEST.md) requires explicit approval before installation or execution.
 
