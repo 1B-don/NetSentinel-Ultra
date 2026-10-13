@@ -108,6 +108,8 @@ void ns_session_stop(NsSession* s, uint32_t now) {
     s->history[s->history_next] = (NsHistory){s->id, s->started_ms, now, s->observations, s->active, s->error};
     s->history_next = (s->history_next + 1) % NS_HISTORY_LIMIT;
     if(s->history_count < NS_HISTORY_LIMIT) s->history_count++;
+    memset(s->line, 0, sizeof(s->line));
+    s->line_len = 0; s->discard_line = false;
     s->active = NS_RADIO_NONE;
 }
 NsResult ns_session_cancel(NsSession* s, uint32_t now) {

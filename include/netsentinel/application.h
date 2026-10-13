@@ -12,7 +12,7 @@ typedef struct {
     NsPersistence persistence;
     NsCapabilities capabilities;
     NsPage page;
-    unsigned menu, setting, history_index, filter_setting;
+    unsigned menu, setting, history_index, filter_setting, diagnostic_view;
     NsObservationFilter observation_filter;
     NsHistoryFilter history_filter;
     uint32_t now_ms, export_id;

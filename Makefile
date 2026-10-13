@@ -4,7 +4,8 @@ CPPFLAGS := -Iinclude -I.
 CFLAGS := -std=c11 -Wall -Wextra -Werror -pedantic -g
 CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/cc_spi.c src/core/marauder.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c src/core/observation.c src/core/export.c
 .PHONY: test clean sanitize audit-test sdk-test sdk-preflight short-enums
-test: audit-test sdk-test $(BUILD)/test_observation $(BUILD)/test_esp_info_build $(BUILD)/test_minimal_build $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
+test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD)/test_esp_info_build $(BUILD)/test_minimal_build $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
+	$(BUILD)/test_stress
 	$(BUILD)/test_observation
 	$(BUILD)/test_esp_info_build
 	$(BUILD)/test_minimal_build
@@ -67,3 +68,6 @@ $(BUILD)/test_esp_info_build: $(CORE) $(FLIPPER) src/flipper/ns_flipper.h tests/
 
 $(BUILD)/test_observation: $(CORE) tests/test_observation.c $(wildcard include/netsentinel/*.h) | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE) tests/test_observation.c -o $@
+
+$(BUILD)/test_stress: $(CORE) tests/test_stress.c tests/mock_platform.h $(wildcard include/netsentinel/*.h) | $(BUILD)
+	$(CC) $(CPPFLAGS) -DNS_ESP_INFO_ONLY $(CFLAGS) $(CORE) tests/test_stress.c -o $@

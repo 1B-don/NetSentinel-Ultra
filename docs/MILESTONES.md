@@ -147,3 +147,7 @@ Audited the actual cores, adapter gates, UI, persistence and tests; preserved al
 ## Bounded observations, history filtering and private exports
 
 Implemented the observation/storage milestone described in V1_READINESS.md and USER_GUIDE.md. Stable artifacts preserved, only a separate unified development artifact built. Existing persistence format unchanged. Tests now include eleven C suites and strict FAP metadata tests. Actual SDK build succeeds; no device deployment or new physical claims. Publication remains unavailable due to GitHub DNS; prior and new commits retained.
+
+## Deterministic stress and consistent diagnostics
+
+Added deterministic parser/UART/radio/UI stress coverage, explicit UART line-buffer clearing, pixel-width-bounded GUI rendering and storage/USART/radio diagnostic views. Twelve host suites and all sanitizer/short-enum/preflight/publication checks pass. Matching SDK build/APPCHK and actual FAP imports pass; no deployment. Candidate external APIs inventoried from permitted SDK-only headers without creating speculative pin bindings. Hardware/passivity dependencies remain recorded in V1_READINESS.md. GitHub DNS still prevents normal publication.

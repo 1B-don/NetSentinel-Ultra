@@ -3,6 +3,7 @@
 #include <gui/gui.h>
 #include <input/input.h>
 #include <stdlib.h>
+#include <string.h>
 typedef struct {
     NsApplication app;
     NsFlipper port;
@@ -17,7 +18,16 @@ static void draw(Canvas* canvas, void* ctx) {
     NsGui* g = ctx;
     if(furi_mutex_acquire(g->mutex, FuriWaitForever) != FuriStatusOk) return;
     canvas_clear(canvas); canvas_set_font(canvas, FontSecondary);
-    for(unsigned i = 0; i < 6; i++) canvas_draw_str(canvas, 1, 10+i*10, g->frame.rows[i]);
+    for(unsigned i = 0; i < 6; i++) {
+        char line[sizeof(g->frame.rows[0])];
+        memcpy(line, g->frame.rows[i], sizeof(line)); line[sizeof(line)-1] = 0;
+        size_t length = strlen(line);
+        while(length && canvas_string_width(canvas, line) > 126) {
+            line[--length] = 0;
+            if(length) line[length-1] = '~'; /* visible truncation, never overflow display */
+        }
+        canvas_draw_str(canvas, 1, 10+i*10, line);
+    }
     for(size_t i = 0; i < g->frame.bar_count; i++) {
         if(g->frame.bars[i]) {
             int x = g->frame.cc_plot ? (int)i*2+1 : (int)i+1;

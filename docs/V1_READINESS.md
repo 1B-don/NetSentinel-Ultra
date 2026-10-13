@@ -41,3 +41,11 @@ Full three-radio functionality is blocked by the above inputs. Software mocks an
 ## Observation and storage milestone
 
 Implemented bounded channel/RSSI/age filters, filtered newest-first history and numeric history CSV exports with pre-create ID reservation, exclusive creation and cleanup on every storage fault. Added NRF measured-channel peak/quiet summaries, blocked-adapter explanations, and a private AP UI/CSV path. Filters are deliberately volatile; existing NSP1 settings/history schema remains compatible. Added tests for age wrap, invalid measurements, small-buffer transactionality, filtered UI, storage failures, ownership exclusion and actual FAP metadata mutation. Eleven C suites, short enums, sanitizer, preflight/publication tests and matching SDK build/import checks pass. Physical bindings remain blocked; full feature completeness is not claimed.
+
+## Stress, diagnostics and remaining gates
+
+Twelve C suites now pass, including deterministic 20,000 parser mutations, 2,000 fragmented/interrupted UART transactions across tick wrap, 25,200 mocked NRF primary-RX samples, and 10,000 UI events. UART line staging is scrubbed at teardown. GUI rendering measures real SDK string width and marks truncation instead of drawing outside the 128-pixel screen; host draw mocks assert width bounds. Unified diagnostics has storage, USART and blocked-radio views. Full visual navigation remains physically untested.
+
+Observed vs implemented status remains separate: ESP info has owner-reported repeated success and restored original app functionality; Back cancellation is still pending. NRF/CC processing is implemented and simulated, compiled into the development FAP, but physical adapters remain disabled. Wi-Fi channel/AP processing and filtering are implemented/simulated; installed initialization/receive/stop TX exclusion remains unresolved. BLE remains unsupported because no verified passive protocol exists. No complete three-radio v1.0 claim is justified.
+
+Permitted SDK headers/export table provide SPI and SubGhzDevice APIs (see SDK_INTERFACES.md). Transfer deadlines exist, but SPI bus acquisition has no deadline parameter. External plugin implementation, exact device identity, pin routes and ownership semantics are still required. Manufacturer guides contain no netlist; no inferred binding was created.

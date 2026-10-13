@@ -59,3 +59,12 @@ Preflight now has an optional actual-ELF undefined-symbol mode that checks enabl
 The initial manifest defines `NS_GUI_STORAGE_ONLY`. Serial HAL includes/calls are excluded and radio acquisition is Unsupported; combining it with `NS_ENABLE_BOARD_PORT` is a compile error. Source preflight uses `--gui-storage-only` to select 34 firmware calls. Removing the define restores the existing 43-call UART candidate; do not do so until target interfaces are validated. No ARM binary exists yet.
 
 Official SDK 1.4.3 compile/link/packaging and APPCHK now pass for the minimal configuration: target 7 / API 87.1 and 49 final imports, all resolved in its enabled Function/Variable exports. No serial HAL imports remain. This confirms real declarations/imports for that SDK, not the installed Momentum ABI; see BUILD_RESULT.md. Prefer the SDK's final `.impsyms` evidence over the intermediate debug ELF, which carries a debug-only undefined symbol not required by the packaged app.
+
+## v1.0 SDK-only radio inventory
+
+Read-only review of the supplied mntm-dev-d3f89dfe SDK headers and enabled API 87.1 table confirms these candidate interfaces (not current FAP imports):
+
+- SPI: furi_hal_spi_bus_handle_init/deinit, furi_hal_spi_acquire/release, furi_hal_spi_bus_trx(const FuriHalSpiBusHandle*, const uint8_t*, uint8_t*, size_t, uint32_t). Transfer has a timeout and boolean return; acquire is void with no deadline argument. A timeout on transfer does not prove bounded bus acquisition. Handle routing, CS/CE and teardown must be independently reviewed.
+- External Sub-GHz registry: subghz_devices_init/deinit, get_by_name, get_name, begin/end, is_connect, load_preset, is_frequency_valid, set_frequency, set_rx, get_rssi, idle/sleep. All are enabled exports in the supplied table. They delegate to SubGhzDeviceInterconnect function pointers; the headers do not prove a particular plugin is installed, external-only, passive during begin/preset changes, or safe under competing owners. The plugin ABI macro is version 1. Many setters return void; a physical adapter must verify state/settling and reject errors, never fall back to the internal device.
+
+No TX functions are called or bound. No SPI/Sub-GHz registry/power/USB/direct GPIO imports occur in the current development FAP. Physical binding requires exact Ultra net routes, explicit external plugin identity/implementation and initialization/receive/cleanup evidence. Names in the SDK do not supply those facts. The permitted distribution does not contain the external plugin implementation necessary to review them.

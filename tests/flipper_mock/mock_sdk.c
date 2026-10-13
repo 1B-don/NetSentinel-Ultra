@@ -77,7 +77,8 @@ void gui_add_view_port(Gui* g, ViewPort* p, GuiLayer layer) { (void)g; (void)lay
 void gui_remove_view_port(Gui* g, ViewPort* p) { (void)g; assert(p->attached); p->attached = false; active_viewport = NULL; }
 void canvas_clear(Canvas* c) { c->calls++; }
 void canvas_set_font(Canvas* c, Font f) { (void)c; (void)f; }
-void canvas_draw_str(Canvas* c, int x, int y, const char* s) { (void)c; assert(x >= 0 && x < 128 && y > 0 && y <= 64 && s); }
+uint16_t canvas_string_width(Canvas* c, const char* s) { (void)c; return (uint16_t)(strlen(s)*5); }
+void canvas_draw_str(Canvas* c, int x, int y, const char* s) { (void)c; assert(x >= 0 && x < 128 && y > 0 && y <= 64 && s && strlen(s)*5 <= 126); }
 void canvas_draw_line(Canvas* c, int x1, int y1, int x2, int y2) { (void)c; assert(x1 >= 0 && x1 < 128 && x2 >= 0 && x2 < 128 && y1 >= 0 && y1 < 64 && y2 >= 0 && y2 < 64); }
 File* storage_file_alloc(Storage* s) { (void)s; return allocate(sizeof(File)); }
 void storage_file_free(File* f) { assert(!f->entry); dispose(f); }

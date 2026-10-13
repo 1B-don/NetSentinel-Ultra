@@ -336,7 +336,10 @@ NsResult ns_app_key(NsApplication* a, NsKey key, uint32_t now) {
             a->ap_index = 0;
         }
     } else if(a->page == NS_PAGE_EXPORTS && key == NS_KEY_OK) return ns_app_export_history(a, now);
-    else if(a->page == NS_PAGE_DIAGNOSTICS && key == NS_KEY_OK) return a->history_dirty ? (a->status = persist_history(a)) : ns_app_reload(a);
+    else if(a->page == NS_PAGE_DIAGNOSTICS) {
+        if(key == NS_KEY_UP || key == NS_KEY_DOWN) a->diagnostic_view = (a->diagnostic_view+(key == NS_KEY_DOWN ? 1 : 2))%3;
+        if(key == NS_KEY_OK) return a->history_dirty ? (a->status = persist_history(a)) : ns_app_reload(a);
+    }
     return NS_OK;
 }
 void ns_app_frame(const NsApplication* a, NsFrame* f) {
@@ -377,7 +380,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                     }
                 }
             } else {
-                snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi %s", a->capabilities.esp_wifi_verified ? "passive adapter" : "command capture needed");
+                snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi %s", a->capabilities.esp_wifi_verified ? "observation contract" : "command capture needed");
                 snprintf(f->rows[2], sizeof(f->rows[2]), "%.23s", a->session.marauder.version);
                 snprintf(f->rows[3], sizeof(f->rows[3]), "%.38s", a->session.marauder.hardware);
                 snprintf(f->rows[4], sizeof(f->rows[4]), "%s", a->capabilities.esp_uart ?
@@ -398,8 +401,8 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                 if(a->capabilities.esp_info_only) {
                     snprintf(f->rows[1], sizeof(f->rows[1]), "ESP32 info-only USART");
                     /* Only known matched constants reach diagnostics, never untrusted identity text. */
-                    snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->info_validated ? "Marauder v1.11.0 (last success)" : "Identity not validated");
-                    snprintf(f->rows[3], sizeof(f->rows[3]), "%s", a->info_validated ? "Marauder v4 (last success)" : "");
+                    snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->info_validated ? "v1.11.0 (last success)" : "Identity not validated");
+                    snprintf(f->rows[3], sizeof(f->rows[3]), "%s", a->info_validated ? "Marauder v4 (last)" : "");
                     if(a->info_view == 1) {
                         snprintf(f->rows[1], sizeof(f->rows[1]), "ESP-IDF (validated reply)");
                         snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->info_validated ? "v5.5.1-710-g8410210c9a" : "Not validated");
@@ -409,7 +412,7 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
                         snprintf(f->rows[2], sizeof(f->rows[2]), "Elapsed: %lu ms%s", (unsigned long)a->info_elapsed_ms, a->session.active == NS_RADIO_ESP ? " (running)" : "");
                         snprintf(f->rows[3], sizeof(f->rows[3]), "Timeout: %lu ms", (unsigned long)a->session.timeout_ms);
                     }
-                    snprintf(f->rows[4], sizeof(f->rows[4]), "%s", a->info_pending || a->session.active != NS_RADIO_NONE ? "Retry disabled; Back: cancel" : "OK: Retry  Up/Down: details");
+                    snprintf(f->rows[4], sizeof(f->rows[4]), "%s", a->info_pending || a->session.active != NS_RADIO_NONE ? "Retry disabled; Back cancels" : "OK retry; Up/Down views");
                     if(a->info_pending) state = "Connecting: USART requested";
                     else if(a->session.active == NS_RADIO_ESP) state = "Waiting: info response";
                     else if(a->status == NS_TIMEOUT) state = "Timeout: link unconfirmed";
@@ -494,5 +497,16 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
         snprintf(f->rows[2], sizeof(f->rows[2]), "CSV: %s", a->session.logging ? "open" : "closed");
         snprintf(f->rows[3], sizeof(f->rows[3]), "History: %s", a->history_dirty ? "unsaved; OK retries" : "saved");
         snprintf(f->rows[4], sizeof(f->rows[4]), "Gen %lu  OK: retry SD", (unsigned long)a->persistence.generation);
+        if(a->diagnostic_view == 1) {
+            snprintf(f->rows[1], sizeof(f->rows[1]), "%s", a->capabilities.esp_uart ? "USART TX13 RX14 115200" : "USART adapter disabled");
+            snprintf(f->rows[2], sizeof(f->rows[2]), "%s", a->session.active == NS_RADIO_ESP ? "8N1; query in progress" : "USART closed; info-only");
+            snprintf(f->rows[3], sizeof(f->rows[3]), "Lines %lu dropped %lu", (unsigned long)a->session.lines, (unsigned long)a->session.dropped_lines);
+            snprintf(f->rows[4], sizeof(f->rows[4]), "Raw serial never persisted");
+        } else if(a->diagnostic_view == 2) {
+            snprintf(f->rows[1], sizeof(f->rows[1]), "Wi-Fi passive proof pending");
+            snprintf(f->rows[2], sizeof(f->rows[2]), "NRF24 SPI routing pending");
+            snprintf(f->rows[3], sizeof(f->rows[3]), "CC external RX pending");
+            snprintf(f->rows[4], sizeof(f->rows[4]), "BLE protocol unverified");
+        }
     }
 }

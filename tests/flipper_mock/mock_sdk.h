@@ -48,6 +48,7 @@ void gui_remove_view_port(Gui*, ViewPort*);
 void canvas_clear(Canvas*);
 void canvas_set_font(Canvas*, Font);
 void canvas_draw_str(Canvas*, int, int, const char*);
+uint16_t canvas_string_width(Canvas*, const char*);
 void canvas_draw_line(Canvas*, int, int, int, int);
 File* storage_file_alloc(Storage*);
 void storage_file_free(File*);

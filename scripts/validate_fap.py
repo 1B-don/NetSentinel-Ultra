@@ -58,7 +58,7 @@ def main():
     required, weak = sdk_preflight.read_undefined(listing)
     if weak or required-exports:
         raise ValueError('unresolved or weak firmware imports')
-    blocked = ('furi_hal_spi', 'furi_hal_subghz', 'furi_hal_power', 'furi_hal_gpio', 'furi_hal_usb')
+    blocked = ('furi_hal_spi', 'furi_hal_subghz', 'furi_hal_power', 'furi_hal_gpio', 'furi_hal_usb', 'subghz_devices_')
     if any(name.startswith(blocked) or name == 'furi_hal_serial_tx_wait_complete' for name in required):
         raise ValueError('unexpected radio/power/USB or unbounded wait import')
     result.update(artifact=artifact.name, bytes=len(data), sha256=hashlib.sha256(data).hexdigest(),
