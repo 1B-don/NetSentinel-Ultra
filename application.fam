@@ -1,3 +1,14 @@
-# No buildable FAP manifest yet: the SDK adapter and GUI entry point require
-# an appropriately authorized SDK and verification against installed firmware.
-# Do not include legacy/netsentinel_v02.c (contains unverified active scans).
+# Candidate external-app manifest; real SDK compilation/ABI verification pending.
+# No hardware port enabled: radio acquisition returns NS_UNSUPPORTED.
+App(
+    appid="netsentinel",
+    name="NetSentinel Ultra",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="netsentinel_app",
+    stack_size=8 * 1024,
+    fap_version="1.0",
+    fap_category="GPIO",
+    fap_description="Receive-only diagnostics; v1.0 development, unverified SDK integration",
+    fap_author="Brandon Midgette",
+    sources=["ap_parser.c", "ns_analysis.c", "src/core/*.c", "src/flipper/*.c"],
+)

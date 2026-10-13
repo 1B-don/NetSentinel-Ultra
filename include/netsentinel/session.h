@@ -1,7 +1,7 @@
 #ifndef NS_SESSION_H
 #define NS_SESSION_H
 #include "radios.h"
-#include "ap_parser.h"
+#include "../../ap_parser.h"
 #define NS_AP_LIMIT 48
 #define NS_LINE_LIMIT 256
 #define NS_HISTORY_LIMIT 16
@@ -28,7 +28,7 @@ typedef struct {
     size_t line_len;
     bool discard_line, ble, logging;
     uint32_t dropped_lines, lines, last_rx_ms, started_ms, id, observations;
-    uint32_t timeout_ms;
+    uint32_t timeout_ms, dwell_us;
     uint8_t nrf_channel;
     NsResult error;
     NsHistory history[NS_HISTORY_LIMIT];

@@ -1,4 +1,4 @@
-#include "netsentinel/radios.h"
+#include "../../include/netsentinel/radios.h"
 #include <string.h>
 /* Independently authored from documented nRF24L01+ register interface.
  * CONFIG is always primary RX; auto-ACK/retries are disabled before CE high.
@@ -17,13 +17,15 @@ static NsResult nrf_set(NsNrf* n, uint8_t reg, uint8_t value) {
     r = nrf_reg(n, false, reg, &readback);
     return r != NS_OK ? r : (readback == value ? NS_OK : NS_ABSENT);
 }
-void ns_nrf_close(NsNrf* n) {
-    if(!n || !n->owned) return;
+NsResult ns_nrf_close(NsNrf* n) {
+    if(!n) return NS_INVALID;
+    if(!n->owned) return NS_OK;
     n->io->ce(n->io->ctx, false);
     uint8_t config = 0x01; /* power down, retain RX mode */
-    (void)nrf_reg(n, true, 0, &config);
+    NsResult r = nrf_reg(n, true, 0, &config);
     n->io->release(n->io->ctx, NS_RADIO_NRF);
     n->owned = n->ready = false;
+    return r;
 }
 NsResult ns_nrf_open(NsNrf* n, const NsPlatform* io, bool confirmed) {
     if(!n || !io || !io->acquire || !io->release || !io->spi || !io->ce || !io->delay_us) return NS_INVALID;
@@ -67,11 +69,13 @@ bool ns_cc_frequency_valid(uint32_t f) {
            (f >= 387000000 && f <= 464000000) ||
            (f >= 779000000 && f <= 928000000);
 }
-void ns_cc_close(NsCc* c) {
-    if(!c || !c->owned) return;
-    (void)c->io->cc_idle(c->io->ctx);
+NsResult ns_cc_close(NsCc* c) {
+    if(!c) return NS_INVALID;
+    if(!c->owned) return NS_OK;
+    NsResult r = c->io->cc_idle(c->io->ctx);
     c->io->release(c->io->ctx, NS_RADIO_CC);
     c->owned = c->ready = false;
+    return r;
 }
 NsResult ns_cc_open(NsCc* c, const NsPlatform* io, bool confirmed) {
     if(!c || !io || !io->acquire || !io->release || !io->cc_probe || !io->cc_receive || !io->cc_rssi || !io->cc_idle) return NS_INVALID;

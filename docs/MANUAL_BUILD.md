@@ -1,24 +1,25 @@
 # Manual SDK compilation and device verification
 
-This document is a staged workflow for the owner. It does not authorize the assistant to access the restricted Momentum checkout, clone its contents elsewhere to bypass instructions, or operate the Flipper. No SDK compilation has been attempted in this independent project.
+The assistant has not accessed the restricted Momentum checkout or performed an SDK build. This workflow requires an SDK the owner is appropriately authorized to use; it does not bypass repository instructions. Do not use a current development SDK as assumed proof of compatibility with firmware `d3f89dfe2ef6b01839201598e9be1590cba80322`.
 
-## Prerequisites
+## Candidate app build
 
-1. Obtain an SDK you are appropriately authorized to use. Read its applicable instructions yourself. For firmware `d3f89dfe`, compatibility evidence must cover full commit `d3f89dfe2ef6b01839201598e9be1590cba80322`, API symbol versions and external-radio interfaces. A current dev SDK is not sufficient evidence.
-2. Supply permitted API header declarations/export metadata and board pin mapping for implementing the adapter, or implement the adapter manually. Do not supply restricted repository code for the assistant to work around its instructions.
-3. Implement `NsPlatform`, a worker and GUI entry point in this application repository. Satisfy every requirement in `adapters/README.md`. UART IRQs enqueue bytes; a worker parses them and performs storage/radio operations. Implement settings read/write and persistent history, with bounded files, exclusive filenames and failed-write handling.
-4. Confirm ESP32 firmware/passive commands. Until then leave the profile NULL. Never compile the archived v0.2 entry point as a shortcut.
+1. Read the authorized SDK's applicable instructions and confirm its revision/exported API matches the installed firmware. Preserve NetSentinel source in this repository; register the directory using the SDK's supported external-app source workflow. Do not include `legacy` or the host `tests/flipper_mock` headers in an SDK build.
+2. Run `make test` and `make sanitize` here. Use the documented sandbox override only if leak detection is unavailable.
+3. Build the existing candidate `application.fam`. It defines `netsentinel_app`, an 8 KiB stack, explicit core/Flipper source globs, and a v1.0 development target. The default shell implements GUI/storage and returns Unsupported for all radio acquisition. Relative local includes avoid guessing additional SDK include flags.
+4. Follow the SDK's documented build-only command. A typical FBT target is `./fbt fap_netsentinel`, but verify it for the selected SDK. Do not use launch/upload/flash targets at this stage. Record all compiler/linker output under this repository's `logs` and return errors plus permitted API declarations for independent application fixes.
+5. After successful compilation, retain the actual FAP under `builds` and record its hash, application commit, SDK/toolchain version, exported API version and compile log. Existing Downloads binaries and host shim executables are not FAP build evidence.
 
-## Once integration exists
+Public [manifest documentation](https://developer.flipper.net/flipperzero/doxygen/app_manifests.html) describes the candidate fields, but does not validate the restricted installed firmware ABI.
 
-Create an actual SDK manifest using the authorized SDK's documented external-app syntax, with entry point `netsentinel_app`, appropriate stack/heap requirements, root parser/analysis sources, portable `src/core` files and the concrete adapter/UI sources. The current `application.fam` is explicitly a nonbuildable placeholder to prevent accidentally building the legacy active scanning application.
+## Hardware integration before radio tests
 
-Run `make test` and `make sanitize`. Have a human place or register the app with the SDK using its supported external-source workflow, preserving application source ownership in this repository. A typical FBT target is `./fbt fap_netsentinel`; verify this target with the selected SDK's own documentation. Do not run firmware flashing targets. Save full compiler/linker output in this repository's `logs` directory. Return failures, SDK revision and permitted API declarations for fixes in independent application code.
+An authorized board port must implement the optional `ns_flipper_board_bind/unbind` hooks, enable `NS_ENABLE_BOARD_PORT` in the candidate manifest, and add the port source to the build sources. It may fill only radio callbacks, capability flags and board context. Keep storage/context bindings intact and ESP scanning disabled. Verify Ultra CE/CS/SPI routing and supported external CC interfaces rather than guessing. All acquire/transfer/release work must be bounded, preserve original resources and remain receive-only. `adapters/README.md` is the port contract.
 
-After successful compilation, copy only the newly produced FAP to `builds`, calculate `sha256sum`, and record artifact hash, application Git commit, SDK/toolchain versions, exported API version and compile log. Existing Downloads binaries are not build evidence.
+The optional hook is a preparation interface, not a completed driver. A default shell build cannot scan NRF/CC radios. UART ingress and firmware-specific passive commands/device parsing remain future work; do not enable the imported legacy commands as a shortcut.
 
-## Device stage, only after explicit approval
+## Device stage, after explicit approval
 
-Use the selected SDK's documented app upload/launch workflow or qFlipper file transfer. Do not change USB permissions, flash firmware, erase storage or transmit RF. Obtain approval for deployment and launching before invoking either. Obtain owner confirmation of NRF24/CC1101 selector position before acquiring the selected module. Changing selectors during an active session is unsupported: stop, release, change position, then restart.
+Obtain owner approval before deployment or launching. Use supported app upload/launch or qFlipper file transfer; never alter USB permissions, flash firmware or erase storage. The first approved shell test should verify GUI, allocation/exit cleanup, actual SD settings/history and CSV handling. Radio tests require a verified board port and owner confirmation of the physical selector before each start. Stop before changing the selector.
 
-Run the scenarios in `VERIFICATION.md` and capture device logs. A successful launch alone does not prove Wi-Fi/BLE/RF behavior. Do not label an artifact v1.0 until all required feature tests pass, including settings/history persistence and actual SD CSV reads. RF absence and reception tests require owner-approved receive-only fixtures or naturally occurring signals; no test transmitter is operated by this project.
+Run every required scenario in `VERIFICATION.md`, capture device logs, and record expected/observed results. A successful build or launch does not establish RF behavior. No v1.0 release is produced until every required feature passes. Use receive-only observations/fixtures; do not operate a test transmitter without explicit approval.

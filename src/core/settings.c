@@ -1,5 +1,5 @@
-#include "netsentinel/settings.h"
-#include "netsentinel/radios.h"
+#include "../../include/netsentinel/settings.h"
+#include "../../include/netsentinel/radios.h"
 #include <stdio.h>
 NsSettings ns_settings_default(void) { return (NsSettings){115200, 5000, 200, 433920000}; }
 static bool valid(const NsSettings* s) {

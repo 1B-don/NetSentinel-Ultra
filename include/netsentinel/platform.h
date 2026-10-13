@@ -23,6 +23,6 @@ typedef struct {
     NsResult (*file_create)(void*, const char*); /* exclusive create */
     NsResult (*file_write)(void*, const char*, size_t); /* full write or error */
     NsResult (*file_sync)(void*);
-    void (*file_close)(void*);
+    NsResult (*file_close)(void*); /* close handle even on error; report status */
 } NsPlatform;
 #endif

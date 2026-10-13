@@ -1,5 +1,5 @@
-#include "netsentinel/session.h"
-#include "ns_analysis.h"
+#include "../../include/netsentinel/session.h"
+#include "../../ns_analysis.h"
 #include <stdio.h>
 #include <string.h>
 static NsResult command(NsSession* s, const char* text) {
@@ -28,12 +28,13 @@ static NsResult raw_log(NsSession* s, uint32_t now) {
     return write_log(s, record);
 }
 void ns_session_init(NsSession* s, const NsPlatform* io, const NsEspProfile* p) {
-    memset(s, 0, sizeof(*s)); s->io = io; s->profile = p; s->timeout_ms = 5000;
+    memset(s, 0, sizeof(*s)); s->io = io; s->profile = p; s->timeout_ms = 5000; s->dwell_us = 200;
 }
 NsResult ns_session_log_close(NsSession* s) {
     if(!s || !s->logging) return NS_OK;
     NsResult r = s->io->file_sync(s->io->ctx);
-    s->io->file_close(s->io->ctx); s->logging = false;
+    NsResult closed = s->io->file_close(s->io->ctx); s->logging = false;
+    if(r == NS_OK) r = closed;
     if(r != NS_OK) s->error = r;
     return r;
 }
@@ -72,8 +73,10 @@ NsResult ns_session_start(NsSession* s, NsRadio radio, bool ble, bool confirmed,
 }
 void ns_session_stop(NsSession* s, uint32_t now) {
     if(!s || s->active == NS_RADIO_NONE) return;
-    if(s->active == NS_RADIO_NRF) ns_nrf_close(&s->nrf);
-    if(s->active == NS_RADIO_CC) ns_cc_close(&s->cc);
+    NsResult cleanup = NS_OK;
+    if(s->active == NS_RADIO_NRF) cleanup = ns_nrf_close(&s->nrf);
+    if(s->active == NS_RADIO_CC) cleanup = ns_cc_close(&s->cc);
+    if(cleanup != NS_OK && s->error == NS_OK) s->error = cleanup;
     if(s->active == NS_RADIO_ESP) {
         NsResult r = command(s, s->profile->stop);
         if(r != NS_OK && s->error == NS_OK) s->error = r;
@@ -129,7 +132,7 @@ NsResult ns_session_tick(NsSession* s, uint32_t now) {
         if((uint32_t)(now - s->last_rx_ms) >= s->timeout_ms) r = NS_TIMEOUT;
     } else if(s->active == NS_RADIO_NRF) {
         uint8_t ch = s->nrf_channel;
-        r = ns_nrf_sample(&s->nrf, ch, 200);
+        r = ns_nrf_sample(&s->nrf, ch, s->dwell_us);
         if(r == NS_OK) {
             s->observations++;
             snprintf(record, sizeof(record), "%lu,%lu,nrf,,%u,%u,percent\n",

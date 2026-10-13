@@ -1,0 +1,11 @@
+cc -Iinclude -I. -std=c11 -Wall -Wextra -Werror -pedantic -g ap_parser.c ns_analysis.c src/core/radios.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c tests/test_application.c -o builds/host/test_application
+builds/host/test_parser
+PASS: 15 Marauder parser scenarios
+builds/host/test_analysis
+Analysis tests passed
+builds/host/test_core
+PASS: receive safety, SPI/UART/storage failures, bounds, session cleanup and recovery
+builds/host/test_application
+PASS: application navigation, restart persistence, 420 torn writes, ID reservation and recovery
+builds/host/test_flipper_contract
+PASS: Flipper shell/storage contract shims, exclusive CSV, GUI lifecycle and allocation unwind (not SDK ABI)

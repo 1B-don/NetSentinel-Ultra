@@ -11,7 +11,7 @@ typedef struct {
 } NsNrf;
 NsResult ns_nrf_open(NsNrf*, const NsPlatform*, bool selector_confirmed);
 NsResult ns_nrf_sample(NsNrf*, uint8_t channel, uint32_t dwell_us);
-void ns_nrf_close(NsNrf*);
+NsResult ns_nrf_close(NsNrf*);
 unsigned ns_nrf_percent(const NsNrf*, uint8_t);
 typedef struct {
     const NsPlatform* io;
@@ -25,5 +25,5 @@ bool ns_cc_frequency_valid(uint32_t);
 NsResult ns_cc_open(NsCc*, const NsPlatform*, bool selector_confirmed);
 NsResult ns_cc_tune(NsCc*, uint32_t);
 NsResult ns_cc_sample(NsCc*);
-void ns_cc_close(NsCc*);
+NsResult ns_cc_close(NsCc*);
 #endif

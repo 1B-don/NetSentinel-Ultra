@@ -14,3 +14,7 @@ Hardware/interface references (documentation consulted, no code copied):
 - TI CC1101 datasheet: https://www.ti.com/lit/ds/symlink/cc1101.pdf — supported frequency bands. Driver delegates modem setup/calibration/RSSI conversion to the authorized external SDK adapter.
 - ESP32 Marauder CLI reference: https://github.com/justcallmekoko/ESP32Marauder/wiki/CLI — command capabilities are firmware-dependent; no passive profile derived or enabled.
 - Flipper external-app documentation: https://developer.flipper.net/flipperzero/doxygen/apps_on_sd_card.html — manual packaging requires concrete SDK integration and API compatibility.
+
+## Application shell and persistence work
+
+The candidate Flipper shell follows the owner-provided legacy GUI lifecycle, with independently authored controller/storage integration. API names and callback usage were checked against public Flipper [storage](https://developer.flipper.net/flipperzero/doxygen/storage_8h.html), [viewport](https://developer.flipper.net/flipperzero/doxygen/view__port_8h.html) and [manifest](https://developer.flipper.net/flipperzero/doxygen/app_manifests.html) documentation. No SDK headers or repository code were copied. `tests/flipper_mock` contains independently authored, intentionally incomplete contract shims. They cannot prove real SDK compilation or ABI compatibility.
