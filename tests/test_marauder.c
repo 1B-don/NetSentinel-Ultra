@@ -1,3 +1,6 @@
+/* Protocol state-machine tests are synthetic host simulations only. The
+ * production default build refuses Wi-Fi start until the init path is proven
+ * receive-only and raw-capture side effects are controlled. */
 #include "netsentinel/application.h"
 #include "mock_platform.h"
 #include "ns_analysis.h"

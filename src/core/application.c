@@ -544,11 +544,11 @@ void ns_app_frame(const NsApplication* a, NsFrame* f) {
         snprintf(f->rows[4], sizeof(f->rows[4]), "L/R change; OK clears (RAM)");
     } else if(a->page == NS_PAGE_WIFI_OVERVIEW) {
         snprintf(f->rows[0], sizeof(f->rows[0]), "Wi-Fi observation readiness");
-        snprintf(f->rows[1], sizeof(f->rows[1]), "AP/channel analysis: host tested");
-        snprintf(f->rows[2], sizeof(f->rows[2]), "Live observation remains disabled");
-        snprintf(f->rows[3], sizeof(f->rows[3]), "Need installed passive + SD proof");
-        snprintf(f->rows[4], sizeof(f->rows[4]), "OK: ESP screen; Back: dashboard");
-        snprintf(f->rows[5], sizeof(f->rows[5]), "No discovery commands sent");
+        snprintf(f->rows[1], sizeof(f->rows[1]), "AP/channel core: software");
+        snprintf(f->rows[2], sizeof(f->rows[2]), "Marauder init starts AP mode");
+        snprintf(f->rows[3], sizeof(f->rows[3]), "May TX; PCAP defaults on");
+        snprintf(f->rows[4], sizeof(f->rows[4]), "No Wi-Fi commands sent");
+        snprintf(f->rows[5], sizeof(f->rows[5]), "OK: ESP info; Back: home");
     } else {
         snprintf(f->rows[1], sizeof(f->rows[1]), "NRF:%s CC:%s", a->capabilities.nrf ? "port ready" : "no port", a->capabilities.cc ? "port ready" : "no port");
         snprintf(f->rows[2], sizeof(f->rows[2]), "CSV: %s", a->session.logging ? "open" : "closed");

@@ -13,7 +13,7 @@ Target: permitted Momentum Dev d3f89dfe SDK, API 87.1, hardware target 7. No new
 - [x] Actual matching SDK compilation/link/APPCHK and strict metadata/entry/import validation.
 - [x] User guide, reproducible build procedure, limitations and physical checklist.
 - [ ] Resolve board SPI/CE/CSN/CS/GDO routing and bounded physical providers.
-- [ ] Resolve installed Marauder passive lifecycle and peer-side capture policy before any observation authorization.
+- [ ] Obtain a proven passive-only Marauder start path that avoids AP-mode initialization and prevents peer-side raw PCAP writes; otherwise this firmware cannot support approved receive-only Wi-Fi.
 - [ ] Verify final artifact physically and obtain explicit release approval.
 
 ## Feature classification
@@ -26,7 +26,7 @@ Target: permitted Momentum Dev d3f89dfe SDK, API 87.1, hardware target 7. No new
 | Settings/history/recovery | NSP1 CRC dual slots/readback, monotonic IDs, 16 retained sessions, idempotent saves and explicit baud repair | 420 torn writes, read/write failures, enum validation, restart/recovery | Pass | Prior settings persistence; final controls and fault behavior pending |
 | History and observation filters | Complete volatile channel/RSSI/age and radio/error filters | Empty/filtered-empty, invalid values, wrap and idle expiry | Pass | Final physical navigation pending; filters intentionally reset at launch |
 | CSV exports/privacy | Numeric/redacted, exclusive create, pre-reserved IDs, sync/close errors, no identifiers/raw UART | Storage faults and privacy tests | Pass | Prior records inspected by owner; final exports and SD failure handling pending |
-| Wi-Fi AP/channel/RSSI/baseline cores | Implemented, no invented encryption output | Sanitized protocol/observation fixtures, parser mutations, overflow/recovery | Compiled; physical scan gate off | Blocked: installed build/options, passivity across init/stop/background state, SavePCAP side effects |
+| Wi-Fi AP/channel/RSSI/baseline cores | Parser/analysis implemented; production Marauder start fails closed | Synthetic UART/protocol tests compile only with `NS_TEST_MARAUDER_PROTOCOL_SIM` | Compiled; physical scan gate off | Blocked: v1.11.0 `StartScan` first initializes AP mode (possible management-frame TX); beacon PCAP may store raw ESP SD data because SavePCAP defaults true; stop cleanup is conditional |
 | BLE discovery | Explicitly unsupported | Command denial | Disabled | Reviewed upstream path uses active discovery; no verified receive-only alternative |
 | NRF24 receive sampling, capability checks, plot/statistics/CSV | PRIM_RX, auto-ACK/retry off, readback, bounded 60-second sessions | SPI faults, counter/deadline cleanup, 25,200 PRX samples | Core compiled; no SPI imports | Blocked: Ultra SPI/CE/CSN routes, ownership/bounded provider and chip verification; standalone scanner owner success is not this adapter's evidence |
 | CC1101 receive diagnostics, tuning, RSSI/trace/CSV | Status reads, RXOFF guard, checked receive contract, cadence, bounded sessions | All 256 RXOFF values, identity/state/fault/RSSI/trace/deadline tests | Core compiled; no external registry/SPI imports | Blocked: exact routes/provider/preset, bounded calibration/init, RSSI calibration and formal RF reception |

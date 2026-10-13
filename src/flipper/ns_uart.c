@@ -90,15 +90,21 @@ NsResult ns_flipper_uart_write(void* ctx, const uint8_t* bytes, size_t count) {
     bool permitted = count == 5 && !memcmp(bytes, "info\n", 5);
     if(f->info_sent) return NS_BUSY;
 #else
-    bool permitted = (count == 5 && !memcmp(bytes, "info\n", 5)) ||
-        (count == 5 && !memcmp(bytes, "help\n", 5)) ||
-        (count == 9 && !memcmp(bytes, "stopscan\n", 9));
-    if(f->capabilities.esp_wifi_verified && count == 12 && !memcmp(bytes, "sniffbeacon\n", 12)) permitted = true;
+    bool is_info = count == 5 && !memcmp(bytes, "info\n", 5);
+    bool permitted = is_info;
+    if(is_info && f->info_sent) return NS_BUSY;
+#if defined(NS_MARAUDER_PASSIVE_START_VERIFIED) || defined(NS_TEST_MARAUDER_PROTOCOL_SIM)
+    if(f->capabilities.esp_wifi_verified) {
+        permitted = permitted || (count == 5 && !memcmp(bytes, "help\n", 5)) ||
+            (count == 9 && !memcmp(bytes, "stopscan\n", 9)) ||
+            (count == 12 && !memcmp(bytes, "sniffbeacon\n", 12));
+    }
+#endif
 #endif
     if(!permitted) return NS_UNSUPPORTED;
     /* HAL has no deadline/error return. These short fixed commands avoid its
      * unbounded tx_wait_complete API; real SDK/hardware timing remains a gate. */
-    f->info_sent = true;
+    if(count == 5 && !memcmp(bytes, "info\n", 5)) f->info_sent = true;
     furi_hal_serial_tx(f->serial, bytes, count); return NS_OK;
 }
 NsResult ns_flipper_uart_read(void* ctx, uint8_t* bytes, size_t cap, size_t* count) {

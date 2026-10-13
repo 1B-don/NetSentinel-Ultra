@@ -41,12 +41,12 @@ Build evidence: logs/v1-final-host.log, v1-final-short.log, v1-final-sanitize.lo
 |---|---|
 | Source milestone | Unified v1.0 software RC1 completion candidate |
 | Artifact | dist/netsentinel_ultra_v1_0_rc1.fap |
-| Size | 45,928 bytes |
-| SHA-256 | `170402918860ae1032378e4dc9f2a1e914cb97626074423832b73a0bc48ba8a6` |
+| Size | 45,900 bytes |
+| SHA-256 | `4c0eed5a0ae82010fb48134607dc63228bcbdb1ae356d17812f2ce80f4372dfe` |
 | API / target / stack | 87.1 / 7 / 8192 |
 | Required imports / weak imports | 63 / 0 |
 | SDK compile/link/APPCHK | Passed; no compiler/linker errors |
-| Host / short enums / sanitizer | All 12 C suites passed |
+| Host / short enums / sanitizer | All 13 C suites passed |
 | Python checks | 8 preflight, 7 manifest, 5 publication, 3 bundle/variant tests passed |
 | Hardware operations for this build | None; the artifact is undeployed. Its sole live hardware path remains the separately verified info-only USART query. |
 | Physical validation | Not performed on this RC1 artifact |
@@ -63,6 +63,6 @@ This RC1 build is not physically tested or authorized for deployment. The prior 
 
 ## Reproduce the unified software candidate
 
-Run `scripts/verify_development.sh rc` from the project root. It uses only the checksum-verified local SDK and isolated cache, does not update an SDK or access a device/network, and produces `dist/netsentinel_ultra_v1_0_rc1.fap` with manifest name `NetSentinel Ultra v1.0 RC1`, app version 1.0, 8192-byte stack, approved icon, flags zero, API 87.1 and target 7. The root GUI-only manifest is preserved; the generated RC uses only NS_ESP_INFO_ONLY. Live UART sends one info+LF per acquisition; all other radios/scans remain disabled.
+Run `scripts/verify_development.sh rc` from the project root. It uses only the checksum-verified local SDK and isolated cache, does not update an SDK or access a device/network, and produces `dist/netsentinel_ultra_v1_0_rc1.fap` with manifest name `NetSentinel Ultra v1.0 RC1`, app version 1.0, 8192-byte stack, approved icon, flags zero, API 87.1 and target 7. The root GUI-only manifest is preserved; the generated RC uses only NS_ESP_INFO_ONLY. Live UART sends one info+LF per acquisition; all other radios/scans remain disabled. The UI identifies the Marauder AP-start transmit risk and peer-side raw-PCAP default.
 
 The builder protects every other dist FAP by pre/post hashes and preserves an overwritten candidate by checksum. Pre-RC known-good snapshots and checksums are in ignored builds/preserved-dbecb97 and earlier preservation directories. The final RC1 package metadata/import evidence is in ignored `logs/rc1-validation-pipeline.json`; full test/build logs are under ignored `logs/rc1-*` and `logs/v1-final-*`. The names-only preflight explicitly limits its scope; actual SDK compilation and validate_fap.py provide the additional build/package evidence. No physical data or SDK implementation is published.

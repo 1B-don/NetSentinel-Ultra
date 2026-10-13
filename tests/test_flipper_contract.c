@@ -46,6 +46,8 @@ static void test_shell(void) {
     mock_sdk_reset(); mock_sdk_fail_storage(true);
     assert(netsentinel_app(NULL) == 1 && !mock_sdk_live() && !mock_sdk_records());
 }
+/* Test-only mocked scan flow; the shipped NS_ESP_INFO_ONLY build cannot send
+ * any discovery or stop commands. */
 static void test_uart(void) {
     mock_sdk_reset(); NsFlipper f; assert(ns_flipper_init(&f));
     assert(f.capabilities.esp_uart && !f.capabilities.esp_wifi_verified);

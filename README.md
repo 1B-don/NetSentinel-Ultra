@@ -12,7 +12,7 @@ From this project directory:
 scripts/verify_development.sh rc
 ```
 
-The pipeline runs **12 C suites and 23 Python checks**, short-enum builds, ASan/UBSan, clean uFBT compilation/link/packaging/APPCHK, complete FAP metadata/entry/import checks and publication audit. Local sanitizer leak detection defaults off; address/undefined-behavior checks remain enabled. Host peripherals are mocks, not hardware evidence. See [build instructions](docs/V1_BUILD.md) for permitted SDK inputs, isolated cache and local build evidence.
+The pipeline runs **13 C suites and 23 Python checks**, short-enum builds, ASan/UBSan, clean uFBT compilation/link/packaging/APPCHK, complete FAP metadata/entry/import checks and publication audit. Local sanitizer leak detection defaults off; address/undefined-behavior checks remain enabled. Host peripherals are mocks, not hardware evidence. See [build instructions](docs/V1_BUILD.md) for permitted SDK inputs, isolated cache and local build evidence.
 
 Candidate output: `dist/netsentinel_ultra_v1_0_rc1.fap`. Root manifest remains GUI/storage-only; candidate manifest uses the info-only USART gate. Live USART is fixed TX13/PB6, RX14/PB7, 115200/8N1 and accepts one info command per acquisition. NRF24/CC1101/Wi-Fi/BLE physical workflows stay disabled. No device access or firmware operation occurs in the pipeline. Validate each generated checksum; packaging is not claimed byte-for-byte deterministic.
 
@@ -22,7 +22,7 @@ Candidate output: `dist/netsentinel_ultra_v1_0_rc1.fap`. Root manifest remains G
 - Protocol/parser/transport separation provides strict echo/prompt validation, bounded lines/ISR buffers, malformed-response handling, timeout/cancellation and identifier redaction.
 - NRF24 primary RX disables auto-ACK/retries; measured-channel activity summaries, plots and numeric CSV are implemented with SPI mocks.
 - CC1101 status-only diagnostics, RXOFF policy checks, receive/RSSI contract, frequency exploration, traces and numeric logging are independently implemented; concrete external binding remains pending.
-- Wi-Fi AP/channel/signal/baseline processing is host-tested; complete identity and stop acknowledgment are required by its dormant protocol. No encryption format is guessed. BLE active discovery is excluded.
+- Wi-Fi AP/channel/signal/baseline parsing is software-tested only. Marauder v1.11.0 initializes AP mode before the beacon receiver and may transmit; beacon PCAP capture may persist raw frames with SavePCAP defaulting on. Production start is blocked. BLE active discovery is excluded.
 - Channel/RSSI/age filters and radio/error history filters are volatile. Existing NSP1 dual-slot CRC settings/history remain compatible; writes are read back and corrupt state is not erased.
 - Exclusive CSV creation reserves IDs before writes. Storage errors close resources and retain recoverable history; AP/counter exhaustion releases sessions. CSV/UI omit names, MACs and raw responses. Peer-side Marauder PCAP settings are independently reviewed, not assumed safe.
 

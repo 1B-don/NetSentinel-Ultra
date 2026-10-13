@@ -4,7 +4,7 @@ CPPFLAGS := -Iinclude -I.
 CFLAGS := -std=c11 -Wall -Wextra -Werror -pedantic -g
 CORE := ap_parser.c ns_analysis.c src/core/radios.c src/core/cc_spi.c src/core/marauder.c src/core/session.c src/core/settings.c src/core/persistence.c src/core/application.c src/core/observation.c src/core/export.c
 .PHONY: test clean sanitize audit-test sdk-test sdk-preflight short-enums
-test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD)/test_esp_info_build $(BUILD)/test_minimal_build $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
+test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD)/test_esp_info_build $(BUILD)/test_minimal_build $(BUILD)/test_board_contract $(BUILD)/test_cc $(BUILD)/test_marauder $(BUILD)/test_marauder_gate $(BUILD)/test_parser $(BUILD)/test_analysis $(BUILD)/test_core $(BUILD)/test_application $(BUILD)/test_flipper_contract
 	$(BUILD)/test_stress
 	$(BUILD)/test_observation
 	$(BUILD)/test_esp_info_build
@@ -12,6 +12,7 @@ test: audit-test sdk-test $(BUILD)/test_stress $(BUILD)/test_observation $(BUILD
 	$(BUILD)/test_board_contract
 	$(BUILD)/test_cc
 	$(BUILD)/test_marauder
+	$(BUILD)/test_marauder_gate
 	$(BUILD)/test_parser
 	$(BUILD)/test_analysis
 	$(BUILD)/test_core
@@ -35,10 +36,13 @@ $(BUILD)/test_application: $(CORE) tests/test_application.c tests/mock_platform.
 
 FLIPPER := src/flipper/ns_flipper.c src/flipper/ns_uart.c src/flipper/netsentinel_app.c
 $(BUILD)/test_flipper_contract: $(CORE) $(FLIPPER) src/flipper/ns_flipper.h tests/test_flipper_contract.c tests/flipper_mock/mock_sdk.c ap_parser.h ns_analysis.h $(wildcard tests/flipper_mock/*.h tests/flipper_mock/*/*.h) $(wildcard include/netsentinel/*.h) | $(BUILD)
-	$(CC) $(CPPFLAGS) -Itests/flipper_mock -Isrc/flipper $(CFLAGS) $(CORE) $(FLIPPER) tests/flipper_mock/mock_sdk.c tests/test_flipper_contract.c -o $@
+	$(CC) $(CPPFLAGS) -DNS_TEST_MARAUDER_PROTOCOL_SIM -Itests/flipper_mock -Isrc/flipper $(CFLAGS) $(CORE) $(FLIPPER) tests/flipper_mock/mock_sdk.c tests/test_flipper_contract.c -o $@
 
 $(BUILD)/test_marauder: $(CORE) tests/test_marauder.c tests/mock_platform.h $(wildcard tests/fixtures/*) $(wildcard include/netsentinel/*.h) ap_parser.h ns_analysis.h | $(BUILD)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE) tests/test_marauder.c -o $@
+	$(CC) $(CPPFLAGS) -DNS_TEST_MARAUDER_PROTOCOL_SIM $(CFLAGS) $(CORE) tests/test_marauder.c -o $@
+
+$(BUILD)/test_marauder_gate: src/core/marauder.c tests/test_marauder_gate.c include/netsentinel/marauder.h | $(BUILD)
+	$(CC) $(CPPFLAGS) $(CFLAGS) src/core/marauder.c tests/test_marauder_gate.c -o $@
 
 $(BUILD)/test_cc: $(CORE) tests/test_cc.c tests/mock_platform.h $(wildcard include/netsentinel/*.h) ap_parser.h ns_analysis.h | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE) tests/test_cc.c -o $@
