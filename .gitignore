@@ -1,0 +1,5 @@
+builds/*
+!builds/.gitkeep
+*.fap
+*.o
+__pycache__/

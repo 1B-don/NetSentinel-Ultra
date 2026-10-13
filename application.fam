@@ -1,0 +1,12 @@
+App(
+    appid="netsentinel",
+    name="NetSentinel Ultra",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="netsentinel_app",
+    stack_size=6 * 1024,
+    fap_version="0.2.0",
+    fap_category="GPIO",
+    fap_description="Ultra radio diagnostics and passive Wi-Fi/Bluetooth explorer",
+    fap_author="Brandon Midgette",
+    sources=["netsentinel.c", "ap_parser.c", "ns_analysis.c"],
+)
